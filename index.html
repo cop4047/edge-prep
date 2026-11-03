@@ -1,0 +1,2591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Edge: Quant & FPGA Prep</title>
+<style>
+:root{
+  --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+  --fg:#e7e9ee; --mut:#9aa1ae; --acc:#7aa2ff; --good:#4ec9a0; --bad:#ff6b6b; --warn:#f2b84b; --easy:#b48cff;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+main{max-width:640px;margin:0 auto;padding:16px 16px 110px}
+h1{font-size:20px;margin:4px 0 2px;letter-spacing:.2px}
+h2{font-size:17px;margin:20px 0 10px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 14px}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:14px;white-space:nowrap}
+.chip.on{background:var(--acc);color:#0b1020;border-color:var(--acc);font-weight:600}
+.chip .n{opacity:.75;margin-left:6px;font-variant-numeric:tabular-nums}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:12px}
+.tag{display:inline-block;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 7px;margin-bottom:10px}
+.q{font-size:17px}
+.a{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+code{font-family:var(--mono);font-size:.9em;background:var(--panel2);padding:1px 5px;border-radius:5px}
+pre{font-family:var(--mono);font-size:13px;line-height:1.45;background:#0b0d11;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;margin:10px 0}
+pre code{background:none;padding:0;font-size:inherit}
+.big{display:block;width:100%;background:var(--acc);color:#0b1020;font-weight:700;border-radius:12px;padding:14px;margin-top:14px;font-size:16px}
+.ghost{background:var(--panel2);color:var(--fg);font-weight:600}
+.grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.grades button{border-radius:12px;padding:10px 4px;font-weight:700;font-size:14px;color:#0b1020}
+.grades small{display:block;font-weight:500;font-size:11px;opacity:.8}
+.g0{background:var(--bad)} .g1{background:var(--warn)} .g2{background:var(--good)} .g3{background:var(--easy)}
+.row{display:flex;gap:10px;align-items:center}
+.grow{flex:1}
+.mut{color:var(--mut)} .small{font-size:13px}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--mut)}
+input,textarea,select{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%}
+textarea{min-height:90px;font-family:var(--mono);font-size:13px}
+.ans-in{font-size:22px;text-align:center;font-variant-numeric:tabular-nums;margin-top:12px}
+.fb{margin-top:12px;padding:12px;border-radius:10px;font-size:15px}
+.fb.ok{background:rgba(78,201,160,.12);border:1px solid rgba(78,201,160,.4)}
+.fb.no{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.4)}
+.drill{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px;width:100%;text-align:left}
+.drill .ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-family:var(--mono);flex:0 0 auto}
+.drill b{display:block}
+.sprint-q{font-size:40px;text-align:center;font-variant-numeric:tabular-nums;margin:20px 0 6px;font-family:var(--mono)}
+.timer{font-variant-numeric:tabular-nums;font-weight:700}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+nav div{display:flex;max-width:640px;width:100%}
+nav button{flex:1;padding:12px 4px 14px;font-size:12px;color:var(--mut);background:none}
+nav button svg{display:block;margin:0 auto 3px;width:22px;height:22px}
+nav button.on{color:var(--acc)}
+.bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.list{margin-top:8px}
+.list .li{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.empty{text-align:center;padding:30px 10px;color:var(--mut)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 6px}
+
+.pill{font-size:12px;color:var(--mut);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.disp{margin-top:14px;min-height:56px;display:flex;align-items:center;justify-content:center;font-size:26px;font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;word-break:break-all}
+.disp .ph{font-size:15px;color:var(--mut);font-family:system-ui,sans-serif}
+.kp{display:grid;gap:7px;margin-top:10px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.k-num{grid-template-columns:repeat(4,1fr)} .k-hex{grid-template-columns:repeat(5,1fr)} .k-hex .kok{grid-column:span 3} .k-bin{grid-template-columns:repeat(4,1fr)}
+.kp button{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 0;font-size:21px;font-weight:600;font-family:var(--mono)}
+.kp button:active{background:var(--line)}
+.kp .kok{background:var(--good);color:#0b1020;border-color:var(--good)} .kp .kdel{color:var(--warn)}
+.mc{display:grid;gap:8px;margin-top:14px}
+.mc button{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;font-size:15px}
+.mc button pre{margin:4px 0}
+.mc button.right{border-color:var(--good);background:rgba(78,201,160,.15)} .mc button.wrong{border-color:var(--bad);background:rgba(255,107,107,.12)}
+.cards{display:flex;gap:8px;margin:4px 0 10px}
+.pc{flex:1;aspect-ratio:2/3;max-width:60px;display:grid;place-items:center;background:#f3f1ea;color:#1a1a1a;border-radius:8px;font-weight:800;font-size:20px;font-family:var(--mono)}
+.pc.hid{background:repeating-linear-gradient(45deg,#2a3350,#2a3350 6px,#222a44 6px,#222a44 12px);color:#9aa1ae}
+.qf{flex:1;background:var(--panel2);border:2px solid var(--line);border-radius:12px;padding:8px;font-size:24px;font-family:var(--mono);font-weight:700}
+.qf small{display:block;font-size:12px;color:var(--mut);font-family:system-ui,sans-serif;font-weight:500}
+.qf.on{border-color:var(--acc)}
+.drill .ico{color:#0b1020;font-size:14px}
+.why{margin-top:8px;color:var(--fg);opacity:.85;font-size:14px}
+.deep{margin-top:12px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px}
+.deep p{margin:6px 0} .deep .dh{font-weight:700;margin:12px 0 4px} .deep .li2{margin:3px 0 3px 4px}
+.deep .you{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);color:var(--acc);font-weight:600}
+.fu{gap:8px;margin-top:12px} .fu input{padding:10px}
+
+.guide{padding:0} .gh{display:flex;justify-content:space-between;width:100%;padding:14px 16px;background:none;text-align:left}
+.gb{padding:0 16px 14px;font-size:15px} .gb p{margin:6px 0} .li2{margin:3px 0 3px 4px}
+.deep .dh{font-size:16px;margin:0 0 6px}
+.mk .a{margin-top:10px;padding-top:10px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav><div>
+  <button data-tab="train" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Train</button>
+  <button data-tab="tests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Tests</button>
+  <button data-tab="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Review</button>
+  <button data-tab="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/></svg>Cards</button>
+  <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+</div></nav>
+<div class="toast" id="toast"></div>
+<script type="text/plain" id="cards">
+@deck prob | Probability & EV | prob
+Q: Expected value of a fair six-sided die? Derive it, don't recall it.
+A: Faces pair up 1+6, 2+5, 3+4 = 7 each, so the mean is **7/2 = 3.5**. For an n-sided die: (n+1)/2.
+
+Q: Variance of a fair die roll?
+A: E[X²] = 91/6, E[X]² = 49/4. Var = 91/6 − 49/4 = **35/12 ≈ 2.92**.
+
+Q: Expected value of the larger of two fair dice?
+A: P(max = k) = (2k−1)/36. E = (1·1+2·3+3·5+4·7+5·9+6·11)/36 = **161/36 ≈ 4.47**.
+Sanity check: must be above 3.5.
+
+Q: Roll a die; you may take the face value in £ or reroll once and take the second result. Fair value with optimal play?
+A: Reroll if the first roll is below the value of rerolling (3.5): reroll 1–3, keep 4–6.
+E = ½·5 + ½·3.5 = **4.25**.
+
+Q: Same game but you may reroll up to twice (three rolls max). Value?
+A: With one reroll left the value is 4.25, so on the first roll keep only 5 or 6.
+E = (5+6)/6 + (4/6)·4.25 = 11/6 + 17/6 = **14/3 ≈ 4.67**.
+
+Q: Expected number of fair coin flips to get the first head?
+A: E = 1 + ½E ⇒ **E = 2**. In general a geometric trial with success p takes 1/p tries.
+
+Q: Expected rolls of a die until the first 6?
+A: E = 1 + (5/6)E ⇒ **E = 6** (= 1/p). Use the probability of *failing* in the recursion.
+
+Q: Expected flips until two heads in a row (HH)?
+A: States: start S, just saw H.
+S = 1 + ½H + ½S; H = 1 + ½·0 + ½S ⇒ **S = 6**.
+
+Q: Expected flips until the pattern HT?
+A: Once you have an H, you just wait for a T (2 flips). Waiting for the first H takes 2. **Total 4**. (Compare HH = 6: patterns that overlap themselves take longer.)
+
+Q: A disease has 1% prevalence. The test is positive 90% of the time if sick and 9% if healthy. P(sick | positive)?
+A: Natural frequencies, 10,000 people: 100 sick → 90 positive; 9,900 healthy → 891 positive.
+P = 90/981 ≈ **9.2%**.
+
+Q: Draw 2 cards without replacement. P(both aces)?
+A: (4/52)(3/51) = 12/2652 = **1/221 ≈ 0.45%**.
+
+Q: Expected number of rolls to see all six faces of a die?
+A: Coupon collector: 6(1 + 1/2 + … + 1/6) = 6 · 49/20 = **14.7**.
+
+Q: Smallest group where P(shared birthday) > 50%?
+A: **23 people**. Compute P(all distinct) = ∏(1 − k/365); the number of pairs, C(23,2) = 253, is why it's small.
+
+Q: Break a stick at two uniform random points. P(the three pieces form a triangle)?
+A: Need every piece < ½. **1/4**.
+
+Q: E|U₁ − U₂| for two independent Uniform(0,1)?
+A: **1/3**.
+
+Q: Expected maximum of n independent Uniform(0,1)?
+A: P(max ≤ x) = xⁿ, so density nxⁿ⁻¹ and E = **n/(n+1)**. Minimum: 1/(n+1).
+
+Q: Fair ±£1 coin game, you start with £k and stop at £0 or £N. P(you reach N)?
+A: Fair game ⇒ wealth is a martingale: **k/N**.
+
+Q: Monty Hall: you pick a door, host opens a goat door. Switch?
+A: Yes. Switching wins **2/3**: it wins whenever your first pick was wrong.
+
+Q: Three cards: red/red, white/white, red/white. One is drawn and placed, red face up. P(the other side is red)?
+A: Count red faces: 3 equally likely, 2 belong to the red/red card. **2/3**.
+
+Q: P(at least one 6 in four rolls)?
+A: 1 − (5/6)⁴ = 1 − 625/1296 = **671/1296 ≈ 51.8%**.
+
+Q: Expected number of fixed points in a random permutation of n items?
+A: Linearity: each item is fixed with probability 1/n, so **1**, for any n.
+
+Q: Shuffle a deck and turn cards until the first ace. Expected number of cards turned (including the ace)?
+A: The 4 aces split the 48 others into 5 gaps of expected size 48/5 = 9.6. So **9.6 + 1 = 10.6** (= 53/5).
+
+Q: You roll a die and are paid the square of the result. Fair price?
+A: E[X²] = (1+4+9+16+25+36)/6 = **91/6 ≈ 15.17**. Note E[X²] ≠ E[X]² = 12.25.
+
+Q: A family has two children, at least one is a boy. P(both boys)?
+A: Outcomes BB, BG, GB equally likely ⇒ **1/3**. (If you know the *older* one is a boy: 1/2.)
+
+Q: Three ants on the corners of a triangle each walk along a random edge. P(no collision)?
+A: Only all-clockwise or all-anticlockwise works: 2/8 = **1/4**.
+
+Q: Most likely sum of two dice, and its probability?
+A: **7**, with 6/36 = **1/6**. In general P(sum = s) = (6 − |s − 7|)/36.
+
+Q: Kelly fraction for an even-money bet you win with probability p = 0.6?
+A: f* = p − q/b = 0.6 − 0.4/1 = **0.2** of bankroll. Betting more raises variance and lowers long-run growth.
+
+Q: Linearity of expectation: what is it, and why do interviewers love it?
+A: E[X+Y] = E[X] + E[Y] **even when X and Y are dependent**. Break a count into indicator variables and sum their probabilities (fixed points, matches, runs).
+
+Q: Expected number of pairs sharing a birthday among n people?
+A: Indicators per pair: **C(n,2)/365**. With 28 people: 378/365 ≈ 1.04.
+
+Q: Expected number of runs in 10 fair coin flips (e.g. HHTHT = 4 runs)?
+A: 1 + (number of changes). Each of 9 adjacent pairs differs with p = ½. **1 + 9/2 = 5.5**.
+
+@deck mm | Market making & trading | mm
+Q: Define bid, ask, spread, mid.
+A: **Bid**: highest price someone will buy at. **Ask/offer**: lowest price someone will sell at. **Spread** = ask − bid. **Mid** = (bid + ask)/2.
+
+Q: Your bid gets hit. Are you now long or short?
+A: Someone sold to you at your bid ⇒ you **bought** ⇒ **long**. "Lifted" means someone bought at your offer ⇒ you're short.
+
+Q: "Make me a market on the sum of two dice." What's a good answer?
+A: Fair value 7. Quote around it, e.g. **6.5 bid – 7.5 offer**, and say why: the spread pays for uncertainty (sd ≈ 2.4) and the risk the counterparty knows something. Be ready to update if they trade.
+
+Q: What is adverse selection, and how does a market maker respond?
+A: The people who choose to trade with you are disproportionately the ones who know more. If you keep getting hit or lifted on one side, your fair value is probably wrong: **move your quotes and/or widen**.
+
+Q: You're long a lot of inventory. How do you adjust your quotes?
+A: **Skew down**: lower both bid and offer, so you're more likely to sell and less likely to buy more. Quotes reflect both fair value and position risk.
+
+Q: Market order vs limit order?
+A: Market: execute now at the best available price (pays the spread, certain fill). Limit: execute only at your price or better (may not fill, earns the spread if it rests).
+
+Q: Why does speed matter so much for a market maker?
+A: Quotes rest in the book. When news moves fair value, a slow maker's **stale quotes get picked off** by faster traders. Low latency means cancelling or updating before that happens.
+
+Q: Sharpe ratio?
+A: (mean return − risk-free rate) / standard deviation of returns. Annualise daily Sharpe by multiplying by √252.
+
+Q: Put–call parity (European options, no dividends)?
+A: **C − P = S − K·e^(−rT)**. Long call + short put = synthetic long forward.
+
+Q: What is delta?
+A: Sensitivity of an option's price to the underlying: ∂V/∂S. Call delta is between 0 and 1; an at-the-money call has delta ≈ 0.5.
+
+Q: Positive-EV bet: why not bet your whole bankroll?
+A: Variance and ruin. One loss ends the game. Long-run growth is maximised by betting a fraction (Kelly), and practitioners often bet less (half-Kelly).
+
+Q: How should you approach a Fermi estimate in an interview ("how many piano tuners in London")?
+A: State assumptions out loud, break into factors, round to easy numbers, give a range, then sanity-check against something you know. Process is graded more than the number.
+
+Q: Someone offers a bet you're unsure is fair. What questions do you ask?
+A: Why are they offering it (adverse selection)? What's the max loss? Can you size it small? Can you get information first? Is it repeated?
+
+Q: What is the microprice?
+A: Mid weighted by queue sizes: (bid·askSize + ask·bidSize)/(bidSize + askSize). A big bid queue pushes the fair price toward the ask.
+
+Q: Tick-to-trade?
+A: Time from the market-data packet arriving at the system to the resulting order leaving it. The core latency metric for HFT systems.
+
+@deck mental | Mental maths | arith
+Q: Fast way to multiply by 25?
+A: ×100 then ÷4. 36 × 25 = 3600/4 = **900**.
+
+Q: Multiply a two-digit number by 11?
+A: Put the digit sum in the middle (carry if ≥ 10). 72 × 11 = 7|9|2 = **792**; 87 × 11 = 8|15|7 → **957**.
+
+Q: Square a number ending in 5, e.g. 65²?
+A: n(n+1) then append 25: 6 × 7 = 42 → **4225**.
+
+Q: 47 × 53 quickly?
+A: Difference of squares: 50² − 3² = 2500 − 9 = **2491**.
+
+Q: 98 × 97 quickly?
+A: (100 − 2)(100 − 3) = 10000 − 500 + 6 = **9506**.
+
+Q: 8% of 25?
+A: Swap: x% of y = y% of x ⇒ 25% of 8 = **2**.
+
+Q: Decimal values of 1/6, 1/7, 1/8, 1/9, 1/12, 1/16?
+A: 0.1667, **0.142857** (repeating), 0.125, 0.111…, 0.0833, 0.0625.
+
+Q: Powers of 2 to know cold?
+A: 2¹⁰ = 1024 ≈ 10³, 2¹⁶ = **65,536**, 2²⁰ ≈ 10⁶, 2³² ≈ 4.29 × 10⁹.
+
+Q: Constants worth knowing?
+A: √2 ≈ 1.414, √3 ≈ 1.732, e ≈ 2.718, ln 2 ≈ 0.693, ln 10 ≈ 2.303, π ≈ 3.1416.
+
+Q: Rule of 72?
+A: Doubling time ≈ 72 / (rate in %). At 8% a year, ~9 years. (Exact uses ln 2 ≈ 0.693.)
+
+Q: Divisibility tests for 3, 9, 11?
+A: 3 and 9: digit sum divisible. 11: alternating digit sum divisible (918082: 9−1+8−0+8−2 = 22 ✓).
+
+Q: Multiply by 9 quickly?
+A: ×10 − self. 9 × 74 = 740 − 74 = **666**.
+
+Q: Divide by 5 quickly?
+A: ×2 then ÷10. 345/5 = 690/10 = **69**.
+
+Q: Squares from 11² to 20²?
+A: 121, 144, 169, 196, 225, 256, 289, 324, 361, 400.
+
+@deck vlog | Verilog fundamentals | verilog
+Q: Blocking (=) vs nonblocking (<=)?
+A: `=` updates immediately, in order. `<=` samples all right-hand sides first, then updates together at the end of the time step.
+Rule: **`<=` in clocked blocks, `=` in combinational blocks.**
+
+Q: What is wrong with this shift register?
+```
+always @(posedge clk) begin
+  b = a;
+  c = b;
+end
+```
+A: Blocking assignments: `c` gets the **new** `b` (= `a`) in the same edge, so the two stages collapse into one. Use `<=` for both.
+
+Q: When does a combinational always block infer a latch?
+A: When some path through the block **doesn't assign** an output (missing `else`, case without `default`). The signal must hold its old value ⇒ latch. Fix: default assignments at the top of the block.
+
+Q: `wire` vs `reg` (Verilog-2001)?
+A: `reg` for anything assigned inside `always`/`initial`; `wire` for `assign` and port connections. `reg` does **not** mean a flip-flop. SystemVerilog `logic` works for both.
+
+Q: `|v` vs `a | b` vs `a || b`?
+A: `|v` is a **reduction** OR (1 bit, OR of all bits). `a | b` is bitwise (same width). `a || b` is **logical** (1 bit: is either nonzero).
+
+Q: Replicate a bit 24 times inside a concatenation?
+A: `{{24{in[7]}}, in}`. The replication needs its own braces.
+
+Q: Sign-extend an 8-bit value to 32 bits?
+A: Replicate the MSB: `{{24{in[7]}}, in}`. The MSB is the sign bit in two's complement.
+
+Q: For `input [7:0] in`, which bit is the MSB?
+A: `in[7]`. The **left index of the declaration** is the MSB. Part-selects must match direction: `in[7:4]`, not `in[4:7]`.
+
+Q: Reverse the bits of an 8-bit bus in Verilog-2001?
+A: `assign out = {in[0],in[1],in[2],in[3],in[4],in[5],in[6],in[7]};` or a `generate` loop with `out[i] = in[W-1-i]`. (SystemVerilog: `{<<{in}}`.)
+
+Q: Synchronous active-high reset flop, 8 bits?
+A:
+```
+always @(posedge clk)
+  if (reset) q <= 8'd0;
+  else       q <= d;
+```
+
+Q: Asynchronous active-high reset flop?
+A:
+```
+always @(posedge clk or posedge areset)
+  if (areset) q <= 8'd0;
+  else        q <= d;
+```
+The only difference is the sensitivity list.
+
+Q: D latch in Verilog?
+A:
+```
+always @(*)
+  if (ena) q = d;   // no else: holds
+```
+Intentional missing `else`. Avoid latches in FPGA designs unless required.
+
+Q: `==` vs `===`?
+A: `==` returns X if either side has X/Z. `===` compares X and Z literally and always returns 0/1. `===` is **simulation-only** (testbenches).
+
+Q: Signed and unsigned mixed in one expression: what happens?
+A: If **any** operand is unsigned, the whole expression is evaluated unsigned. Use `$signed()` on all operands, or declare them `signed`.
+
+Q: You add two 8-bit values into an 8-bit result. What happens to the carry?
+A: It's dropped. Expression width follows the context; make the LHS 9 bits (or concatenate `{cout, sum} = a + b`).
+
+Q: Named vs positional port connections?
+A: Positional: `m u0 (a, b, y);` follows declaration order. Named: `m u0 (.in1(a), .in2(b), .out(y));`. **Prefer named**: positional connections silently mis-wire if ports are reordered.
+
+Q: Can you assign to an `input` port inside a module?
+A: **No.** Inputs are driven from outside. Reset clears the register (`q`), not the input (`d`).
+
+Q: Can an instantiation appear on the right of `assign`?
+A: No. Instantiate the module on its own line; the output port connection drives the wire:
+```
+wire a;
+my_dff u1 (.clk(clk), .d(d), .q(a));
+```
+
+Q: What does `generate for` produce?
+A: Repeated **hardware** (instances or assigns) elaborated at compile time, using a `genvar`. It is not a runtime loop.
+
+Q: Is an `initial` block synthesisable?
+A: On FPGAs, often yes for **register/RAM initial values** (the bitstream loads them). On ASICs, no. Don't rely on it for reset behaviour.
+
+Q: `casez` vs `casex`?
+A: `casez` treats `?`/Z as don't-care (good for priority decoders). `casex` also treats X as don't-care, which can hide simulation bugs. Prefer `casez` or SV `case inside`.
+
+Q: Multiple `always` blocks assign the same reg. Problem?
+A: **Multiple drivers.** Synthesis errors or unpredictable hardware. Each signal is driven from exactly one block.
+
+Q: Parameterise a module's width?
+A:
+```
+module m #(parameter W = 8) (input [W-1:0] a, output [W-1:0] y);
+m #(.W(16)) u0 (.a(x), .y(z));
+```
+
+@deck bug | Spot the bug | verilog
+Q: Find the bugs:
+```
+wire x = {5{a,b,c,d,e}};
+assign out = ~{x^y}
+```
+A: `x` is declared **1-bit**, so the 25-bit value is truncated (needs `wire [24:0]`). Missing semicolon after `assign`.
+
+Q: Find the bug:
+```
+always @(*) begin
+  if (negedge areset) q <= 0;
+  else q <= d;
+end
+```
+A: Edge keywords only belong in the sensitivity list. `@(*)` makes it combinational (latch). Needs `always @(posedge clk or posedge areset)` and `if (areset)`.
+
+Q: Find the bug:
+```
+output [7:0] q;
+always @(posedge clk) q <= d;
+```
+A: `q` is assigned in an `always` block, so it must be `output reg [7:0] q`.
+
+Q: Find the bug:
+```
+always @(*) begin
+  case (sel)
+    2'd0: y = a;
+    2'd1: y = b;
+    2'd2: y = c;
+  endcase
+end
+```
+A: `sel = 3` assigns nothing ⇒ **latch**. Add `default: y = d;` or a default assignment before the case.
+
+Q: Find the bug:
+```
+if (sel = 2'd1) q = a;
+```
+A: `=` is assignment, `==` is comparison. In Verilog this is a syntax error; in C it would silently assign.
+
+Q: Find the bug:
+```
+always @(posedge clk) begin
+  in  <= in ^ out;
+  out <= in;
+end
+```
+A: Assigning to an input. Intended: `out <= in ^ out;` (one flop with XOR feedback).
+
+Q: Find the bug:
+```
+assign out_or_logical = a | b;   // a, b are [2:0]
+```
+A: Bitwise OR gives 3 bits truncated to 1. Logical OR is `a || b`.
+
+Q: Find the bug:
+```
+always @(a) y = a & b;
+```
+A: Incomplete sensitivity list: `b` changes don't update `y` in simulation, while synthesis ignores the list ⇒ **sim/synth mismatch**. Use `always @(*)` / `always_comb`.
+
+Q: Find the bug (crossing clock domains):
+```
+always @(posedge clk_b) cnt_b <= cnt_a;   // cnt_a: 8-bit counter in clk_a
+```
+A: A multi-bit binary value sampled directly: bits change at different times, so `cnt_b` can capture a value that never existed, plus metastability. Use a **Gray-coded** pointer with a 2-flop synchroniser, a handshake, or an async FIFO.
+
+Q: Find the bug:
+```
+assign out = (a + b) >> 1;   // a, b, out: [7:0]
+```
+A: `a + b` may be evaluated at 8 bits, losing the carry before the shift. Widen the expression: `({1'b0,a} + {1'b0,b}) >> 1`.
+
+Q: Find the bug:
+```
+always @(posedge clk) if (en) q <= d;
+always @(posedge clk) if (rst) q <= 0;
+```
+A: `q` driven from two blocks (multiple drivers). Merge into one block with reset first.
+
+@deck seq | Sequential design & FSMs | verilog
+Q: Mealy vs Moore machine?
+A: **Moore**: outputs depend on state only (glitch-free, one cycle later). **Mealy**: outputs depend on state + inputs (react in the same cycle, but combinational path from input to output).
+
+Q: One-hot vs binary state encoding on an FPGA?
+A: One-hot: one flop per state, very shallow next-state logic ⇒ fast; FPGAs have plenty of flops. Binary: fewer flops, deeper decoding. Tools often re-encode automatically.
+
+Q: Standard FSM coding style?
+A: A clocked block for `state <= next;` with reset, plus a combinational block computing `next` (and outputs) with **defaults at the top** to avoid latches.
+
+Q: Rising-edge detector for a signal `x` in the clock domain?
+A:
+```
+always @(posedge clk) x_d <= x;
+assign rise = x & ~x_d;
+```
+
+Q: What is an LFSR used for?
+A: Pseudo-random sequences, test patterns, CRC-like scrambling. Shift register with XOR feedback taps; maximal length 2ⁿ − 1 (never all-zero for XOR form).
+
+Q: Valid/ready (AXI-Stream) handshake: when does a transfer happen?
+A: On a clock edge where **both valid and ready are high**. A source must not wait for ready before asserting valid, and must hold data stable until the transfer.
+
+Q: What problem does a skid buffer solve?
+A: Registering `ready` breaks the combinational path but means the upstream may send one more beat after you deassert ready. The skid buffer holds that extra beat so nothing is lost.
+
+Q: Pipelining: what does it trade?
+A: Adds registers to cut long combinational paths ⇒ **higher clock / throughput**, at the cost of more cycles of **latency** and more flops.
+
+Q: Latency vs throughput, in one line each?
+A: **Latency**: time for one item from input to output. **Throughput**: items completed per unit time. A pipeline can have high throughput and long latency.
+
+Q: Clock gating on an FPGA: why avoid it?
+A: Logic-driven clocks cause skew and glitches and bypass the global clock network. Use a **clock enable** on the flops instead.
+
+Q: Counting modulo 10 with a 4-bit counter?
+A:
+```
+always @(posedge clk)
+  if (reset || q == 4'd9) q <= 0;
+  else q <= q + 1'b1;
+```
+
+Q: Synchronous FIFO: how to get full and empty with pointers?
+A: Use (N+1)-bit read/write pointers for depth 2ᴺ. **Empty**: pointers equal. **Full**: low N bits equal, MSBs differ.
+
+@deck timing | Timing & CDC | timing
+Q: Define setup time and hold time.
+A: **Setup**: data must be stable a minimum time **before** the clock edge. **Hold**: data must stay stable a minimum time **after** the edge.
+
+Q: What sets the maximum clock frequency?
+A: The worst register-to-register path: T ≥ t_clk→q + t_logic + t_route + t_setup − clock skew. f_max = 1/T.
+
+Q: Slack, WNS, TNS?
+A: **Slack** = required time − arrival time (negative = failing). **WNS**: worst negative slack across paths. **TNS**: sum of negative slack over all failing endpoints.
+
+Q: How do you fix a setup violation?
+A: Pipeline (add a register stage), reduce logic levels, retime, cut fanout (replicate the driver), use dedicated resources (carry chain, DSP, BRAM output register), or lower the clock.
+
+Q: What causes hold violations, and who usually fixes them?
+A: Very short paths plus clock skew. The router normally fixes them by adding delay. They're frequency-independent: a hold failure fails at every clock speed.
+
+Q: What is metastability?
+A: A flop samples an input changing near the edge and its output hovers between 0 and 1 for an unbounded time. Unavoidable when sampling asynchronous signals; the probability of it lasting decays exponentially with time.
+
+Q: Two-flop synchroniser: what and why?
+A: Pass a **single-bit** asynchronous signal through two flops in the destination clock. The first may go metastable; the extra cycle gives it time to resolve before logic uses it. MTBF grows exponentially with resolution time.
+
+Q: Why can't you pass a multi-bit bus through 2-flop synchronisers?
+A: Each bit resolves independently, so the destination can see a mix of old and new bits: a value that never existed. Use Gray code (one bit changes per step), a handshake with stable data, or an async FIFO.
+
+Q: Binary to Gray and Gray to binary?
+A: g = b ^ (b >> 1). Back: b[MSB] = g[MSB], then b[i] = b[i+1] ^ g[i] (prefix XOR from the top).
+
+Q: Async FIFO full/empty in Gray code with (N+1)-bit pointers?
+A: **Empty** (read side): read Gray pointer == synchronised write Gray pointer. **Full** (write side): top **two** bits inverted, the rest equal to the synchronised read Gray pointer.
+
+Q: Passing a one-cycle pulse from a fast to a slow clock?
+A: A pulse can be missed. Convert to a **toggle** in the source domain, synchronise the toggle, then edge-detect it in the destination (or use a request/acknowledge handshake).
+
+Q: Reset synchroniser?
+A: Assert asynchronously, **deassert synchronously** (through two flops in the destination clock), so all flops leave reset on the same edge and none sees reset release near the edge.
+
+Q: False path vs multicycle path?
+A: **False path**: timing doesn't matter (e.g. a properly synchronised crossing, static config). **Multicycle**: data is allowed N cycles to arrive. Both relax timing analysis; misuse hides real bugs.
+
+Q: Why does high fanout hurt timing?
+A: One driver feeding many loads ⇒ long routing and big load. Replicate the register (or let the tool do it with max_fanout) so each copy drives fewer loads.
+
+Q: What is clock skew vs jitter?
+A: **Skew**: spatial difference in the clock's arrival time at different flops. **Jitter**: temporal variation of edges around the ideal period.
+
+@deck arch | FPGA architecture | arch
+Q: What's in a Xilinx 7-series slice?
+A: **4 six-input LUTs, 8 flip-flops, a CARRY4 chain**, and wide-function muxes. SLICEM slices can also act as distributed RAM or SRL shift registers.
+
+Q: Why count "logic levels"?
+A: Each LUT on a path adds delay (~a few hundred ps plus routing). Fewer LUT levels between registers ⇒ faster path. A 6-input LUT implements any function of 6 inputs in one level.
+
+Q: Block RAM vs distributed (LUT) RAM?
+A: **BRAM**: dedicated 36 Kb (or 2 × 18 Kb), **synchronous (registered) read**, dual-port, good for big memories. **LUTRAM**: built from LUTs, asynchronous read, good for small, shallow memories; large ones create deep read muxes.
+
+Q: What is a DSP48E1?
+A: The 7-series hard multiply-accumulate block: 25 × 18 multiplier, pre-adder, 48-bit accumulator, optional pipeline registers. Use its internal registers to hit high clocks.
+
+Q: What is an SRL16/SRL32?
+A: A LUT configured as a shift register (up to 16/32 deep per LUT). Cheap delay lines; no reset on the internal stages.
+
+Q: Why can't an Artix-7 do 10 GbE?
+A: Its **GTP** transceivers top out around 6.6 Gb/s. 10GBASE-R needs 10.3125 Gb/s, e.g. Kintex-7 GTX (up to 12.5 Gb/s).
+
+Q: MMCM / PLL?
+A: Clock management tiles: synthesise new frequencies and phases from an input clock, de-skew, and drive global clock buffers (BUFG).
+
+Q: Synthesis vs implementation?
+A: **Synthesis**: RTL → netlist of LUTs, flops, RAMs, DSPs. **Implementation**: place and route onto the physical device, then timing analysis on real routing delays.
+
+Q: Out-of-context (OOC) synthesis: what does it hide?
+A: The module is built without its real I/O and clock environment: no I/O constraints, no real clock source, so clock skew and I/O timing aren't realistic.
+
+Q: Why is BRAM read latency a design constraint?
+A: Data appears **one cycle after** the address (two with the output register). Pipelines must schedule around it; a write and read to the same address in one cycle returns old or new data depending on mode (read-first/write-first).
+
+@deck net | Networking & market data | net
+Q: Ethernet frame layout?
+A: Preamble + SFD (8) | dst MAC (6) | src MAC (6) | EtherType (2) | payload (46–1500) | FCS (4). Minimum frame **64 bytes** (excluding preamble); inter-packet gap 12 bytes.
+
+Q: IPv4 and UDP header sizes?
+A: IPv4: **20 bytes** without options (IHL = 5). UDP: **8 bytes** (src port, dst port, length, checksum). IP protocol number for UDP: **17**.
+
+Q: Why is market data sent over UDP multicast?
+A: One packet reaches many subscribers, with no per-receiver connection state or retransmission delays. Loss is handled by sequence numbers, A/B redundant feeds and retransmission servers.
+
+Q: 10 GbE at the FPGA fabric: typical data path?
+A: **64 bits at 156.25 MHz** = 10 Gb/s. On the wire: 64b/66b encoding at 10.3125 Gbaud.
+
+Q: MoldUDP64 header?
+A: Session (10 bytes) | Sequence number (8) | Message count (2) = **20 bytes**. Count 0 = heartbeat; 0xFFFF = end of session. Each message is prefixed with a 2-byte length.
+
+Q: Key Nasdaq ITCH 5.0 order messages?
+A: **A** Add, **F** Add with MPID, **E** Executed, **C** Executed with price, **X** Cancel (partial), **D** Delete, **U** Replace. Also S system event, R stock directory, P trade.
+
+Q: Byte order on the network?
+A: **Big-endian** (network order): most significant byte first. x86 hosts are little-endian.
+
+Q: Sequence gap detected on a feed. Options?
+A: Request retransmission (slow), take the packet from the redundant **B feed** (line arbitration), or mark the book stale until a snapshot recovers it. Never trade on a book you know is wrong.
+
+Q: Cut-through vs store-and-forward?
+A: **Store-and-forward**: receive the whole frame (check FCS) before acting. **Cut-through**: start processing as bytes arrive. Low-latency designs act before the frame ends.
+
+Q: Kernel bypass (software side)?
+A: The NIC delivers packets directly to user space (e.g. Onload, DPDK), avoiding system calls and kernel network-stack overhead. Typical software tick-to-trade is microseconds; FPGAs reach tens to hundreds of ns.
+
+Q: Order book data structure basics?
+A: Per side, price levels with aggregate size; orders keyed by reference number for modify/cancel. Best bid = highest bid level, best ask = lowest ask level.
+
+@deck cpp | Low-latency C++ & systems | cs
+Q: Cache line size on x86, and why it matters?
+A: **64 bytes**. Data touched together should share lines; data written by different threads should not (false sharing).
+
+Q: What is false sharing?
+A: Two threads write different variables on the same cache line, so the line ping-pongs between cores. Fix: pad or `alignas(64)`.
+
+Q: Why avoid heap allocation on the hot path?
+A: `malloc`/`new` can lock, page fault or take unpredictable time. Preallocate pools or ring buffers at startup.
+
+Q: SPSC lock-free queue, the core idea?
+A: Ring buffer with a head index written only by the producer and a tail written only by the consumer, using acquire/release atomics. No locks, no CAS needed.
+
+Q: Branch misprediction cost and mitigation?
+A: Roughly 15–20 cycles on modern x86. Make the hot path predictable, use branchless arithmetic where it's simpler, and `[[likely]]`/`[[unlikely]]` hints.
+
+Q: `memory_order_acquire` / `release` in one line?
+A: A release store makes earlier writes visible to a thread that does an acquire load of the same atomic and sees that value.
+
+Q: Why pin threads to cores?
+A: Avoids migration and cold caches, and with isolated cores (isolcpus) avoids scheduler interruptions ⇒ lower, steadier latency.
+
+@deck timing | Timing & CDC | timing
+Q: What does `set_clock_groups -asynchronous` tell the timing tool?
+A: Don't time paths between these clocks. It's correct only if every crossing between them goes through a proper synchroniser, FIFO or handshake. Otherwise it hides real failures.
+
+Q: Two clocks from the same MMCM at 100 and 200 MHz. Do crossings need synchronisers?
+A: No: they're **related (synchronous) clocks**, and the tool times the paths between them using their known phase relationship. Synchronisers are for unrelated/asynchronous clocks.
+
+Q: Requirements for a two-flop synchroniser to work well?
+A: Source signal launched from a **flop** (no combinational glitches), destination flops placed close together (`ASYNC_REG` attribute in Xilinx), and the signal held long enough for the destination clock to sample it.
+
+Q: What is MTBF for a synchroniser, roughly?
+A: MTBF = e^(t_r/τ) / (T₀ · f_clk · f_data). t_r is the resolution time (about one clock period per extra stage). Exponential in t_r, so a third flop multiplies MTBF enormously.
+
+Q: Req/ack handshake for multi-bit data across clocks: the steps?
+A: Source puts data on a bus and holds it, toggles/raises `req`. Destination synchronises `req`, captures the (now stable) data, raises `ack`. Source synchronises `ack`, drops `req`. Slow but safe for infrequent data.
+
+Q: Why must a signal crossing domains come straight from a flop?
+A: Combinational logic can glitch. The destination clock may sample a glitch that the source domain would never see. Register in the source domain first.
+
+Q: Reconvergence problem in CDC?
+A: Two separately synchronised signals derived from related source state can arrive one cycle apart in the destination, so their combination briefly shows an impossible state. Synchronise one encoded value (Gray/one-hot) or use a FIFO/handshake.
+
+Q: Fast clock 200 MHz, slow 50 MHz. Minimum pulse width in the fast domain to be reliably caught by a 2-flop synchroniser in the slow domain?
+A: It must be held longer than one slow period plus margin: rule of thumb **≥ 1.5 slow-clock periods** (here > 30 ns ≈ 6 fast cycles). Or use a toggle synchroniser instead.
+
+Q: What is clock domain crossing *metastability* not fixing?
+A: Synchronisers fix metastability, not **data coherence**. Multi-bit coherence needs Gray coding, handshake or FIFO.
+
+Q: Async FIFO: why can full/empty be conservative but never wrong?
+A: Each side sees the *other* side's pointer a few cycles late. That only makes the FIFO look fuller (writer side) or emptier (reader side) than it is, which is safe.
+
+Q: What is a "setup slack" of −0.2 ns at 250 MHz telling you?
+A: The worst path needs 4.2 ns but you have 4.0 ns. Options: cut ~0.2 ns of logic/routing on that path, pipeline it, or run at about 1/4.2 ns ≈ 238 MHz.
+
+Q: Input/output delay constraints: what do they model?
+A: `set_input_delay`/`set_output_delay` describe the external device's timing so the tool can check the I/O paths. Without them, I/O paths are unconstrained (common with out-of-context builds).
+
+Q: What does placement "noise" in timing results mean?
+A: Small RTL or seed changes move placement, which shifts WNS by a few hundred ps. A result inside that noise band (e.g. +0.02 ns) isn't a robust pass.
+
+@deck vlog | Verilog fundamentals | verilog
+Q: `always_ff`, `always_comb`, `always_latch` (SystemVerilog): why use them?
+A: They state **intent**: tools warn if an `always_comb` infers a latch or an `always_ff` doesn't produce flops, and they enforce a single driver. `always_comb` also evaluates once at time 0.
+
+Q: What does `` `default_nettype none `` protect against?
+A: Typos in port connections silently create **implicit 1-bit wires**. With `none`, an undeclared name is an error.
+
+Q: `logic` vs `wire` in SystemVerilog?
+A: `logic` is a 4-state variable usable in `always` and in `assign` (single driver). Use `wire` when a net has **multiple drivers** (e.g. tri-state/inout).
+
+Q: Packed vs unpacked arrays?
+A: Packed `logic [7:0][3:0] x;` is one contiguous bit vector (arithmetic works on it). Unpacked `logic [7:0] mem [0:255];` is an array of elements, typically a memory.
+
+Q: What's the difference between `parameter` and `localparam`?
+A: A `parameter` can be overridden at instantiation (`#(.W(16))`). A `localparam` is a derived constant and can't be overridden.
+
+Q: `for` loop inside an `always_comb`: what hardware?
+A: The loop is **unrolled** into parallel logic at synthesis. A loop over N bits creates N copies, not a sequential process.
+
+Q: What is `$clog2(N)` for, and is it synthesisable?
+A: Ceiling of log₂(N): address width for a depth-N memory. Yes, it's evaluated at elaboration time.
+
+Q: Why use `unique case` / `priority case`?
+A: `unique`: cases are mutually exclusive (allows a parallel mux, warns on overlap or no match). `priority`: first match wins, warns on no match. Both express intent to synthesis and simulation.
+
+Q: Interface/struct use in SystemVerilog RTL?
+A: `struct packed` groups fields into one vector (e.g. an order record). `interface` bundles a protocol's signals (e.g. AXI-Stream) with modports, cutting port-list errors.
+
+Q: Testbench delays like `#10`: synthesisable?
+A: **No.** Delays are ignored by synthesis. Use them only in testbenches.
+
+Q: Arithmetic vs logical right shift in Verilog?
+A: `>>` fills with zeros. `>>>` fills with the sign bit **only if the operand is signed**; on an unsigned value it behaves like `>>`.
+
+Q: What does `x[7 -: 4]` mean?
+A: Indexed part-select: 4 bits counting down from 7 = `x[7:4]`. `x[i +: 8]` = 8 bits starting at i upward. The width must be constant; the base can be variable.
+
+Q: How do you write a parameterised register file read in one line?
+A: `assign rdata = regs[raddr];` with `logic [W-1:0] regs [0:DEPTH-1];`. A variable index on an unpacked array is a mux (or RAM read).
+
+@deck arch | FPGA architecture | arch
+Q: How is a 4:1 mux built in a 7-series FPGA?
+A: In **one LUT6**: 4 data inputs + 2 select inputs = 6 inputs. An 8:1 mux uses two LUT6s plus the slice's **F7 mux**; a 16:1 uses four LUT6s plus F7 and F8 muxes (one slice).
+
+Q: What does a LUT actually store?
+A: A truth table: a LUT6 is a 64×1 memory addressed by its 6 inputs. Any function of up to 6 inputs costs the same delay.
+
+Q: Why does a wide comparator or adder use CARRY4?
+A: The dedicated carry chain propagates carries much faster than LUT-to-LUT routing. A 32-bit add uses 8 CARRY4s in a column.
+
+Q: Why register BRAM outputs (DOA_REG)?
+A: The internal output register removes the slow clock-to-out of the RAM array from the next path, at the cost of one extra cycle of latency.
+
+Q: Why does a large LUTRAM hurt timing?
+A: Each LUTRAM stores 64 bits; a 1024-deep memory needs many and a big **read mux tree** plus high fanout on the address. Block RAM avoids both.
+
+Q: What does `ram_style = "block"` do and when might it be ignored?
+A: Asks synthesis to map an array to BRAM. It can be ignored if the coding style doesn't match a BRAM template (e.g. an asynchronous read or too many write ports).
+
+Q: Global clock buffer (BUFG): why use it?
+A: It drives the low-skew global clock network. Clocks routed on general fabric get large skew and poor timing.
+
+Q: What does Vivado's "logic levels" in a timing report count?
+A: The number of LUT/carry cells on the path between the launching and capturing registers. Each level adds cell delay plus routing.
+
+Q: What's in the FPGA bitstream besides the logic config?
+A: LUT contents, routing switch settings, BRAM initial contents, flip-flop initial values and I/O standards.
+
+@deck mm | Market making & trading | mm
+Q: Fair value of the sum of 3 dice after one die shows 5?
+A: 5 + 2 × 3.5 = **12**. Unrevealed parts contribute their expectation.
+
+Q: How should your spread change as more information is revealed?
+A: **Tighten it**: less uncertainty remains about the settlement, so less risk per trade.
+
+Q: A counterparty trades 10 lots with you instantly after news. What do you assume?
+A: They're likely informed. Update fair value in their direction and widen until you understand the move.
+
+Q: What is "edge" on a trade?
+A: The difference between your trade price and fair value, in your favour: buying 1 below fair value = +1 edge per unit.
+
+Q: Why do traders care about expected value *and* variance?
+A: EV says whether a trade is good on average; variance says how much risk (and capital) it takes. Sizing depends on both.
+
+Q: A call option's price as volatility rises?
+A: **Increases**. More volatility means more chance to finish deep in the money, while the downside is capped at the premium. Same for puts.
+
+Q: What's theta?
+A: Time decay: change in option value as time passes, all else equal. Long options usually have negative theta.
+
+Q: What is a straddle?
+A: Long a call and a put at the same strike and expiry: profits from a large move in either direction (long volatility).
+
+Q: Arbitrage, in one line?
+A: A riskless profit with no net investment, e.g. buying and selling the same thing at different prices at the same time.
+
+Q: Why might you quote a narrower market than your uncertainty suggests?
+A: Competition: if others quote tighter, you never trade. The spread balances fill rate against adverse selection.
+
+@deck prob | Probability & EV | prob
+Q: Expected number of distinct faces in 6 rolls of a die?
+A: Indicator per face: 6 × (1 − (5/6)⁶) ≈ **3.99**.
+
+Q: P(exactly 2 heads in 4 flips)?
+A: C(4,2)/2⁴ = **6/16 = 3/8**.
+
+Q: Expected flips until 3 heads in a row?
+A: 2^(k+1) − 2 = **14**.
+
+Q: Two dice, at least one is a 6. P(both are 6)?
+A: 11 outcomes contain a 6; only one is (6,6): **1/11**.
+
+Q: Uniform X, Y on (0,1). P(X + Y < 1)?
+A: Triangle under the line: **1/2**. P(X + Y < a) = a²/2 for a ≤ 1.
+
+Q: Var of the sum of n independent fair dice?
+A: n × 35/12 (variances add for independent variables).
+
+Q: Key technique for any optimal-stopping question (e.g. the reroll game)?
+A: **Backward induction**: compute the value at the last decision first, then work back: at each step compare "stop now" to the expected value of continuing.
+
+Q: Conditional expectation trick: E[X] = ?
+A: Law of total expectation: E[X] = Σ E[X | case] · P(case). Split on the first step (first flip, first roll) and solve the recursion.
+
+Q: How many ways to arrange the letters of BANANA?
+A: 6!/(3!·2!) = **60**.
+
+Q: Probability a random 5-card hand is a flush (including straight flushes)?
+A: 4·C(13,5)/C(52,5) = 5148/2,598,960 ≈ **0.198%**.
+
+@deck logic | Boolean & digital logic | logic
+Q: De Morgan's laws?
+A: ~(A & B) = ~A | ~B, and ~(A | B) = ~A & ~B.
+
+Q: Simplify A + A·B.
+A: **A** (absorption). Also A·(A + B) = A.
+
+Q: Simplify A + ~A·B.
+A: **A + B**.
+
+Q: XOR identities worth knowing?
+A: A ⊕ 0 = A, A ⊕ 1 = ~A, A ⊕ A = 0, associative and commutative. A ⊕ B ⊕ B = A (used in swaps and parity).
+
+Q: Full adder equations?
+A: Sum = A ⊕ B ⊕ Cin. Cout = A·B + Cin·(A ⊕ B) = majority(A, B, Cin).
+
+Q: Why are NAND and NOR called universal?
+A: Any Boolean function can be built from NAND alone (or NOR alone): NOT = NAND(A,A), AND = NOT(NAND), OR via De Morgan.
+
+Q: How many distinct Boolean functions of n inputs?
+A: 2^(2ⁿ). Two inputs: 16; three inputs: 256.
+
+Q: 2:1 mux as a Boolean expression?
+A: Y = ~S·A + S·B.
+
+Q: Karnaugh map: what's it for?
+A: Visually grouping adjacent 1s (Gray-ordered) to find a minimal sum-of-products. On FPGAs, LUTs make manual minimisation rarely necessary, but OAs still test it.
+
+Q: What does a carry-lookahead adder improve?
+A: Computes carries in parallel from generate (A·B) and propagate (A ⊕ B) signals instead of rippling: O(log n) depth instead of O(n).
+
+Q: Detect overflow when adding two signed numbers?
+A: Overflow if both operands have the same sign and the result's sign differs. Equivalently, carry into the MSB ≠ carry out of the MSB.
+
+Q: Test if an unsigned x is a power of two?
+A: `x != 0 && (x & (x - 1)) == 0`.
+
+Q: What does `x & -x` give?
+A: The lowest set bit of x (two's complement): 0b10100 → 0b00100.
+
+@deck cpp | Low-latency C++ & systems | cs
+Q: sizeof of char, short, int, long, pointer on x86-64 Linux?
+A: 1, 2, 4, **8**, 8 (LP64 model). On 64-bit Windows `long` is 4.
+
+Q: `struct { char a; int b; char c; }` size on x86-64?
+A: **12**: a at 0, 3 padding, b at 4, c at 8, then pad to a multiple of 4. Reordering to int, char, char gives 8.
+
+Q: Signed integer overflow in C/C++?
+A: **Undefined behaviour**. Unsigned overflow wraps modulo 2ⁿ.
+
+Q: What does `volatile` do (and not do)?
+A: Forces every access to actually read/write memory (for MMIO registers). It does **not** make operations atomic or provide thread synchronisation.
+
+Q: Little-endian: 0x12345678 stored at address A. Byte at A?
+A: **0x78** (least significant byte at the lowest address).
+
+Q: Stack vs heap?
+A: Stack: automatic locals, fast LIFO allocation, limited size. Heap: dynamic (`new`/`malloc`), flexible lifetime, slower and can fragment.
+
+Q: Virtual function call cost?
+A: An indirect call through the vtable pointer: an extra load and a harder-to-predict branch, and it blocks inlining.
+
+Q: `std::vector::push_back` complexity?
+A: **Amortised O(1)**: capacity grows geometrically, so occasional O(n) reallocations average out. `reserve()` avoids them on the hot path.
+
+Q: Approximate memory latencies?
+A: L1 ~1 ns, L2 ~4 ns, L3 ~10–20 ns, DRAM ~80–100 ns, NVMe SSD ~10–100 µs.
+
+Q: Why does `std::map` lose to a flat array for small lookups?
+A: Pointer-chasing tree nodes scattered in memory: cache misses dominate. Contiguous data is prefetch-friendly.
+
+Q: What is a memory barrier/fence?
+A: An instruction that prevents certain reorderings of loads/stores across it, so other threads observe writes in the intended order.
+
+Q: Process vs thread?
+A: Processes have separate address spaces; threads share their process's memory (and need synchronisation).
+
+Q: Big-O of binary search, hash lookup, sorting?
+A: O(log n); O(1) average (O(n) worst); O(n log n) for comparison sorts.
+
+</script>
+<script type="text/plain" id="mcbank">
+@mc verilog
+Q: Which of these infers a flip-flop?
++ `always @(posedge clk) q <= d;`
+- `always @(*) q = d;`
+- `assign q = d;`
+- `always @(d) q = d;`
+W: Only an edge-sensitive block stores state on the clock edge.
+
+Q: Which of these infers a latch?
++ `always @(*) if (en) q = d;`
+- `always @(*) begin q = 0; if (en) q = d; end`
+- `always @(posedge clk) if (en) q <= d;`
+- `assign q = en ? d : 1'b0;`
+W: Combinational block with a path that doesn't assign `q`, so it must hold. The default assignment version is fine; the clocked one is a flop with enable.
+
+Q: `4'b1010 & 4'b0110` = ?
++ `4'b0010`
+- `4'b1110`
+- `4'b1100`
+- `4'b0110`
+W: Bitwise AND, bit by bit.
+
+Q: With `logic [3:0] a; logic [7:0] b;`, what is the width of `{a, b}`?
++ 12
+- 8
+- 4
+- 32
+W: Concatenation widths add.
+
+Q: `logic [7:0] y = 8'hFF + 8'h01;` gives y = ?
++ `8'h00`
+- `8'h100`
+- `8'hFF`
+- X
+W: The carry is dropped in an 8-bit result.
+
+Q: Value of `$signed(4'b1110)`?
++ −2
+- 14
+- −6
+- −1
+W: Two's complement: 1110 = −8 + 4 + 2 = −2.
+
+Q: `&4'b1011` = ?
++ 0
+- 1
+- `4'b1011`
+- X
+W: Reduction AND is 1 only if every bit is 1.
+
+Q: `^8'b1011_0001` = ?
++ 0
+- 1
+- 4
+- X
+W: Reduction XOR = parity. Four 1s ⇒ even ⇒ 0.
+
+Q: Which of these is ignored by synthesis?
++ `#5 a = 1;`
+- `always_ff @(posedge clk)`
+- `generate for`
+- `case (sel)`
+W: Delays are simulation-only.
+
+Q: In a clocked block, `a <= b; b <= a;` does what on each edge?
++ Swaps a and b
+- Sets both to the old b
+- Sets both to the old a
+- Is a compile error
+W: Nonblocking: both right-hand sides are sampled before either update.
+
+Q: In a clocked block, `a = b; b = a;` (blocking) does what?
++ Both end up equal to the old b
+- Swaps a and b
+- Both end up equal to the old a
+- Is a compile error
+W: `a` is updated first, then `b` reads the new `a`.
+
+Q: `4'b1x01 == 4'b1x01` evaluates to?
++ X
+- 1
+- 0
+- Z
+W: `==` returns X when operands contain X. `===` would return 1.
+
+Q: A `case` in `always_comb` with no `default` and an unmatched value. Result?
++ A latch is inferred
+- The output becomes 0
+- A compile error
+- The output becomes X in hardware
+W: Unassigned path ⇒ hold old value ⇒ latch.
+
+Q: `logic [7:0] mem [0:255];` stores how many bits?
++ 2048
+- 256
+- 8
+- 1024
+W: 256 entries × 8 bits.
+
+Q: What does `a >>> 2` do when `a` is declared unsigned?
++ Logical shift (zero fill)
+- Arithmetic shift (sign fill)
+- Rotate right
+- Compile error
+W: `>>>` sign-fills only for signed operands.
+
+Q: An undeclared name used in a port connection, without `` `default_nettype none ``, becomes?
++ An implicit 1-bit wire
+- A compile error
+- A 32-bit integer
+- A reg
+W: Classic silent bug: a typo creates a new 1-bit net.
+
+Q: Which can be overridden at instantiation?
++ `parameter`
+- `localparam`
+- `genvar`
+- `define` inside the module
+W: localparams are derived constants.
+
+Q: Two `always_ff` blocks both assign `q`. What happens?
++ Error: multiple drivers
+- The last one wins
+- They're OR-ed together
+- Simulation and synthesis both pick the first
+W: Every variable needs exactly one driver.
+
+Q: Which sensitivity list makes a combinational block simulate correctly?
++ `@(*)`
+- `@(a)` when the block reads a and b
+- `@(posedge a or posedge b)`
+- None needed
+W: An incomplete list causes sim/synth mismatch.
+
+Q: How do you write the 8 bits starting at bit `i` (upward) of `x`?
++ `x[i +: 8]`
+- `x[i : i+7]`
+- `x[i -: 8]`
+- `x[8 +: i]`
+W: `+:` counts up from the base; widths must be constant.
+
+@mc timing
+Q: You lower the clock frequency. Which violations can this fix?
++ Setup only
+- Hold only
+- Both setup and hold
+- Neither
+W: Hold checks don't involve the clock period.
+
+Q: Best way to pass a single-bit level signal into an unrelated clock domain?
++ Two-flop synchroniser in the destination clock
+- Directly, it's only one bit
+- Through a LUT for delay
+- Through a latch
+W: Gives metastability time to resolve.
+
+Q: Best way to pass a rarely-changing 32-bit config word across clock domains?
++ Hold the data stable and use a req/ack handshake
+- Synchronise each bit with its own 2-flop synchroniser
+- Pass it directly and add a false path
+- Use a 1-flop synchroniser on each bit
+W: Data is stable while the single control bit crosses, so it's coherent.
+
+Q: Async FIFO pointers are passed across domains as?
++ Gray code
+- Binary
+- One-hot
+- BCD
+W: Only one bit changes per increment, so a sample is either old or new.
+
+Q: A one-cycle pulse from a 250 MHz domain into a 50 MHz domain. Safe method?
++ Toggle synchroniser (or pulse stretch / handshake)
+- Two-flop synchroniser on the pulse directly
+- Wider routing
+- set_false_path
+W: The slow clock can miss a short pulse entirely.
+
+Q: Correct reset strategy for leaving reset cleanly?
++ Assert asynchronously, deassert synchronously
+- Assert and deassert asynchronously
+- Never use reset
+- Deassert on both clock edges
+W: Synchronous release stops flops leaving reset on different edges.
+
+Q: What increases synchroniser MTBF the most?
++ Adding another flop stage
+- Increasing the data toggle rate
+- Raising the clock frequency
+- Using LUTRAM
+W: MTBF grows exponentially with resolution time.
+
+Q: A 100 MHz and 200 MHz clock both come from one MMCM. Crossings between them?
++ Are timed normally by the tool (related clocks)
+- Need async FIFOs
+- Must be set as false paths
+- Can't be done
+W: Related clocks have a known phase relationship.
+
+Q: Positive slack on a path means?
++ The path meets timing
+- The path fails setup
+- The path fails hold
+- The path is unconstrained
+W: Slack = required − arrival.
+
+Q: Path: clk→q 0.5 ns, logic 2.3 ns, routing 0.8 ns, setup 0.1 ns, no skew. Approximate f_max?
++ 270 MHz
+- 250 MHz
+- 303 MHz
+- 312 MHz
+W: 3.7 ns total ⇒ 1000/3.7 ≈ 270 MHz.
+
+Q: Which technique directly reduces logic levels on a critical path?
++ Pipelining
+- Adding a false path
+- Increasing fanout
+- Using a latch
+W: A register mid-path splits it into two shorter paths.
+
+Q: The critical path is one register driving 2,000 loads. Fix?
++ Replicate the driver register
+- Add a latch
+- Increase the clock
+- Use blocking assignments
+W: Each copy drives fewer loads, cutting routing delay.
+
+Q: Which is NOT a safe way to cross an 8-bit counter value?
++ 2-flop synchronise each bit independently
+- Gray-code it, then synchronise
+- Async FIFO
+- Handshake with held data
+W: Independent bits can resolve to a value that never existed.
+
+Q: What is retiming?
++ Moving registers across combinational logic to balance path delays
+- Changing the clock frequency
+- Re-running place and route
+- Adding clock skew deliberately
+W: Same cycle behaviour at the outputs, better-balanced paths.
+
+Q: Why does a clock gated by a LUT cause problems on FPGAs?
++ Skew and glitches; it leaves the global clock network
+- LUTs can't drive clocks at all
+- It uses too many BRAMs
+- It only affects simulation
+W: Use clock enables instead.
+
+@mc arch
+Q: Smallest number of 6-input LUTs for a 4:1 mux?
++ 1
+- 2
+- 3
+- 4
+W: 4 data + 2 select = 6 inputs.
+
+Q: How is an 8:1 mux typically built in a 7-series slice?
++ Two LUT6s and an F7 mux
+- Eight LUT6s
+- One DSP48
+- One BRAM
+W: The F7 mux combines two 4:1 LUT muxes.
+
+Q: Block RAM read data appears?
++ One cycle after the address (two with output register)
+- In the same cycle (combinational)
+- After a variable delay
+- Only on the falling edge
+W: BRAM reads are synchronous.
+
+Q: Distributed (LUT) RAM reads are?
++ Asynchronous (combinational)
+- Always 2-cycle
+- Only 1-bit wide
+- Read-only
+W: You add a register yourself if you want one.
+
+Q: The DSP48E1 multiplier is?
++ 25 × 18
+- 18 × 18
+- 32 × 32
+- 16 × 16
+W: Plus a pre-adder and 48-bit accumulator.
+
+Q: A 7-series slice contains?
++ 4 LUT6s, 8 flip-flops, a CARRY4
+- 8 LUT4s, 4 flip-flops
+- 1 LUT6 and 1 flip-flop
+- 2 BRAMs
+W: SLICEMs can also be LUTRAM/SRL.
+
+Q: Best primitive for a fixed 16-cycle delay line of a 1-bit signal?
++ SRL16 (LUT as shift register)
+- BRAM
+- DSP48
+- MMCM
+W: One LUT replaces 16 flops.
+
+Q: Why does one-hot encoding suit FPGA FSMs?
++ Flops are plentiful and next-state logic is shallow
+- It uses fewer flops
+- It avoids the need for a clock
+- It's required by Vivado
+W: Speed over flop count.
+
+Q: Why can't Artix-7 run 10GBASE-R?
++ Its GTP transceivers max out around 6.6 Gb/s
+- It has no block RAM
+- It lacks DSPs
+- Its fabric can't reach 156 MHz
+W: 10GBASE-R needs 10.3125 Gb/s lanes.
+
+@mc logic
+Q: ~(A & B) = ?
++ ~A | ~B
+- ~A & ~B
+- A | B
+- A ^ B
+W: De Morgan.
+
+Q: A + A·B simplifies to?
++ A
+- B
+- A·B
+- A + B
+W: Absorption.
+
+Q: A + ~A·B simplifies to?
++ A + B
+- A
+- B
+- A·B
+W: If A is 0, the term reduces to B.
+
+Q: A ⊕ 1 = ?
++ ~A
+- A
+- 0
+- 1
+W: XOR with 1 inverts.
+
+Q: How many distinct Boolean functions of 2 inputs exist?
++ 16
+- 4
+- 8
+- 256
+W: 2^(2²).
+
+Q: Which gate alone is functionally complete?
++ NAND
+- AND
+- XOR
+- OR
+W: NAND (or NOR) can build any function.
+
+Q: Full adder carry-out?
++ Majority(A, B, Cin)
+- A ⊕ B ⊕ Cin
+- A · B · Cin
+- A + B + Cin
+W: Cout = AB + Cin(A ⊕ B).
+
+Q: Signed addition overflow happens when?
++ Operands share a sign and the result's sign differs
+- There's a carry out of the MSB
+- The result is negative
+- Either operand is negative
+W: Carry-out alone indicates unsigned overflow, not signed.
+
+Q: `x & (x - 1)` does what?
++ Clears the lowest set bit
+- Sets the lowest clear bit
+- Isolates the highest set bit
+- Negates x
+W: Used for power-of-two tests and bit counting.
+
+@mc cs
+Q: `sizeof(long)` on x86-64 Linux?
++ 8
+- 4
+- 2
+- 16
+W: LP64. (64-bit Windows uses 4.)
+
+Q: `int x = -1; unsigned y = x;` (32-bit) gives y = ?
++ 4294967295
+- −1
+- 0
+- 2147483647
+W: Converted modulo 2³².
+
+Q: Signed int overflow in C++ is?
++ Undefined behaviour
+- Wraparound
+- Saturates
+- Throws an exception
+W: Unsigned wraps; signed overflow is UB.
+
+Q: `volatile` guarantees?
++ Each access really reads/writes memory
+- Atomicity
+- Thread safety
+- Cache bypass on all CPUs
+W: It's for MMIO, not concurrency.
+
+Q: 0x12345678 on a little-endian machine: the byte at the lowest address?
++ 0x78
+- 0x12
+- 0x34
+- 0x56
+W: Least significant byte first.
+
+Q: Fastest to access?
++ L1 cache
+- L3 cache
+- DRAM
+- NVMe SSD
+W: ~1 ns vs ~10–20 ns, ~100 ns, ~10+ µs.
+
+Q: `std::vector::push_back` is?
++ Amortised O(1)
+- Always O(1)
+- O(log n)
+- O(n)
+W: Occasional reallocations average out.
+
+Q: Two threads write separate counters on the same 64-byte line. The problem?
++ False sharing
+- Deadlock
+- Priority inversion
+- Stack overflow
+W: The line ping-pongs between cores.
+
+Q: Average lookup cost in a hash table?
++ O(1)
+- O(log n)
+- O(n)
+- O(n log n)
+W: Worst case O(n) with many collisions.
+
+Q: Which avoids allocation on the hot path?
++ A preallocated ring buffer
+- `std::make_shared` per message
+- `std::string` concatenation per message
+- `new` per order
+W: Allocate at startup, reuse.
+
+@mc net
+Q: Bytes of Ethernet + IPv4 + UDP headers before the UDP payload (no VLAN, no IP options)?
++ 42
+- 28
+- 34
+- 64
+W: 14 + 20 + 8.
+
+Q: MoldUDP64 message count 0 means?
++ Heartbeat
+- End of session
+- Gap
+- Retransmission
+W: 0xFFFF is end of session.
+
+Q: ITCH 5.0 message type 'D' is?
++ Order Delete
+- Order Executed
+- Add Order
+- Trade
+W: A add, F add with MPID, E executed, C executed with price, X cancel, U replace.
+
+Q: ITCH 'U' message does what?
++ Replaces an order with a new reference, price and size
+- Updates the stock directory
+- Cancels part of an order
+- Reports a trade
+W: Delete old + add new.
+
+Q: Typical 10 GbE fabric data path?
++ 64 bits at 156.25 MHz
+- 32 bits at 100 MHz
+- 8 bits at 1.25 GHz
+- 128 bits at 50 MHz
+W: 64 × 156.25 MHz = 10 Gb/s.
+
+Q: Minimum Ethernet frame size (excluding preamble)?
++ 64 bytes
+- 46 bytes
+- 84 bytes
+- 128 bytes
+W: 84 on the wire with preamble and inter-packet gap.
+
+Q: Network byte order is?
++ Big-endian
+- Little-endian
+- Host order
+- Mixed
+W: Most significant byte first.
+
+Q: Why does market data use UDP multicast?
++ One packet reaches all subscribers with no per-receiver connection overhead
+- UDP guarantees delivery
+- TCP can't carry binary data
+- Multicast is encrypted
+W: Loss is handled by sequence numbers and redundant feeds.
+
+@mc mm
+Q: You get hit on your bid. Your position?
++ Long
+- Short
+- Flat
+- Depends on the ask
+W: Someone sold to you.
+
+Q: You're very long. How do you adjust your quotes?
++ Lower both bid and ask
+- Raise both bid and ask
+- Widen only the bid
+- Stop quoting the ask
+W: Encourage selling, discourage buying more.
+
+Q: Your offer keeps getting lifted, your bid never trades. What do you infer?
++ Your fair value is too low
+- Your fair value is too high
+- Your spread is too wide
+- Nothing
+W: Buyers think it's worth more than your offer.
+
+Q: Hidden value = sum of 2 dice. Fair value before any reveal?
++ 7
+- 6
+- 6.5
+- 12
+W: 2 × 3.5.
+
+Q: As uncertainty about the settlement falls, your spread should?
++ Tighten
+- Widen
+- Stay the same
+- Go to zero immediately
+W: Less risk per trade.
+
+Q: Raising volatility, all else equal, does what to a call's price?
++ Increases it
+- Decreases it
+- No effect
+- Depends on the strike only
+W: More upside, capped downside.
+
+@mc prob
+Q: Expected rolls of a die to see a 6?
++ 6
+- 3.5
+- 1.2
+- 36
+W: Geometric with p = 1/6.
+
+Q: Expected flips to see HH?
++ 6
+- 4
+- 2
+- 8
+W: Self-overlapping patterns take longer than HT (4).
+
+Q: P(at least one 6 in 4 rolls) is closest to?
++ 52%
+- 67%
+- 48%
+- 40%
+W: 1 − (5/6)⁴ = 671/1296.
+
+Q: Monty Hall: probability of winning if you switch?
++ 2/3
+- 1/2
+- 1/3
+- 3/4
+W: You win whenever your first pick was wrong.
+
+Q: Two children, at least one boy. P(two boys)?
++ 1/3
+- 1/2
+- 1/4
+- 2/3
+W: BB, BG, GB equally likely.
+
+Q: Break a stick at two random points. P(triangle)?
++ 1/4
+- 1/2
+- 1/3
+- 1/8
+W: Every piece must be shorter than half.
+
+Q: Expected fixed points of a random permutation of 100 items?
++ 1
+- 0.01
+- 10
+- 1/e
+W: Linearity: 100 × 1/100.
+
+</script>
+<script type="text/plain" id="primers">
+@p linearity | Linearity of expectation
+E[X + Y] = E[X] + E[Y], always, even when X and Y are dependent. That makes it the most useful tool in interview probability.
+
+**Method: indicators.** To find the expected *count* of something, write it as a sum of indicator variables (1 if an event happens, 0 if not). The expectation of each indicator is just its probability.
+
+- Expected distinct faces in k rolls of an n-sided die: each face appears with probability 1 − ((n−1)/n)^k, so the answer is n·(1 − ((n−1)/n)^k).
+- Expected fixed points of a random permutation: each item is fixed with probability 1/n, n items, total **1**.
+- Expected total of k dice: k × (n+1)/2.
+
+**Common mistake:** trying to compute the full distribution first. You almost never need it.
+
+**Interview extension:** "Now what's the variance?" Variance does *not* add for dependent variables. You need covariances.
+
+@p geometric | Waiting times (geometric distribution)
+If each trial succeeds independently with probability p, the expected number of trials up to and including the first success is **1/p**.
+
+**Derive it fast (first-step analysis):** E = 1 + (1 − p)·E. You always spend one trial; with probability (1 − p) you're back where you started. Solve: E = 1/p.
+
+- First 6 on a die: 1/(1/6) = 6.
+- First value ≥ t on an n-sided die: p = (n − t + 1)/n, so E = n/(n − t + 1).
+
+**Common mistake:** writing E = 1 + p·E (using the success probability in the recursion). The recursion uses the probability of *failing*, because that's when you continue.
+
+**Patterns:** for "k heads in a row" use states (0, 1, …, k−1 heads so far). The answer is 2^(k+1) − 2: HH = 6, HHH = 14.
+
+@p coupon | Coupon collector
+Expected draws to see all n equally likely types = n·(1 + 1/2 + … + 1/n) = n·Hₙ.
+
+**Why:** split the wait into stages. When you already have i types, a new one appears with probability (n − i)/n, so that stage takes n/(n − i) draws on average (geometric). Sum over i = 0 … n−1.
+
+- n = 6 (die faces): 6 × 2.45 = **14.7**.
+- n = 4: 4 × (25/12) = 25/3 ≈ 8.33.
+
+**Memorise:** H₄ = 25/12, H₅ = 137/60, H₆ = 49/20. Hₙ ≈ ln n + 0.577 for large n.
+
+**Extension:** "Expected draws to see k of the n types?" Sum only the first k stages.
+
+@p bayes | Bayes' rule and conditional probability
+P(A | B) = P(B | A)·P(A) / P(B). In interviews, **natural frequencies** are faster and safer than the formula.
+
+**Method:** imagine 10,000 people.
+- Prevalence 1% → 100 have it, 9,900 don't.
+- Sensitivity 90% → 90 true positives.
+- False-positive rate 9% → 891 false positives.
+- P(has it | positive) = 90 / (90 + 891) ≈ 9.2%.
+
+**Intuition:** when the condition is rare, false positives from the huge healthy group swamp the true positives.
+
+**Conditional dice questions:** list (or count) only the outcomes where the condition holds, then count the favourable ones inside that set. "At least one 6": 11 outcomes, only (6,6) is a double six, so 1/11.
+
+**Common mistake:** confusing P(positive | disease) with P(disease | positive).
+
+@p combinatorics | Counting
+- Ordered arrangements of n distinct items: n!
+- Choose k from n (order doesn't matter): C(n,k) = n! / (k!(n−k)!)
+- Arrangements with repeated letters: n! / (a!·b!·…) for each repeated letter. BANANA = 6!/(3!·2!) = 60.
+- Without replacement: multiply the shrinking probabilities. Two aces: (4/52)(3/51) = 1/221.
+- All k drawn are red (r red, b blue): C(r,k)/C(r+b,k).
+
+**Speed tips:** cancel before multiplying. C(n,2) = n(n−1)/2. Know C(52,5) = 2,598,960.
+
+**Common mistake:** double counting when order doesn't matter. Ask yourself "is (A,B) different from (B,A) here?"
+
+@p stopping | Optimal stopping and backward induction
+Games where you choose when to stop (reroll a die, draw again) are solved **backwards**.
+
+1. Find the value of the *last* decision point (e.g. a final reroll is worth the plain average, 3.5).
+2. At the previous step, keep any outcome **better than the continuation value**; otherwise continue.
+3. Repeat backwards.
+
+**One reroll on a d6:** reroll is worth 3.5, so keep 4–6 (avg 5) and reroll 1–3: ½·5 + ½·3.5 = 4.25.
+**Two rerolls:** now continuing is worth 4.25, so keep only 5–6: (5+6)/6 + (4/6)·4.25 = 14/3 ≈ 4.67.
+
+**Interview extension:** "What would you pay to play?" Your fair value is the game value; you'd pay less to make a profit.
+
+@p orderstats | Max, min and uniform variables
+**Max of two dice:** P(max ≤ k) = (k/6)², so P(max = k) = (k² − (k−1)²)/36 = (2k−1)/36. E = 161/36 ≈ 4.47.
+
+**Max of n Uniform(0,1):** P(max ≤ x) = xⁿ, so E[max] = n/(n+1), E[min] = 1/(n+1). The n points split [0,1] into n+1 gaps of equal expected length.
+
+**Sum of two uniforms:** P(X + Y < t) is an area under a line in the unit square: t²/2 for t ≤ 1, and 1 − (2 − t)²/2 for 1 ≤ t ≤ 2.
+
+**Trick:** for "max ≤ x", use independence: multiply the individual probabilities.
+
+@p martingale | Fair games and gambler's ruin
+In a fair game (expected change 0 each step), your expected wealth stays constant: it's a **martingale**.
+
+Gambler's ruin with ±1 fair steps, starting at k, stopping at 0 or N: E[final] = k, and final is either 0 or N, so P(reach N)·N = k, giving **P = k/N**.
+
+**Unfair coin (win prob p ≠ ½):** P(reach N) = (1 − rᵏ)/(1 − r^N) with r = q/p.
+
+**Expected duration (fair):** k(N − k) steps.
+
+**Interview use:** whenever a process is "fair", look for a conserved expectation instead of summing a series.
+
+@p variance | Variance
+Var(X) = E[X²] − E[X]². For independent X, Y: Var(X + Y) = Var(X) + Var(Y). Var(aX) = a²·Var(X).
+
+- Fair die: E[X²] = 91/6, so Var = 91/6 − 49/4 = **35/12**.
+- Sum of k dice: k·35/12. Standard deviation grows like √k, not k.
+- Bernoulli(p): p(1 − p). Binomial(n,p): np(1 − p).
+
+**Trading link:** variance is risk. Two strategies with the same EV can need very different capital.
+
+**Common mistake:** adding standard deviations instead of variances.
+
+@p binomial | Binomial and "at least one"
+P(exactly k successes in n trials) = C(n,k)·pᵏ(1−p)^(n−k). For a fair coin: C(n,k)/2ⁿ.
+
+**"At least one" → use the complement:** P(at least one 6 in k rolls) = 1 − (5/6)ᵏ.
+- k = 4: 1 − 625/1296 ≈ 51.8%.
+
+**Mean and variance:** np and np(1−p).
+
+**Quick checks:** C(4,2)/16 = 3/8. C(5,2)/32 = 10/32. Probabilities over all k sum to 1.
+
+@p conditional | Conditioning on events
+To find P(A | B) with a small finite sample space (two dice = 36 outcomes):
+1. List or count the outcomes in B.
+2. Count those that are also in A.
+3. Divide.
+
+**Symmetry shortcuts:** P(first > second) = 15/36 (the 21 non-doubles split evenly; plus 6 doubles). Doubles: 6/36.
+
+**Classic traps:** "at least one is a boy" (1/3) vs "the older one is a boy" (1/2). The information you condition on changes the sample space.
+
+@p mental | Mental arithmetic techniques
+- **Near a round number:** 98 × 97 = (100 − 2)(100 − 3) = 10000 − 500 + 6 = 9506.
+- **Difference of squares:** 47 × 53 = 50² − 3² = 2491.
+- **Squares:** (a + b)² = a² + 2ab + b²: 63² = 3600 + 360 + 9 = 3969. Ending in 5: 65² → 6·7 = 42, append 25 = 4225.
+- **×25:** ×100 ÷ 4. **×5:** ×10 ÷ 2. **×9:** ×10 − x. **×11:** digit-sum in the middle.
+- **Percentages:** x% of y = y% of x. 12.5% = 1/8, 37.5% = 3/8, 62.5% = 5/8.
+- **Decimals:** remove the decimal points, multiply integers, then put back the total number of decimal places: 0.3 × 0.7 = 21 → 0.21.
+- **Division by a decimal:** scale both: 7.2 ÷ 0.6 = 72 ÷ 6 = 12.
+- **Fractions of a number:** divide first, then multiply: 5/8 of 48 = 6 × 5 = 30.
+
+@p oa80 | 80-in-8 strategy
+Commonly reported format: 80 arithmetic questions in 8 minutes (6 s each), +1 right, −1 wrong, skipping scores 0. Optiver doesn't publish it, so treat details as approximate.
+
+- **Accuracy beats speed.** With −1 marking, a guess on a hard question has negative expected value unless you're more than 50% sure.
+- **Skip fast.** If a question needs more than ~10 s, skip it and bank the easy ones.
+- **Questions get harder.** Early ones are quick integer sums; later ones involve decimals and fractions. Don't waste time early.
+- **Practise in format:** daily timed runs, tracking score and error count separately. Push speed only while errors stay low.
+
+@p sequences | Number sequences
+Work through this checklist in order:
+1. **Differences.** Constant → arithmetic. If the differences themselves have constant differences → quadratic. Differences doubling → geometric component.
+2. **Ratios.** Constant ratio → geometric (×2, ×3, ×−2).
+3. **Two interleaved sequences.** Look at odd and even positions separately.
+4. **Recursive.** Each term from the previous one or two: sum of previous two (Fibonacci-like), or a·x + b (e.g. ×2 + 1).
+5. **Alternating operations:** +p, ×q, +p, ×q…
+6. **Known families:** squares, cubes, primes, triangular numbers n(n+1)/2, factorials, each possibly ± a constant.
+
+**Speed tip:** write the differences under the sequence immediately. Most questions fall to step 1 or 3.
+
+@p fairvalue | Fair value and making markets
+**Fair value** = expected value of the settlement given what you know. Unrevealed parts count at their expectation.
+
+- Sum of k dice with some revealed: revealed sum + (unrevealed count) × 3.5.
+- Sum of k cards from one deck (A=1 … K=13, total 364): each unseen card's expected value is (364 − revealed sum)/(52 − revealed count).
+
+**Quoting:** centre your bid and ask on fair value. Make the spread wider when:
+- uncertainty is high (early, few cards seen),
+- you suspect the counterparty is informed (adverse selection),
+- your inventory is already large (and **skew**: lower both quotes when long, raise them when short).
+
+**After a trade:** if someone lifts your offer, they think it's worth more. Nudge fair value up.
+
+@p pnl | Position and P&L
+Track two things: **position** (units held, + long / − short) and **cash** (money in − money out).
+
+- Buy q at p: position += q, cash −= q·p.
+- Sell q at p: position −= q, cash += q·p.
+- **P&L = cash + position × mark price** (or × settlement value).
+
+**Example:** sell 10 @ 102 (cash +1020), buy 9 @ 109 (cash −981). Cash +39, position −1. Mark 110 → P&L = 39 − 110 = −71.
+
+**Edge** on a single trade = how much better than fair value you traded: selling at a above fair f earns (a − f) per unit.
+
+@p options | Options basics
+- **Call:** right to buy at strike K. Payoff max(S − K, 0). **Put:** right to sell at K. Payoff max(K − S, 0).
+- **Put–call parity (European, no dividends):** C − P = S − K·e^(−rT). With r = 0: **C − P = S − K**.
+- **Volatility up → both calls and puts more valuable** (more upside, capped downside).
+- **Delta:** sensitivity to the underlying. ATM call ≈ 0.5, deep ITM ≈ 1.
+- **Theta:** time decay. Long options lose value as time passes.
+- **Straddle:** long call + long put, same strike: a bet on a big move either way.
+
+**Interview use:** parity questions are pure arbitrage logic. If C − P ≠ S − K, buy the cheap side, sell the expensive side.
+
+@p hexbin | Hex, binary and bit counting
+- One hex digit = 4 bits. 0xA = 1010, 0xF = 1111. Convert nibble by nibble.
+- Hex → decimal: 0x9D2 = 9·256 + 13·16 + 2 = 2514.
+- Decimal → hex: divide by 16 repeatedly, reading remainders bottom-up, or subtract the largest multiples of 256 then 16.
+- Popcount: count per nibble (0..4 each). Learn 0–F: 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4.
+- Unsigned n-bit max: 2ⁿ − 1. `$clog2(N)` = smallest k with 2ᵏ ≥ N.
+- Bitwise ops: do them per nibble with the 4-bit patterns.
+
+@p twos | Two's complement
+An n-bit value's MSB has weight **−2^(n−1)**; all other bits are positive.
+- Range: −2^(n−1) … 2^(n−1) − 1. For 8 bits: −128 … 127.
+- **Negate:** invert all bits and add 1. Or: −v is stored as 2ⁿ − v. −15 in 8 bits = 256 − 15 = 241 = 0xF1.
+- **Read a pattern as signed:** if the MSB is 1, subtract 2ⁿ. 0xE9 = 233 → 233 − 256 = −23.
+- **Sign extension:** replicate the MSB: `{{24{x[7]}}, x}`.
+- **Arithmetic shift right (`>>>` on signed):** fills with the sign bit, equivalent to floor division by 2ᵏ.
+- **Overflow (signed add):** operands share a sign but the result's sign differs.
+
+@p gray | Gray code
+Successive Gray codes differ in **exactly one bit**, which is why async FIFO pointers are Gray-coded: a value sampled mid-change is either the old or the new pointer, never garbage.
+
+- **Binary → Gray:** g = b ^ (b >> 1). 1001 → 1001 ^ 0100 = 1101.
+- **Gray → binary:** MSB copies; each next binary bit = previous binary bit XOR the Gray bit. 1110 → 1, 1^1 = 0, 0^1 = 1, 1^0 = 1 → 1011.
+
+**Only works for single increments.** A Gray counter jumping by more than 1 loses the property.
+
+@p clocks | Clocks, periods and latency
+- Period (ns) = 1000 / f (MHz). 250 MHz → 4 ns. 156.25 MHz → 6.4 ns. 200 MHz → 5 ns.
+- Latency of k cycles = k × period. 8 cycles at 156.25 MHz = 51.2 ns.
+- Throughput of a W-bit bus at f MHz = W × f Mb/s. 64 × 156.25 = 10,000 Mb/s = 10 Gb/s.
+- A free-running N-bit counter wraps every 2^N / f µs (f in MHz).
+
+**Speed tip:** memorise periods for 100, 125, 156.25, 200, 250, 322.27 (10G with 32-bit) and 400 MHz.
+
+@p widths | Verilog expression widths and values
+- **Assignment truncates:** a sum assigned to an n-bit variable keeps the low n bits: (a + b) mod 2ⁿ.
+- **Concatenation** `{a, b}`: widths add; the first item is the most significant.
+- **Replication** `{k{x}}`: x repeated k times. Inside a concatenation it needs its own braces: `{{24{x[7]}}, x}`.
+- **Part-select** `x[h:l]`: bits h down to l, value = (x >> l) mod 2^(h−l+1).
+- **Reduction** `&x`, `|x`, `^x`: one bit. `^x` is parity (1 if an odd number of ones). `~&`, `~|`, `~^` invert the result.
+- **Signedness:** if any operand is unsigned, the whole expression is unsigned. `>>>` only sign-fills when the operand is signed.
+
+@p blocking | Blocking vs nonblocking
+- `<=` (nonblocking): every right-hand side in the block is sampled first, then all updates happen together at the end of the time step. Models flip-flops.
+- `=` (blocking): executes in order, each line sees the previous line's new value. Models combinational logic.
+
+**Shift register:** `a <= d; b <= a; c <= b;` gives a 3-stage pipeline (c gets the old b).
+With blocking `a = d; b = a; c = b;` every stage gets d at once: the chain collapses.
+Blocking written last-stage-first (`c = b; b = a; a = d;`) happens to work, but it's fragile style.
+
+**Swap:** `a <= b; b <= a;` swaps. Blocking sets both to the old b.
+
+**Rule:** `<=` in clocked blocks, `=` in combinational blocks, and never mix them on one variable.
+
+@p boolean | Boolean algebra
+- **De Morgan:** ~(A & B) = ~A | ~B; ~(A | B) = ~A & ~B.
+- **Absorption:** A + A·B = A; A·(A + B) = A. **A + ~A·B = A + B.**
+- **XOR:** A ⊕ 0 = A, A ⊕ 1 = ~A, A ⊕ A = 0. XOR = "odd number of ones".
+- **Counting true rows:** for 3 inputs there are 8 rows. Split on one variable (e.g. A = 0 / A = 1) and count each half.
+- **Universal gates:** NAND alone (or NOR alone) can build anything.
+- 2:1 mux: Y = ~S·A + S·B.
+
+**Speed tip in OAs:** evaluate innermost brackets first and write intermediate bits down.
+
+@p adders | Adders and overflow
+- Full adder: Sum = A ⊕ B ⊕ Cin; Cout = majority(A, B, Cin).
+- n-bit add result: (A + B + Cin) mod 2ⁿ, carry-out = 1 if the true sum ≥ 2ⁿ (unsigned overflow).
+- **Signed overflow:** both operands same sign, result sign differs. Equivalently carry into MSB ≠ carry out of MSB.
+- Carry-lookahead: generate g = A·B, propagate p = A ⊕ B; carries computed in parallel, log-depth.
+- On FPGAs, adders use the dedicated **CARRY4** chain, so ripple carry is actually fast.
+
+@p setup | Setup slack and f_max
+**Setup check:** data launched at one edge must arrive before the next edge minus setup time.
+
+slack = period + (capture clock skew) − (t_clk→q + t_logic + t_route + t_setup)
+
+- Positive slack: meets timing. Negative: fails by that amount.
+- f_max = 1000 / (total path delay in ns) MHz.
+- Positive skew (capture clock later) helps setup but hurts hold.
+
+**Fixes for negative setup slack:** pipeline the path, reduce logic levels, replicate high-fanout drivers, use BRAM/DSP output registers, or lower the clock.
+
+**Hold violations** don't depend on the period. Lowering the clock never fixes them.
+
+@p fifo | FIFO depth sizing
+The FIFO must hold whatever arrives during a burst that the reader hasn't drained yet.
+
+**Different clocks:** writer writes B words at f_w (one per cycle); reader reads one per cycle at f_r < f_w.
+- Burst duration = B / f_w. Reader drains B·f_r/f_w in that time.
+- **Depth = B − B·f_r/f_w.** Example: 260 words, 200 → 150 MHz: 260 − 195 = 65.
+
+**Same clock, reader every k cycles:** depth = B − B/k.
+
+**In real designs** add margin for synchroniser latency (a few cycles each way in an async FIFO) and round up to a power of two.
+
+@p cdc | Clock domain crossing
+- **1-bit level signal:** two-flop synchroniser in the destination clock (launch from a flop, mark `ASYNC_REG`).
+- **Short pulse, fast → slow:** convert to a toggle, synchronise, edge-detect; or req/ack handshake.
+- **Multi-bit value:** never synchronise each bit separately. Use Gray code (counters/pointers), a handshake with held data, or an **async FIFO**.
+- **Reset:** assert asynchronously, release synchronously.
+- **Related clocks** (same MMCM): no synchroniser needed; the tool times them. **Unrelated clocks:** synchronise, and tell the tool (`set_clock_groups -asynchronous` or max-delay constraints).
+
+**Metastability** can't be eliminated, only made vanishingly unlikely: MTBF grows exponentially with resolution time, so each extra flop helps enormously.
+
+@p ethernet | Ethernet, IP and UDP framing
+On-wire layout: preamble + SFD 8 | dst MAC 6 | src MAC 6 | EtherType 2 | payload | FCS 4 | inter-packet gap 12.
+- IPv4 header 20 bytes (no options), UDP 8. **Total header before UDP payload: 42 bytes.**
+- Minimum frame 64 bytes (header to FCS): short payloads get padded.
+- **Wire time:** (frame + 8 + 12) bytes × 0.8 ns at 10 Gb/s (× 8 ns at 1 Gb/s).
+- MoldUDP64 header starts at byte 42 (session 10, sequence 8, count 2), first message-length field at byte 62.
+- **Beats on a W-bit bus:** ⌈bytes × 8 / W⌉.
+
+@p struct | C struct padding
+On x86-64 Linux each member is aligned to its own size (char 1, short 2, int 4, long/double/pointer 8). The struct's total size is padded up to a multiple of its largest member's alignment.
+
+**Example:** `short, double, char, char` → short at 0, padding to 8, double at 8–15, chars at 16 and 17, total 18 → padded to **24**.
+
+**Optimisation:** order members from largest to smallest to minimise padding (double, short, char, char = 12 → padded to 16).
+
+**Why HFT cares:** smaller structs fit more per 64-byte cache line.
+
+@p bittricks | Bit tricks
+- `x & (x − 1)`: clears the lowest set bit. Zero iff x is a power of two (or 0).
+- `x & −x`: isolates the lowest set bit.
+- `x | (x − 1)`: sets all bits below the lowest set bit.
+- Popcount loop: `while (x) { x &= x − 1; count++; }`
+- Swap without temp: `a ^= b; b ^= a; a ^= b;` (cute, rarely useful).
+- Signed → unsigned conversion: value mod 2ⁿ (−51 as uint8 = 205).
+
+@p endian | Endianness
+- **Little-endian (x86, most ARM configs):** least significant byte at the lowest address. 0x12345678 → bytes 78 56 34 12.
+- **Big-endian / network order:** most significant byte first. Network protocols (Ethernet, IP, ITCH) are big-endian.
+- Byte k of a little-endian uint32 v = (v >> 8k) & 0xFF.
+- Convert with `ntohl`/`htonl` or `__builtin_bswap32`.
+
+**FPGA note:** on an AXI-Stream bus byte 0 is often in `tdata[7:0]`, so fields arrive "reversed" relative to the network order you read in the spec.
+
+@p fabric | FPGA fabric essentials (7-series)
+- **Slice:** 4 LUT6 + 8 flip-flops + CARRY4 (+ F7/F8 muxes). SLICEM can be LUTRAM or SRL shift registers.
+- **LUT6** implements any function of ≤ 6 inputs in one level: a 4:1 mux is one LUT; 8:1 uses two LUTs + F7; 16:1 uses four + F7/F8.
+- **BRAM:** 36 Kb (or 2 × 18 Kb), synchronous read (1 cycle, 2 with output register).
+- **LUTRAM:** asynchronous read, good for small memories; big ones create deep read muxes.
+- **DSP48E1:** 25×18 multiply, pre-adder, 48-bit accumulate.
+- **Clocking:** MMCM/PLL generate clocks, BUFG drives the low-skew global network. Use clock enables, never gated clocks.
+- **Transceivers:** GTP (Artix-7) ≈ 6.6 Gb/s max; GTX (Kintex-7) up to 12.5 Gb/s for 10GBASE-R.
+
+@p cs | Systems fundamentals
+- **Memory hierarchy:** L1 ~1 ns, L2 ~4 ns, L3 ~10–20 ns, DRAM ~100 ns. Cache line = 64 bytes.
+- **Complexities:** binary search O(log n) (⌈log₂(n+1)⌉ comparisons worst case), hash lookup O(1) average, comparison sort O(n log n), vector push_back amortised O(1).
+- **C/C++ undefined behaviour:** signed overflow, out-of-bounds access, use after free.
+- **volatile** is for memory-mapped I/O, not threading. Use atomics for concurrency.
+- **False sharing:** different threads writing the same cache line. Pad to 64 bytes.
+- **Hot-path rules:** no allocation, no locks, no syscalls; predictable branches; contiguous data.
+
+</script>
+<script>
+(() => {
+/* ================= storage ================= */
+const mem = {};
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('edge.'+k); if (v != null) return JSON.parse(v); }catch(e){} return k in mem ? mem[k] : d; },
+  set(k, v){ mem[k] = v; try{ localStorage.setItem('edge.'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ================= utils ================= */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function md(s){
+  return String(s).split('```').map((p,i) => {
+    if (i % 2) return '<pre><code>' + esc(p.replace(/^\n/,'').replace(/\n$/,'')) + '</code></pre>';
+    let h = esc(p.trim());
+    h = h.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    return h.replace(/\n/g,'<br>');
+  }).join('');
+}
+const qh = s => md(s).replace(/&lt;(\/?)code&gt;/g,'<$1code>').replace(/&lt;br&gt;/g,'<br>');
+function hash(s){ let h = 2166136261; for (const c of s){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h>>>0).toString(36); }
+const today = () => new Date().toISOString().slice(0,10);
+const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),1600); }
+function markActive(){ const d = store.get('days', []); if (d[d.length-1] !== today()){ d.push(today()); store.set('days', d.slice(-400)); } }
+const fmt = (v, dp=4) => String(+(+v).toFixed(dp));
+
+/* ================= fractions ================= */
+function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ [a,b]=[b,a%b]; } return a || 1; }
+function F(n,d=1){ if (d<0){ n=-n; d=-d; } const g = gcd(n,d); return {n:n/g, d:d/g}; }
+const fadd = (a,b) => F(a.n*b.d + b.n*a.d, a.d*b.d);
+const fmul = (a,b) => F(a.n*b.n, a.d*b.d);
+const fval = f => f.n / f.d;
+const Fd = (v, scale=10000) => F(Math.round(v*scale), scale);   // decimal → fraction
+function fstr(f){ const v = fval(f); if (f.d === 1) return String(f.n); if ([2,4,5,8,10,16,20,25,40,50,100,1000,10000].includes(f.d)) return fmt(v); return `${f.n}/${f.d} ≈ ${+v.toPrecision(4)}`; }
+const C = (n,k) => { if (k<0||k>n) return 0; let r=1; for (let i=1;i<=k;i++) r = r*(n-k+i)/i; return Math.round(r); };
+const fact = n => n<=1 ? 1 : n*fact(n-1);
+
+/* ================= categories ================= */
+const CATS = {
+  arith:{t:'Arithmetic', g:'quant'}, prob:{t:'Probability & EV', g:'quant'}, seq:{t:'Sequences', g:'quant'}, mm:{t:'Market making', g:'quant'},
+  verilog:{t:'Verilog', g:'fpga'}, logic:{t:'Boolean logic', g:'fpga'}, timing:{t:'Timing & CDC', g:'fpga'}, arch:{t:'FPGA architecture', g:'fpga'},
+  bits:{t:'Bits & hex', g:'fpga'}, net:{t:'Networking', g:'fpga'}, cs:{t:'C/C++ & CS', g:'cs'}, mine:{t:'My cards', g:'mine'}
+};
+const GROUPS = {quant:'Quant', fpga:'FPGA', cs:'C/C++ & CS'};
+
+/* ================= generators ================= */
+const GENS = [];
+const gen = (cat, make) => GENS.push({cat, make, gid: hash(make.toString())});
+const N = (q, f, why) => ({type:'num', q, f, why});
+const S = (q, accept, show, why, kp='hex') => ({type:'str', q, accept:[].concat(accept), show, why, kp});
+const M = (q, right, wrongs, why) => { const w = [...new Set(wrongs.map(String))].filter(x => x !== String(right)).slice(0,3); return {type:'mc', q, opts:[String(right), ...w], why}; };
+const hex = (v, w=2) => v.toString(16).toUpperCase().padStart(w,'0');
+const bin = (v, w) => v.toString(2).padStart(w,'0');
+
+/* ---- arithmetic (80-in-8 style tiers) ---- */
+function oaQ(t){
+  const op = rnd(0,3);
+  if (t === 1){
+    if (op===0){ const a=rnd(12,99), b=rnd(12,99); return N(`${a} + ${b}`, F(a+b)); }
+    if (op===1){ const a=rnd(30,99), b=rnd(11,a-1); return N(`${a} − ${b}`, F(a-b)); }
+    if (op===2){ const a=rnd(3,9), b=rnd(12,99); return N(`${a} × ${b}`, F(a*b)); }
+    const a=rnd(3,9), b=rnd(11,30); return N(`${a*b} ÷ ${a}`, F(b));
+  }
+  if (t === 2){
+    if (op===0){ const a=rnd(120,999), b=rnd(120,999); return N(`${a} + ${b}`, F(a+b)); }
+    if (op===1){ const a=rnd(300,999), b=rnd(101,a-1); return N(`${a} − ${b}`, F(a-b)); }
+    if (op===2){ const a=rnd(12,49), b=rnd(12,49); return N(`${a} × ${b}`, F(a*b)); }
+    const a=rnd(6,19), b=rnd(12,49); return N(`${a*b} ÷ ${a}`, F(b));
+  }
+  if (t === 3){
+    if (op===0){ const a=rnd(11,99), b=rnd(2,9); return N(`${fmt(a/10)} × ${b}`, F(a*b,10)); }
+    if (op===1){ const [p,base] = pick([[5,20],[10,10],[12.5,8],[15,20],[20,5],[25,4],[30,10],[40,5],[75,4],[35,20],[2.5,40]]); const n = base*rnd(2,40); return N(`${p}% of ${n}`, Fd(p*n/100)); }
+    if (op===2){ const a=rnd(101,999), b=rnd(101,999); return N(`${fmt(a/100)} + ${fmt(b/100)}`, F(a+b,100)); }
+    const k = pick([0.25,0.5,0.75,1.5,2.5]); const n = 4*rnd(3,60); return N(`${k} × ${n}`, Fd(k*n));
+  }
+  if (op===0){ const [p,q] = pick([[3,4],[2,3],[5,8],[3,5],[7,8],[5,6],[4,9],[7,12]]); const n=q*rnd(3,30); return N(`${p}/${q} of ${n}`, F(p*n/q)); }
+  if (op===1){ const b=rnd(2,9), a=rnd(2,15); return N(`${fmt(a*b/10)} ÷ ${fmt(b/10)}`, F(a)); }
+  if (op===2){ const a=rnd(2,9), b=rnd(2,9); return N(`${fmt(a/10)} × ${fmt(b/10)}`, F(a*b,100)); }
+  const a=rnd(101,999), b=rnd(11,99); return N(`${fmt(a/10)} − ${fmt(b/10)}`, F(a-b,10));
+}
+gen('arith', () => oaQ(rnd(1,4)));
+gen('arith', () => oaQ(rnd(3,4)));
+gen('arith', () => { const n = rnd(21,99); const t = n*n; return N(`${n}²`, F(t), n%10===5 ? `Ends in 5: ${(n-5)/10}×${(n+5)/10} then 25.` : `(${n - n%10} + ${n%10})² = ${(n-n%10)**2} + ${2*(n-n%10)*(n%10)} + ${(n%10)**2}.`); });
+gen('arith', () => { const m = pick([50,100,200]); const d = rnd(1,9), e = rnd(1,9); const a=m-d, b=m+e; return N(`${a} × ${b}`, F(a*b), `(${m} − ${d})(${m} + ${e}) = ${m*m} + ${m*(e-d)} − ${d*e}.`); });
+
+/* ---- probability ---- */
+gen('prob', () => { const n = pick([4,6,8,10,12,20]); let s = F(0); for (let k=1;k<=n;k++) s = fadd(s, F(k*(2*k-1), n*n)); return N(`Roll two fair ${n}-sided dice. Expected value of the larger?`, s, `P(max = k) = (2k−1)/${n*n}; sum k·P(max = k).`); });
+gen('prob', () => { const n = pick([4,6,8,10,12,20]); let best=-1, bt=0; for (let t=0;t<=n;t++){ let v=t*(n+1); for (let k=t+1;k<=n;k++) v+=2*k; if (v>best){best=v;bt=t;} } return N(`Roll a fair ${n}-sided die. Keep it, or reroll once and keep the second. Expected payout with optimal play?`, F(best,2*n), `A reroll is worth ${fmt((n+1)/2)}: reroll 1–${bt}, keep ${bt+1}–${n}.`); });
+gen('prob', () => { const [name,m] = pick([['aces',4],['hearts',13],['face cards',12],['red cards',26],['kings or queens',8],['spades',13]]); return N(`Draw 2 cards from a 52-card deck without replacement. P(both ${name})?`, F(m*(m-1),52*51), `(${m}/52)·(${m-1}/51).`); });
+gen('prob', () => { const n = pick([6,8,10,12,20]); const t = rnd(2,n); const s = n-t+1; return N(`Roll a fair ${n}-sided die until you get ${t} or more. Expected number of rolls?`, F(n,s), `p = ${s}/${n}; geometric ⇒ 1/p.`); });
+gen('prob', () => { const s = rnd(2,12); return N(`Two fair dice. P(sum = ${s})?`, F(6-Math.abs(s-7),36), `${6-Math.abs(s-7)} of 36 outcomes.`); });
+gen('prob', () => { const s = rnd(3,12); let c=0; for (let x=1;x<=6;x++) for (let y=1;y<=6;y++) if (x+y>=s) c++; return N(`Two fair dice. P(sum ≥ ${s})?`, F(c,36), `Count outcomes: ${c} of 36.`); });
+gen('prob', () => { const k = rnd(2,6); return N(`Roll a die ${k} times. P(at least one 6)?`, F(6**k-5**k,6**k), `1 − (5/6)^${k}.`); });
+gen('prob', () => { const p=pick([1,2,5,10]), se=pick([80,90,95,99]), fp=pick([5,9,10,20]); const tp=p*se, fpN=(100-p)*fp; return N(`Prevalence ${p}%. Test positive ${se}% if present, ${fp}% if absent. P(present | positive)?`, F(tp,tp+fpN), `Per 10,000: ${tp} true positives vs ${fpN} false positives.`); });
+gen('prob', () => { const n = rnd(2,6); let h=F(0); for (let k=1;k<=n;k++) h=fadd(h,F(1,k)); return N(`Expected rolls of a fair ${n}-sided die to see every face?`, fmul(F(n),h), `Coupon collector: ${n}·(1 + 1/2 + … + 1/${n}).`); });
+gen('prob', () => { const k=rnd(2,5), n=pick([4,6,8,10,20]); return N(`Expected total of ${k} fair ${n}-sided dice?`, F(k*(n+1),2), `Linearity: ${k} × ${fmt((n+1)/2)}.`); });
+gen('prob', () => { const N_=rnd(5,20), k=rnd(1,N_-1); return N(`Fair ±£1 coin game. Start with £${k}, stop at £0 or £${N_}. P(reach £${N_})?`, F(k,N_), `Martingale ⇒ k/N.`); });
+gen('prob', () => { const n = pick([2,3,4,5,9]); return N(`Expected maximum of ${n} independent Uniform(0,1)?`, F(n,n+1), `P(max ≤ x) = x^${n} ⇒ n/(n+1).`); });
+gen('prob', () => { const n = pick([4,6,8]), k = rnd(2,5); return N(`Roll a fair ${n}-sided die ${k} times. Expected number of distinct faces seen?`, F(n**k - (n-1)**k, n**(k-1)), `Indicator per face: ${n}·(1 − (${n-1}/${n})^${k}).`); });
+gen('prob', () => { const r=rnd(3,8), b=rnd(2,7), k=rnd(2,Math.min(3,r)); return N(`An urn has ${r} red and ${b} blue balls. Draw ${k} without replacement. P(all red)?`, F(C(r,k),C(r+b,k)), `C(${r},${k}) / C(${r+b},${k}).`); });
+gen('prob', () => { const n=rnd(3,8), k=rnd(0,n); return N(`Flip a fair coin ${n} times. P(exactly ${k} heads)?`, F(C(n,k),2**n), `C(${n},${k}) / 2^${n}.`); });
+gen('prob', () => { const k=rnd(2,5); return N(`Expected flips of a fair coin until ${k} heads in a row?`, F(2**(k+1)-2), `2^(k+1) − 2.`); });
+gen('prob', () => { const k=rnd(2,6); return N(`Variance of the sum of ${k} fair six-sided dice?`, F(35*k,12), `Independent ⇒ variances add: ${k} × 35/12.`); });
+gen('prob', () => { const w=rnd(2,12), l=rnd(1,8), t=rnd(2,6); return N(`Roll a die. Win £${w} if it shows ${t} or more, otherwise lose £${l}. Expected value?`, F(w*(7-t)-l*(t-1),6), `(${7-t}·${w} − ${t-1}·${l}) / 6.`); });
+gen('prob', () => { const words=['LEVEL','BANANA','TRADER','PEPPER','ARRAY','LATENCY','FPGA','OPTIVER','PIPELINE','REGISTER','PARALLEL']; const w=pick(words); const cnt={}; for (const c of w) cnt[c]=(cnt[c]||0)+1; let d=1; Object.values(cnt).forEach(v=>d*=fact(v)); return N(`Number of distinct arrangements of the letters of ${w}?`, F(fact(w.length)/d), `${w.length}! / (${Object.values(cnt).filter(v=>v>1).map(v=>v+'!').join('·')||'1'}).`); });
+gen('prob', () => { const n=rnd(5,12), k=rnd(2,4); return N(`Ways to choose a committee of ${k} from ${n} people?`, F(C(n,k)), `C(${n},${k}).`); });
+gen('prob', () => { const [a,lab] = pick([[1,'1/2'],[2,'1'],[3,'3/2']]); const v = a<=2 ? F(a*a,8) : F(7,8); return N(`X, Y independent Uniform(0,1). P(X + Y < ${lab})?`, v, a<=2 ? `Triangle area: t²/2.` : `1 − (2 − t)²/2.`); });
+gen('prob', () => {
+  const evs = [
+    () => { const s=rnd(3,11); return [`the sum is ${s}`, (x,y)=>x+y===s]; },
+    () => { const s=rnd(4,11); return [`the sum is at least ${s}`, (x,y)=>x+y>=s]; },
+    () => { const m=rnd(1,6); return [`at least one die shows ${m}`, (x,y)=>x===m||y===m]; },
+    () => [`it's a double`, (x,y)=>x===y],
+    () => [`the first die is higher than the second`, (x,y)=>x>y],
+    () => { const m=rnd(2,6); return [`the larger die is ${m}`, (x,y)=>Math.max(x,y)===m]; },
+    () => [`the product is even`, (x,y)=>(x*y)%2===0],
+    () => [`both dice are odd`, (x,y)=>x%2===1&&y%2===1],
+  ];
+  for (let tries=0; tries<20; tries++){
+    const [ta,fa] = pick(evs)(), [tb,fb] = pick(evs)(); if (ta===tb) continue;
+    let nb=0, nab=0; for (let x=1;x<=6;x++) for (let y=1;y<=6;y++) if (fb(x,y)){ nb++; if (fa(x,y)) nab++; }
+    if (!nb) continue;
+    return N(`Two fair dice. Given that ${tb}, P(${ta})?`, F(nab,nb), `Restrict to the ${nb} outcomes where ${tb}; ${nab} of them have ${ta}.`);
+  }
+  return N(`Two fair dice. P(double)?`, F(1,6), `6 of 36.`);
+});
+
+/* ---- sequences ---- */
+const PR=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113];
+gen('seq', () => {
+  const t = rnd(0,11); let s=[], why='';
+  if (t===0){ const a=rnd(-20,50), d=pick([-9,-7,-4,-3,3,4,6,7,8,9,11,13]); for (let n=0;n<7;n++) s.push(a+n*d); why=`Constant difference ${d}.`; }
+  if (t===1){ const a=rnd(1,5), r=pick([2,3,-2]); for (let n=0;n<7;n++) s.push(a*r**n); why=`Multiply by ${r}.`; }
+  if (t===2){ const a=rnd(-5,10), b=rnd(-4,6), c=rnd(1,3); for (let n=0;n<7;n++) s.push(a+b*n+c*n*n); why=`Second differences constant (${2*c}).`; }
+  if (t===3){ const sh=rnd(1,6), c=rnd(-5,5), p=pick([2,2,3]); for (let n=0;n<7;n++) s.push((n+sh)**p+c); why=`(n)^${p} ${c>=0?'+':'−'} ${Math.abs(c)} starting at n = ${sh}.`; }
+  if (t===4){ s=[rnd(1,9),rnd(1,9)]; while (s.length<7) s.push(s[s.length-1]+s[s.length-2]); why=`Each term is the sum of the previous two.`; }
+  if (t===5){ const a=rnd(1,20), d=rnd(2,7), b=rnd(30,90), e=pick([-5,-4,-3,-2,2,3]); for (let n=0;n<7;n++) s.push(n%2===0 ? a+(n/2)*d : b+((n-1)/2)*e); why=`Two interleaved sequences: +${d} on odd positions, ${e>0?'+':''}${e} on even positions.`; }
+  if (t===6){ const a=pick([2,3]), b=rnd(-3,5); s=[rnd(1,5)]; while (s.length<7) s.push(a*s[s.length-1]+b); why=`×${a} then ${b>=0?'+':'−'}${Math.abs(b)}.`; }
+  if (t===7){ const p=rnd(2,9), q=pick([2,3]); s=[rnd(1,6)]; while (s.length<7) s.push(s.length%2 ? s[s.length-1]+p : s[s.length-1]*q); why=`Alternate +${p} and ×${q}.`; }
+  if (t===8){ const i=rnd(0,15), c=rnd(-3,3); for (let n=0;n<7;n++) s.push(PR[i+n]+c); why=`Primes ${c? (c>0?'+ ':'− ')+Math.abs(c):''}.`; }
+  if (t===9){ const k=rnd(1,4); for (let n=1;n<=7;n++) s.push(k*n*(n+1)/2); why=`${k} × triangular numbers n(n+1)/2.`; }
+  if (t===10){ const d=rnd(1,4); s=[rnd(1,20)]; while (s.length<7) s.push(s[s.length-1]+d*2**(s.length-1)); why=`Differences double: ${d}, ${2*d}, ${4*d}, …`; }
+  if (t===11){ const a=rnd(1,4); s=[a]; while (s.length<7) s.push(s[s.length-1]*(s.length)+ (s.length%2?1:-1)); why=`Multiply by 1, 2, 3, … alternately adding 1 and subtracting 1.`; }
+  const next = s.pop();
+  return N(`Next term: ${s.join(', ')}, ?`, F(next), why);
+});
+
+/* ---- market making ---- */
+gen('mm', () => { const k=rnd(3,5), r=rnd(1,k-1); const rev=Array.from({length:r},()=>rnd(1,6)); const sum=rev.reduce((a,b)=>a+b,0); return N(`Settlement = sum of ${k} dice. Revealed so far: ${rev.join(', ')}. Fair value?`, F(2*sum+7*(k-r),2), `${sum} + ${k-r} × 3.5.`); });
+gen('mm', () => { const k=rnd(3,6), r=rnd(1,k-1); const deck=shuffle([...Array(52)].map((_,i)=>i%13+1)); const rev=deck.slice(0,r); const sum=rev.reduce((a,b)=>a+b,0); return N(`Settlement = sum of ${k} cards from one deck (A = 1 … K = 13). Revealed: ${rev.join(', ')}. Fair value?`, F(sum*(52-r)+(k-r)*(364-sum),52-r), `${sum} + ${k-r} × (364 − ${sum})/${52-r}: remaining cards average the unseen deck.`); });
+gen('mm', () => { const t=[]; let pos=0, cash=0; const n=rnd(2,4); for (let i=0;i<n;i++){ const side = pos>0 && Math.random()<.5 ? -1 : pick([1,-1]); const q=rnd(1,10), p=rnd(95,110); t.push(`${side>0?'buy':'sell'} ${q} @ ${p}`); pos+=side*q; cash-=side*q*p; } const mark=rnd(95,110); return N(`Trades: ${t.join(', ')}. Mark price ${mark}. Total P&L?`, F(cash+pos*mark), `Cash ${cash} + position ${pos} × ${mark}.`); });
+gen('mm', () => { const S_=rnd(90,110), K=rnd(90,110), P=rnd(2,12); const Cv=P+S_-K; if (Cv<=0) return N(`Put–call parity, r = 0: S = 100, K = 100, P = 5. Call price?`, F(5), `C = P + S − K.`); return N(`Put–call parity, r = 0: S = ${S_}, K = ${K}, put = ${P}. Call price?`, F(Cv), `C − P = S − K.`); });
+gen('mm', () => { const f=rnd(50,150), b=f-rnd(1,4), a=f+rnd(1,4), q=rnd(1,20); const buy=Math.random()<.5; return N(`Fair value ${f}. Your market is ${b} – ${a}. A customer ${buy?'buys':'sells'} ${q} from you. Your edge on the trade?`, F(buy ? (a-f)*q : (f-b)*q), buy ? `Sold at ${a}, worth ${f}: ${a-f} × ${q}.` : `Bought at ${b}, worth ${f}: ${f-b} × ${q}.`); });
+
+/* ---- bits, hex, clocks ---- */
+gen('bits', () => { const v=rnd(16,4095); return N(`<code>0x${hex(v,0)}</code> in decimal?`, F(v), `Powers of 16.`); });
+gen('bits', () => { const v=rnd(16,4095); return S(`${v} in hex?`, v.toString(16), '0x'+hex(v,0), `Repeated division by 16.`); });
+gen('bits', () => { const v=rnd(1,128); const t=(256-v).toString(16); return S(`8-bit two's complement of −${v}, in hex?`, t, '0x'+t.toUpperCase(), `256 − ${v} = ${256-v}.`); });
+gen('bits', () => { const v=rnd(0,15); const g=bin(v^(v>>1),4); return S(`4-bit Gray code of ${v} (${bin(v,4)})?`, g, g, `g = b ^ (b >> 1).`, 'bin'); });
+gen('bits', () => { const v=rnd(0,15); const b=bin(v,4), g=bin(v^(v>>1),4); return S(`Gray <code>${g}</code> → binary?`, b, b, `MSB copies; then each bit = previous binary bit XOR Gray bit.`, 'bin'); });
+gen('bits', () => { const p=pick([2,2.5,3.2,4,5,6.4,8,10]); return N(`Clock period ${p} ns. Frequency (MHz)?`, F(Math.round(1e5/p),100), `1000 / ${p}.`); });
+gen('bits', () => { const f=pick([100,125,156.25,200,250,400]), c=rnd(2,12); return N(`${c} cycles at ${f} MHz = ? ns`, F(Math.round(c*1e5/f),100), `${c} × ${1000/f} ns.`); });
+gen('bits', () => { const n=pick([3,5,9,17,33,100,500,1000,1024,1025,4096,3000]); return N(`<code>$clog2(${n})</code> = ?`, F(Math.ceil(Math.log2(n))), `Smallest k with 2^k ≥ ${n}.`); });
+gen('bits', () => { const b=rnd(4,16); return N(`Largest unsigned ${b}-bit value?`, F(2**b-1), `2^${b} − 1.`); });
+gen('bits', () => { const b=pick([8,12,16]); return N(`Most negative ${b}-bit two's complement value?`, F(-(2**(b-1))), `−2^${b-1}.`); });
+gen('bits', () => { const a=rnd(0,255), b=rnd(0,255), k=rnd(1,3); const op=pick(['&','|','^','~','<<','>>']); let v, q;
+  if (op==='~'){ v=(~a)&255; q=`<code>~8'h${hex(a)}</code> (8-bit) in hex?`; }
+  else if (op==='<<'){ v=(a<<k)&255; q=`<code>8'h${hex(a)} << ${k}</code> (8-bit result) in hex?`; }
+  else if (op==='>>'){ v=a>>k; q=`<code>8'h${hex(a)} >> ${k}</code> in hex?`; }
+  else { v = op==='&' ? a&b : op==='|' ? a|b : a^b; q=`<code>8'h${hex(a)} ${op} 8'h${hex(b)}</code> in hex?`; }
+  return S(q, v.toString(16), '0x'+hex(v), `${bin(a,8)}${op==='~'||op==='<<'||op==='>>'?'':' '+op+' '+bin(b,8)} → ${bin(v,8)}.`); });
+gen('bits', () => { const v=rnd(1,65535); const c=v.toString(2).split('').filter(x=>x==='1').length; return N(`Number of 1 bits in <code>16'h${hex(v,4)}</code>?`, F(c), `Count per nibble.`); });
+gen('bits', () => { const v=rnd(128,255); return N(`<code>8'h${hex(v)}</code> read as a signed 8-bit number?`, F(v-256), `${v} − 256.`); });
+
+/* ---- verilog expression evaluation ---- */
+gen('verilog', () => { const w=pick([4,8]), m=2**w, a=rnd(Math.floor(m/2),m-1), b=rnd(Math.floor(m/4),m-1); return N(`<code>logic [${w-1}:0] y = ${w}'d${a} + ${w}'d${b};</code> y = ? (decimal)`, F((a+b)%m), `${a+b} mod ${m}: the carry is dropped.`); });
+gen('verilog', () => { const parts=[]; let val=0, w=0; const n=rnd(2,3); for (let i=0;i<n;i++){ const pw=rnd(1,4), pv=rnd(0,2**pw-1); parts.push(`${pw}'b${bin(pv,pw)}`); val=val*2**pw+pv; w+=pw; } return N(`<code>{${parts.join(', ')}}</code> in decimal?`, F(val), `Concatenate MSB-first: ${bin(val,w)}.`); });
+gen('verilog', () => { const pw=rnd(2,3), pv=rnd(1,2**pw-1), k=rnd(2,4); const v=parseInt(bin(pv,pw).repeat(k),2); return N(`<code>{${k}{${pw}'b${bin(pv,pw)}}}</code> in decimal?`, F(v), `${bin(pv,pw).repeat(k)}.`); });
+gen('verilog', () => { const v=rnd(0,255), op=pick(['&','|','^','~&','~|','~^']); const ones=v.toString(2).split('').filter(x=>x==='1').length; let r = op.endsWith('&') ? (v===255?1:0) : op.endsWith('|') ? (v?1:0) : ones%2; if (op.startsWith('~')) r^=1; return N(`<code>${op}8'b${bin(v,8)}</code> = ?`, F(r), op.endsWith('^') ? `Parity of ${ones} ones${op.startsWith('~')?', inverted':''}.` : `Reduction ${op}.`); });
+gen('verilog', () => { const v=rnd(128,255), k=rnd(1,4); const r=((v-256)>>k)&255; return S(`<code>logic signed [7:0] x = 8'h${hex(v)};</code> value of <code>x >>> ${k}</code> in hex?`, r.toString(16), '0x'+hex(r), `Arithmetic shift fills with the sign bit (1).`); });
+gen('verilog', () => { const v=rnd(0,255), h=rnd(2,7), l=rnd(0,h-1); const r=(v>>l)&(2**(h-l+1)-1); return N(`<code>x = 8'h${hex(v)};</code> value of <code>x[${h}:${l}]</code> (decimal)?`, F(r), `${bin(v,8)} → bits ${h}..${l} = ${bin(r,h-l+1)}.`); });
+gen('verilog', () => { const a0=rnd(0,9), b0=rnd(10,19), c0=rnd(20,29), d=rnd(30,39); const style=pick(['nb','b','brev']);
+  const code = style==='nb' ? 'a <= d;\n  b <= a;\n  c <= b;' : style==='b' ? 'a = d;\n  b = a;\n  c = b;' : 'c = b;\n  b = a;\n  a = d;';
+  const c1 = style==='b' ? d : b0;
+  return M(`a=${a0}, b=${b0}, c=${c0}, d=${d}. After one clock edge, c = ?\n\`\`\`\nalways @(posedge clk) begin\n  ${code}\nend\n\`\`\``, c1, [d,b0,a0,c0], style==='b' ? `Blocking in this order: every stage gets d at once (the register chain collapses).` : style==='nb' ? `Nonblocking: c takes the old b. A proper shift register.` : `Blocking, but written last-stage-first, so each read happens before its source is overwritten: still a shift register.`); });
+gen('verilog', () => { const a0=rnd(0,9), b0=rnd(10,19); const nb=Math.random()<.5; return M(`a=${a0}, b=${b0}. After one edge of:\n\`\`\`\nalways @(posedge clk) begin\n  a ${nb?'<=':'='} b;\n  b ${nb?'<=':'='} a;\nend\n\`\`\`\n(a, b) = ?`, `(${b0}, ${nb?a0:b0})`, [`(${b0}, ${b0})`,`(${b0}, ${a0})`,`(${a0}, ${a0})`,`(${a0}, ${b0})`], nb ? `Nonblocking swaps.` : `Blocking: b reads the new a.`); });
+gen('verilog', () => { const w=rnd(3,6), k=rnd(2**w+1, 2**w*3); return N(`<code>logic [${w-1}:0] cnt</code> starts at 0 and increments every clock. Value after ${k} edges?`, F(k%(2**w)), `${k} mod ${2**w}.`); });
+
+/* ---- boolean logic ---- */
+function boolExpr(){
+  const v=['A','B','C'];
+  const lit = () => { const x=pick(v); return Math.random()<.35 ? {s:'~'+x, f:e=>1-e[x]} : {s:x, f:e=>e[x]}; };
+  const op = (l,r) => { const o=pick(['&','|','^']); return {s:`(${l.s} ${o} ${r.s})`, f:e=> o==='&' ? l.f(e)&r.f(e) : o==='|' ? l.f(e)|r.f(e) : l.f(e)^r.f(e)}; };
+  const t = op(op(lit(),lit()), Math.random()<.5 ? lit() : op(lit(),lit()));
+  t.s = t.s.slice(1,-1); return t;
+}
+gen('logic', () => { const e=boolExpr(); const env={A:rnd(0,1),B:rnd(0,1),C:rnd(0,1)}; return N(`F = <code>${e.s}</code><br>A=${env.A}, B=${env.B}, C=${env.C}. F = ?`, F(e.f(env)), `Evaluate inner brackets first.`); });
+gen('logic', () => { const e=boolExpr(); let c=0; for (let i=0;i<8;i++) c+=e.f({A:i>>2&1,B:i>>1&1,C:i&1}); return N(`F = <code>${e.s}</code><br>How many of the 8 input combinations make F = 1?`, F(c), `Build the truth table (or reason per term).`); });
+gen('logic', () => { const a=rnd(0,15), b=rnd(0,15), ci=rnd(0,1); const s=a+b+ci; return S(`4-bit adder: A=${bin(a,4)}, B=${bin(b,4)}, Cin=${ci}. Sum (4 bits) in binary?`, bin(s&15,4), bin(s&15,4)+` (Cout = ${s>>4})`, `${a} + ${b} + ${ci} = ${s}.`, 'bin'); });
+gen('logic', () => { const a=rnd(-128,127), b=rnd(-128,127); const s=a+b; const of = s>127||s<-128; return M(`8-bit signed: ${a} + ${b}. Overflow?`, of?'Yes':'No', [of?'No':'Yes'], `True sum ${s}; 8-bit signed range is −128..127.`); });
+
+/* ---- timing ---- */
+gen('timing', () => { const P=pick([2.5,3.2,4,5,6.4]); const c2q=rnd(30,50), lg=rnd(50,300), rt=rnd(30,150), su=rnd(5,10), sk=pick([0,0,rnd(5,30)]); const sl=Math.round(P*100)-c2q-lg-rt-su+sk; return N(`Period ${P} ns. clk→q ${c2q/100}, logic ${lg/100}, routing ${rt/100}, setup ${su/100} ns${sk?`, capture clock arrives ${sk/100} ns later`:''}. Setup slack (ns)?`, F(sl,100), `${P} ${sk?`+ ${sk/100} `:''}− (${c2q/100} + ${lg/100} + ${rt/100} + ${su/100}).`); });
+gen('timing', () => { const tot=rnd(200,800); return N(`Worst register-to-register path totals ${tot/100} ns (including clk→q and setup). f_max in MHz?`, Fd(100000/tot,100), `1000 / ${tot/100}.`); });
+gen('timing', () => { const fw=200, fr=pick([100,150,160,120]), B=20*rnd(2,40); const d=B-B*fr/fw; return N(`Writer bursts ${B} words at ${fw} MHz (one per cycle). Reader takes one word per cycle at ${fr} MHz. Minimum FIFO depth (ignore sync latency)?`, F(d), `During the burst (${B} write cycles) the reader drains ${B}×${fr}/${fw} = ${B*fr/fw}. ${B} − ${B*fr/fw}.`); });
+gen('timing', () => { const k=pick([2,3,4,5]), B=k*rnd(4,40); return N(`Same clock. Writer sends a burst of ${B} words, one per cycle. Reader takes one word every ${k} cycles. Minimum FIFO depth?`, F(B-B/k), `The reader removes ${B/k} during the burst: ${B} − ${B/k}.`); });
+gen('timing', () => { const W=pick([8,16,32,64,128]), f=pick([100,125,156.25,200,250,322.265625]); return N(`A ${W}-bit bus at ${f} MHz, one word per cycle. Throughput in Gb/s?`, Fd(W*f/1000,10000), `${W} × ${f} MHz.`); });
+gen('timing', () => { const W=pick([8,16,32,64]); return N(`Minimum clock (MHz) to carry 10 Gb/s on a ${W}-bit datapath?`, Fd(10000/W,1000), `10,000 / ${W}.`); });
+gen('timing', () => { const N_=rnd(8,24), f=pick([100,125,200,250]); return N(`A free-running ${N_}-bit counter at ${f} MHz wraps every how many µs?`, Fd(2**N_/f,1000), `2^${N_} / ${f} MHz.`); });
+gen('timing', () => { const k=rnd(3,12), f=pick([156.25,200,250,322.265625,400]); return N(`A ${k}-stage pipeline at ${f} MHz. Latency in ns?`, Fd(k*1000/f,1000), `${k} × ${fmt(1000/f)} ns.`); });
+
+/* ---- networking ---- */
+gen('net', () => { const p=rnd(10,1400); const frame=Math.max(64,14+20+8+p+4); const wire=frame+8+12; const g=pick([10,1]); return N(`UDP payload ${p} bytes over IPv4/Ethernet. Time on the wire at ${g} Gb/s, including preamble and inter-packet gap (ns)?`, Fd(wire*8/g,100), `Frame ${frame} B (min 64) + 8 preamble + 12 IPG = ${wire} B × ${8/g} ns/B.`); });
+gen('net', () => { const p=rnd(1,40); const frame=14+20+8+p+4; return N(`An IPv4/UDP frame carries ${p} payload bytes. Padding bytes added to reach the Ethernet minimum?`, F(Math.max(0,64-frame)), `Headers 42 + FCS 4 + ${p} = ${frame}; minimum is 64.`); });
+gen('net', () => { const b=pick([64,128,256,512,1024,1500]), W=pick([8,16,32,64]); return N(`How many ${W}-bit beats to transfer a ${b}-byte frame?`, F(Math.ceil(b*8/W)), `⌈${b*8} / ${W}⌉.`); });
+gen('net', () => { const off=pick([['MoldUDP64 header',42],['first message-length field',62],['IPv4 header',14],['UDP header',34]]); return N(`Byte offset (from the start of the Ethernet header) of the ${off[0]} in a MoldUDP64/UDP/IPv4 frame, no VLAN?`, F(off[1]), `Ethernet 14, IPv4 20, UDP 8, MoldUDP64 20.`); });
+
+/* ---- C / CS ---- */
+gen('cs', () => { const T=[['char',1],['short',2],['int',4],['long',8],['double',8]]; const n=rnd(3,5); const m=Array.from({length:n},()=>pick(T)); let off=0, mx=1; m.forEach(([,s])=>{ off=Math.ceil(off/s)*s+s; mx=Math.max(mx,s); }); const size=Math.ceil(off/mx)*mx; return N(`x86-64 Linux, default alignment. sizeof?\n\`\`\`\nstruct S {\n${m.map(([t],i)=>`  ${t} f${i};`).join('\n')}\n};\n\`\`\``, F(size), `Each member aligns to its size; total pads to a multiple of ${mx}.`); });
+gen('cs', () => { const x=rnd(1,255); const r=x&(x-1); return N(`x = ${x}. Value of <code>x & (x - 1)</code>?`, F(r), `Clears the lowest set bit: ${bin(x,8)} → ${bin(r,8)}.`); });
+gen('cs', () => { const x=rnd(1,255); return N(`x = ${x}. Value of <code>x & -x</code>?`, F(x&-x), `Isolates the lowest set bit.`); });
+gen('cs', () => { const v=rnd(0,0xFFFFFFFF)>>>0, k=rnd(0,3); const b=(v>>>(8*k))&255; return S(`<code>uint32_t v = 0x${hex(v,8)};</code> on little-endian x86. Byte at <code>((uint8_t*)&v)[${k}]</code>, in hex?`, b.toString(16), '0x'+hex(b), `Little-endian: byte 0 is the least significant.`); });
+gen('cs', () => { const v=rnd(1,128); return N(`<code>int8_t x = -${v}; uint8_t y = x;</code> y = ?`, F(256-v), `Converted modulo 256.`); });
+gen('cs', () => { const n=pick([8,16,32,64,1000,1024,1e6]); return N(`Worst-case comparisons for binary search over ${n} sorted items (⌈log₂(n+1)⌉)?`, F(Math.ceil(Math.log2(n+1))), `Each step halves the range.`); });
+
+/* ================= MC bank & cards ================= */
+const MCB = [];
+(function(){
+  const lines = $('#mcbank').textContent.split('\n'); let cat=null, cur=null, mode=null;
+  const flush = () => { if (cur && cur.right!=null){ MCB.push({cat, type:'mc', q:cur.q.trim(), opts:[cur.right, ...cur.wrong], why:cur.why.trim()}); } cur=null; };
+  for (const ln of lines){
+    if (ln.startsWith('@mc ')){ flush(); cat=ln.slice(4).trim(); continue; }
+    if (ln.startsWith('Q:')){ flush(); cur={q:ln.slice(2), right:null, wrong:[], why:''}; mode='q'; continue; }
+    if (!cur) continue;
+    if (ln.startsWith('+ ')){ cur.right=ln.slice(2).trim(); mode=null; continue; }
+    if (ln.startsWith('- ')){ cur.wrong.push(ln.slice(2).trim()); mode=null; continue; }
+    if (ln.startsWith('W:')){ cur.why=ln.slice(2); mode='why'; continue; }
+    if (mode==='q') cur.q += '\n'+ln; else if (mode==='why') cur.why += '\n'+ln;
+  }
+  flush();
+})();
+
+const DECKS = [], CARDS = [];
+(function(){
+  const lines = $('#cards').textContent.split('\n'); let deck=null, cur=null, mode=null;
+  const flush = () => { if (cur && cur.q.trim() && cur.a.trim()){ cur.id = hash(deck.id + cur.q.trim()); CARDS.push(cur); } cur=null; };
+  for (const ln of lines){
+    if (ln.startsWith('@deck ')){ flush(); const [id,title,cat] = ln.slice(6).split('|').map(x=>x.trim()); deck = DECKS.find(d=>d.id===id); if (!deck){ deck={id,title,cat}; DECKS.push(deck); } continue; }
+    if (ln.startsWith('Q:')){ flush(); cur={deck:deck.id, cat:deck.cat, q:ln.slice(2), a:''}; mode='q'; continue; }
+    if (ln.startsWith('A:') && cur){ cur.a=ln.slice(2); mode='a'; continue; }
+    if (cur) cur[mode] += '\n'+ln;
+  }
+  flush();
+  const custom = store.get('custom', []);
+  if (custom.length){ DECKS.push({id:'mine', title:'My cards', cat:'mine'}); custom.forEach(c => CARDS.push({...c, deck:'mine', cat:'mine'})); }
+})();
+const deckTitle = id => (DECKS.find(d=>d.id===id)||{}).title || id;
+
+/* ================= SRS ================= */
+let srs = store.get('srs', {});
+const DAY = 864e5;
+function nextState(s, g){
+  s = s ? {...s} : {i:0, e:2.5, r:0, l:0};
+  if (g===0){ s.r=0; s.l++; s.e=Math.max(1.3,s.e-0.2); s.i=0; s.d=Date.now()+60e3; return s; }
+  if (g===1){ s.i = s.r===0 ? 1 : Math.max(1, s.i*1.2); s.e=Math.max(1.3,s.e-0.15); }
+  if (g===2){ s.i = s.r===0 ? 1 : s.r===1 ? 3 : s.i*s.e; }
+  if (g===3){ s.i = s.r===0 ? 3 : s.r===1 ? 5 : s.i*s.e*1.3; s.e+=0.15; }
+  s.r++; s.d = Date.now() + s.i*DAY; return s;
+}
+function ivLabel(s){ if (!s.i) return '1m'; const d=s.i; if (d<30) return Math.round(d)+'d'; if (d<365) return (d/30).toFixed(1).replace('.0','')+'mo'; return (d/365).toFixed(1)+'y'; }
+function newToday(){ const n=store.get('newday',{d:'',c:0}); return n.d===today() ? n.c : 0; }
+function bumpNew(){ store.set('newday', {d:today(), c:newToday()+1}); }
+function gradeCard(c, g){ if (!srs[c.id]) bumpNew(); srs[c.id]=nextState(srs[c.id],g); store.set('srs',srs); const log=store.get('revlog',{}); log[today()]=(log[today()]||0)+1; store.set('revlog',log); markActive(); }
+const settings = Object.assign({newPerDay:20, sprintSecs:120, groups:['quant','fpga','cs'], autoNext:false, focus:false}, store.get('settings', {}));
+
+/* ================= answer checking ================= */
+function parseNum(s){
+  s = s.trim().replace(/\s+/g,'').replace(/,/g,'').replace(/−/g,'-');
+  if (!s) return NaN;
+  let pct=false; if (s.endsWith('%')){ pct=true; s=s.slice(0,-1); }
+  const m = s.match(/^(-?[\d.]+)\/(-?[\d.]+)$/);
+  let v = m ? parseFloat(m[1])/parseFloat(m[2]) : (/^-?(\d+\.?\d*|\.\d+)$/.test(s) ? parseFloat(s) : NaN);
+  return pct ? v/100 : v;
+}
+function check(it, input){
+  if (it.type==='str'){ const n = x => x.trim().toLowerCase().replace(/^0x/,'').replace(/^0+(?=.)/,''); return it.accept.some(a => n(a)===n(input)); }
+  const v=parseNum(input), t=fval(it.f); if (!isFinite(v)) return false;
+  return Math.abs(v-t) <= Math.max(1e-9, Math.abs(t)*0.01);
+}
+const answerText = it => it.type==='str' ? it.show : it.type==='mc' ? it.opts[0] : fstr(it.f);
+function bumpCat(cat, ok){ const s=store.get('cstat',{}); const c=s[cat]||{n:0,ok:0}; c.n++; if (ok) c.ok++; s[cat]=c; store.set('cstat',s); markActive(); }
+
+/* ================= keypad ================= */
+const KEYS = {
+  num: ['7','8','9','⌫','4','5','6','/','1','2','3','.','-','0','%','✓'],
+  hex: ['7','8','9','A','⌫','4','5','6','B','C','1','2','3','D','E','0','F','✓'],
+  bin: ['0','1','⌫','✓'],
+};
+let kp = null;   // {get,set,submit}
+function keypadHTML(mode){ return `<div class="kp k-${mode}">${KEYS[mode].map(k=>`<button type="button" data-k="${k}" class="${k==='✓'?'kok':k==='⌫'?'kdel':''}">${k==='-'?'−':k}</button>`).join('')}</div>`; }
+function kpPress(k){ if (!kp) return; if (k==='✓') return kp.submit(); let v=kp.get(); if (k==='⌫') v=v.slice(0,-1); else if (v.length<16) v+=k; kp.set(v); }
+function bindKeypad(root, handlers){ kp = handlers; root.querySelectorAll('[data-k]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); kpPress(b.dataset.k); })); }
+document.addEventListener('keydown', e => {
+  if (!kp || e.target.tagName==='TEXTAREA' || (e.target.tagName==='INPUT' && e.target.type!=='hidden')) return;
+  const k=e.key;
+  if (k==='Enter'){ e.preventDefault(); kpPress('✓'); }
+  else if (k==='Backspace'){ e.preventDefault(); kpPress('⌫'); }
+  else if (/^[0-9.\/%\-]$/.test(k) || /^[a-fA-F]$/.test(k)) kpPress(k.toUpperCase());
+});
+
+/* ================= item renderer ================= */
+// opts: {test:bool, done(result)}  result: {ok, given, skipped}
+function renderItem(box, it, opts){
+  kp = null;
+  const tag = `<span class="tag">${esc(CATS[it.cat]?CATS[it.cat].t:it.cat)}${it.card ? ' · card' : ''}</span>`;
+  if (it.type==='card'){
+    const c=it.card, s=srs[c.id];
+    box.innerHTML = `<div class="card">${tag}<div class="q">${md(c.q)}</div><div id="cardA"></div></div>`;
+    const showA = () => {
+      const prev=[0,1,2,3].map(g=>ivLabel(nextState(s,g)));
+      $('#cardA').innerHTML = `<div class="a">${md(c.a)}</div><div class="grades"><button class="g0" data-g="0">Again<small>${prev[0]}</small></button><button class="g1" data-g="1">Hard<small>${prev[1]}</small></button><button class="g2" data-g="2">Good<small>${prev[2]}</small></button><button class="g3" data-g="3">Easy<small>${prev[3]}</small></button></div>`;
+      const pr = PRIMERS[conceptOf(it)];
+      if (pr){ $('#cardA').insertAdjacentHTML('beforeend', `<div id="deep"></div><button class="chip" id="lm" style="margin-top:10px">Learn: ${esc(pr.title)}</button>`); $('#lm').onclick = () => { $('#lm').remove(); $('#deep').innerHTML = primerHTML(pr); }; }
+      box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g=+b.dataset.g; gradeCard(c,g); if (g===0 && !it.retryKey) logMistake(it, ''); opts.done({ok:g>=2, card:true}); });
+      kp = {get:()=>'', set:()=>{}, submit:()=>{ gradeCard(c,2); opts.done({ok:true, card:true}); }};
+    };
+    box.querySelector('.card').insertAdjacentHTML('beforeend', `<button class="big" id="reveal">Show answer</button>`);
+    $('#reveal').onclick = () => { $('#reveal').remove(); showA(); };
+    kp = {get:()=>'', set:()=>{}, submit:()=>{ const r=$('#reveal'); if (r){ r.remove(); showA(); } }};
+    return;
+  }
+  if (it.type==='mc'){
+    const order = shuffle(it.opts.map((o,i)=>({o,i})));
+    box.innerHTML = `<div class="card">${tag}<div class="q">${qh(it.q)}</div><div class="mc">${order.map(x=>`<button data-i="${x.i}">${md(x.o)}</button>`).join('')}</div>${opts.test?`<button class="big ghost" id="skipq">Skip</button>`:''}<div id="fb"></div></div>`;
+    let done=false;
+    box.querySelectorAll('.mc button').forEach(b => b.onclick = () => {
+      if (done) return; done=true; const ok = b.dataset.i==='0';
+      if (opts.test) return opts.done({ok, given:it.opts[+b.dataset.i]});
+      b.classList.add(ok?'right':'wrong'); box.querySelector('.mc button[data-i="0"]').classList.add('right');
+      feedback(box, it, ok, it.opts[+b.dataset.i], opts);
+    });
+    const sk=$('#skipq'); if (sk) sk.onclick = () => { if (!done){ done=true; opts.done({ok:false, skipped:true}); } };
+    kp = null; return;
+  }
+  const mode = it.type==='str' ? (it.kp||'hex') : 'num';
+  box.innerHTML = `<div class="card">${tag}<div class="q">${qh(it.q)}</div>
+    <div class="disp" id="disp"><span class="ph">${mode==='num'?'answer (e.g. 17/4)':'answer'}</span></div>
+    <div id="fb"></div><div id="kpw">${keypadHTML(mode)}</div>
+    <div class="row" style="margin-top:8px"><button class="chip grow" id="skipq">${opts.test?'Skip':'Show answer'}</button></div></div>`;
+  let val='', done=false;
+  const disp=$('#disp');
+  const set = v => { val=v; disp.innerHTML = v ? esc(v.replace(/-/g,'−')) : `<span class="ph">${mode==='num'?'answer (e.g. 17/4)':'answer'}</span>`; };
+  const finish = (skipped) => {
+    if (done) return; done=true;
+    const ok = !skipped && check(it, val);
+    if (opts.test) return opts.done({ok, given:val, skipped});
+    $('#kpw').remove(); $('#skipq').parentElement.remove();
+    feedback(box, it, ok, skipped ? '' : val, opts);
+  };
+  bindKeypad(box, {get:()=>val, set, submit:()=>{ if (val) finish(false); }});
+  $('#skipq').onclick = () => finish(true);
+}
+function feedback(box, it, ok, given, opts){
+  const fb = box.querySelector('#fb');
+  const pr = PRIMERS[conceptOf(it)];
+  fb.innerHTML = `<div class="fb ${ok?'ok':'no'}"><b>${ok?'Correct.':'Not quite.'}</b> Answer: <b>${md(answerText(it))}</b>${!ok&&given?` (you: ${esc(given)})`:''}${it.why?`<div class="why">${md(it.why)}</div>`:''}</div>
+    <div id="deep"></div>
+    <div class="row" style="gap:8px;margin-top:12px">${pr?`<button class="big ghost grow" id="lm" style="margin-top:0">Learn: ${esc(pr.title)}</button>`:''}<button class="big grow" id="nextq" style="margin-top:0">Next</button></div>`;
+  let t=null; const go = () => { clearTimeout(t); opts.done({ok, given}); };
+  $('#nextq').onclick = go;
+  if (pr) $('#lm').onclick = () => { clearTimeout(t); $('#lm').remove(); $('#deep').innerHTML = primerHTML(pr); };
+  if (ok && settings.autoNext) t = setTimeout(go, 1500);
+  kp = {get:()=>'', set:()=>{}, submit:go};
+}
+
+/* ================= primers (offline study guides) ================= */
+const PRIMERS = {};
+(function(){ let cur=null; for (const ln of $('#primers').textContent.split('\n')){ if (ln.startsWith('@p ')){ const [id,title]=ln.slice(3).split('|').map(x=>x.trim()); cur=PRIMERS[id]={id,title,body:''}; } else if (cur) cur.body+=ln+'\n'; } })();
+function mdLong(s){
+  return String(s).trim().split('```').map((p,i) => {
+    if (i % 2) return '<pre><code>' + esc(p.replace(/^[a-z]*\n/,'').replace(/\n$/,'')) + '</code></pre>';
+    return esc(p).split('\n').map(l => {
+      let h = l.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+      if (/^\s*[-*]\s/.test(l)) return `<div class="li2">• ${h.replace(/^\s*[-*]\s/,'')}</div>`;
+      if (/^\s*\d+\.\s/.test(l)) return `<div class="li2">${h}</div>`;
+      return h.trim() ? `<p>${h}</p>` : '';
+    }).join('');
+  }).join('');
+}
+const primerHTML = pr => `<div class="deep"><div class="dh">${esc(pr.title)}</div>${mdLong(pr.body)}</div>`;
+const plain = s => String(s||'').replace(/<br>/g,' ').replace(/<[^>]+>/g,'');
+function conceptOf(it){
+  const q = plain(it.type==='card' ? it.card.q+' '+it.card.a : it.q+' '+(it.why||'')), c = it.cat;
+  const R = (re) => re.test(q);
+  if (c==='arith') return 'mental';
+  if (c==='seq') return 'sequences';
+  if (c==='prob'){
+    if (R(/prevalence|test is positive|Bayes|positive/i)) return 'bayes';
+    if (R(/given that|at least one is a boy|Given/i)) return 'conditional';
+    if (R(/every face|all six faces|coupon/i)) return 'coupon';
+    if (R(/reroll|optimal|stopping/i)) return 'stopping';
+    if (R(/coin game|reach £|ruin|martingale/i)) return 'martingale';
+    if (R(/variance|Var/i)) return 'variance';
+    if (R(/larger|maximum|max|Uniform|minimum/i)) return 'orderstats';
+    if (R(/until|first head|first 6|in a row|first success/i)) return 'geometric';
+    if (R(/exactly \d+ heads|at least one/i)) return 'binomial';
+    if (R(/arrange|committee|choose|without replacement|urn|Draw 2|aces|flush/i)) return 'combinatorics';
+    return 'linearity';
+  }
+  if (c==='mm'){ if (R(/parity|call|put|volatility|delta|theta|straddle|option/i)) return 'options'; if (R(/Trades:|P&L|position|long|short|edge/i)) return 'pnl'; return 'fairvalue'; }
+  if (c==='bits'){ if (R(/Gray/i)) return 'gray'; if (R(/two's complement|signed|negative/i)) return 'twos'; if (R(/MHz|ns|period|cycles/i)) return 'clocks'; return 'hexbin'; }
+  if (c==='verilog'){ if (R(/<=|blocking|posedge clk\) begin/)) return 'blocking'; if (R(/latch|always|reg|wire|reset|FSM|Mealy|Moore|handshake|skid|LFSR/i)) return R(/<=|=\s/) && R(/blocking/i) ? 'blocking' : 'widths'; return 'widths'; }
+  if (c==='logic'){ if (R(/adder|overflow|Cout|carry/i)) return 'adders'; if (R(/x & \(x|x & -x|power of two/i)) return 'bittricks'; return 'boolean'; }
+  if (c==='timing'){ if (R(/FIFO/i) && R(/depth|burst/i)) return 'fifo'; if (R(/slack|f_max|setup|hold|path|fanout|retim|pipelin|skew/i)) return 'setup'; if (R(/Gb\/s|counter|pipeline|latency|bus/i)) return 'clocks'; return 'cdc'; }
+  if (c==='arch') return 'fabric';
+  if (c==='net') return 'ethernet';
+  if (c==='cs'){ if (R(/sizeof\(struct|struct S|struct \{/)) return 'struct'; if (R(/x & \(x|x & -x|uint8_t y|int8_t/)) return 'bittricks'; if (R(/endian/i)) return 'endian'; return 'cs'; }
+  return null;
+}
+
+/* ================= mistakes log ================= */
+const SESSION = Date.now().toString(36);
+let mistakes = store.get('mistakes', []);
+function snap(it){ const o={type:it.type, cat:it.cat, gid:it.gid||null, q:it.q, why:it.why||''}; if (it.type==='num') o.f=it.f; if (it.type==='str'){ o.accept=it.accept; o.show=it.show; o.kp=it.kp; } if (it.type==='mc') o.opts=it.opts; if (it.type==='card'){ o.cid=it.card.id; o.q=''; } return o; }
+function unsnap(m){ const it={...m.it}; if (it.type==='card'){ const c=CARDS.find(x=>x.id===it.cid); if (!c) return null; it.card=c; } return it; }
+function logMistake(it, given){
+  const s=snap(it); const key=hash(JSON.stringify([s.type,s.q,s.cid||'']));
+  const ex=mistakes.find(m=>m.key===key && !m.fixed);
+  if (ex){ ex.n++; ex.t=Date.now(); ex.given=given||''; ex.sess=SESSION; }
+  else mistakes.push({key, it:s, given:given||'', t:Date.now(), n:1, sess:SESSION, fixed:false, streak:0});
+  mistakes = mistakes.slice(-600); store.set('mistakes', mistakes);
+}
+function retryResult(m, ok){ if (ok){ m.streak=(m.streak||0)+1; if (m.streak>=2) m.fixed=true; } else { m.streak=0; m.n++; } m.t=Date.now(); store.set('mistakes', mistakes); }
+function bumpGen(gid, ok){ if (!gid) return; const s=store.get('gstat',{}); const g=s[gid]||{n:0,ok:0}; g.n++; if (ok) g.ok++; s[gid]=g; store.set('gstat',s); }
+
+/* ================= item pools ================= */
+const groupOf = cat => CATS[cat] ? CATS[cat].g : 'mine';
+function makeGen(g){ for (let i=0;i<5;i++){ try { const it=g.make(); if (it && (it.type!=='num' || (it.f && isFinite(fval(it.f))))) return {...it, cat:g.cat, gid:g.gid}; } catch(e){} } return null; }
+function cardPool(cats){ const now=Date.now(); return CARDS.filter(c => cats.has(c.cat) && (!srs[c.id] || srs[c.id].d<=now)); }
+function weight(stat, base=1){ if (!settings.focus || !stat || stat.n<3) return base; return base * (0.15 + 3*(1 - stat.ok/stat.n)) + 0.1; }
+function wpick(arr, wf){ const ws=arr.map(wf); let t=ws.reduce((a,b)=>a+b,0)*Math.random(); for (let i=0;i<arr.length;i++){ t-=ws[i]; if (t<=0) return arr[i]; } return arr[arr.length-1]; }
+function nextMixed(groups){
+  const cats = new Set(Object.keys(CATS).filter(c => groups.includes(groupOf(c))));
+  if (CARDS.some(c=>c.cat==='mine')) cats.add('mine');
+  const r = Math.random();
+  const open = mistakes.filter(m=>!m.fixed && cats.has(m.it.cat) && Date.now()-m.t > 90e3);
+  if (settings.focus && open.length && r < 0.2){ const m=pick(open); const it=unsnap(m); if (it) return {...it, retryKey:m.key}; }
+  const cards = cardPool(cats);
+  if (r > 0.8 && cards.length){ const c = pick(cards); return {type:'card', card:c, cat:c.cat}; }
+  const cs = store.get('cstat',{}), gs = store.get('gstat',{});
+  const catList = [...cats].filter(c => c!=='mine');
+  const cat = wpick(catList, c => weight(cs[c]));
+  const gens = GENS.filter(g=>g.cat===cat), mcs = MCB.filter(m=>m.cat===cat);
+  if ((Math.random() < 0.35 || !gens.length) && mcs.length) return {...pick(mcs)};
+  if (gens.length){ const it = makeGen(wpick(gens, g => weight(gs[g.gid]))); if (it) return it; }
+  return mcs.length ? {...pick(mcs)} : nextMixed(groups);
+}
+
+/* ================= TRAIN (endless mixed feed) ================= */
+let tr = {item:null, n:0, ok:0, streak:0, best:0, wrong:0};
+function renderTrain(){
+  const gs = settings.groups;
+  app.innerHTML = `<div class="row"><h1 class="grow">Train</h1><span class="pill">${tr.ok}/${tr.n} · streak ${tr.streak}</span></div>
+    <p class="sub">Endless shuffled mix, generated on your phone.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
+    <div class="chips">${Object.entries(GROUPS).map(([k,t])=>`<button class="chip ${gs.includes(k)?'on':''}" data-grp="${k}">${t}</button>`).join('')}<button class="chip ${settings.focus?'on':''}" id="focus">🎯 Weak spots</button></div>
+    <div id="itm"></div>`;
+  app.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => {
+    const k=b.dataset.grp; let g=settings.groups.includes(k) ? settings.groups.filter(x=>x!==k) : [...settings.groups, k];
+    if (!g.length) return toast('Keep at least one on'); settings.groups=g; store.set('settings',settings); tr.item=null; renderTrain();
+  });
+  $('#focus').onclick = () => { settings.focus=!settings.focus; store.set('settings',settings); toast(settings.focus?'Weak spots: your worst topics and past mistakes come up more':'Weak spots off: even mix'); tr.item=null; renderTrain(); };
+  const gr=$('#gorev'); if (gr) gr.onclick = e => { e.preventDefault(); rvw.view='session'; tab('review'); };
+  if (!tr.item) tr.item = nextMixed(settings.groups);
+  const it = tr.item;
+  renderItem($('#itm'), it, {done: res => {
+    if (it.retryKey){ const m=mistakes.find(x=>x.key===it.retryKey); if (m) retryResult(m, res.ok); }
+    else if (!res.ok){ logMistake(it, res.given); tr.wrong++; }
+    if (!res.card){ bumpCat(it.cat, res.ok); bumpGen(it.gid, res.ok); }
+    tr.n++; if (res.ok){ tr.ok++; tr.streak++; tr.best=Math.max(tr.best,tr.streak); } else tr.streak=0;
+    tr.item=null; if (cur==='train') renderTrain();
+  }});
+}
+
+/* ================= TESTS ================= */
+const PRESETS = {
+  oa80: {title:'80 in 8', sub:'80 arithmetic questions, 8 minutes, +1 / −1, skip = 0. Difficulty rises as you go.', n:80, secs:480, pm:true, make:i=>({...oaQ(1+Math.floor(i/20)), cat:'arith'})},
+  seq:  {title:'Sequences', sub:'15 next-term questions in 7.5 minutes.', n:15, secs:450, make:()=>makeGen(GENS.find(g=>g.cat==='seq'))},
+  prob: {title:'Probability & EV', sub:'12 questions in 15 minutes, generated and conceptual.', n:12, secs:900, make:()=> Math.random()<.75 ? makeGen(pick(GENS.filter(g=>g.cat==='prob'))) : {...pick(MCB.filter(m=>m.cat==='prob'))}},
+  fpga: {title:'FPGA technical', sub:'25 questions in 25 minutes: Verilog analysis, Boolean logic, timing/CDC, architecture, C/CS, networking.', n:25, secs:1500, make:()=>{ const cats=['verilog','logic','timing','arch','bits','net','cs']; const cat=pick(cats); const gs=GENS.filter(g=>g.cat===cat), ms=MCB.filter(m=>m.cat===cat); return (Math.random()<.5 && ms.length) || !gs.length ? {...pick(ms)} : makeGen(pick(gs)); }},
+};
+let ts = null;
+function renderTests(){
+  if (ts && ts.kind==='sprint') return renderSprint();
+  if (ts && ts.kind==='mm') return renderMM();
+  if (ts && ts.kind==='test') return ts.over ? renderTestEnd() : renderTestQ();
+  const th = store.get('tests', {});
+  const best = k => { const h=th[k]||[]; return h.length ? Math.max(...h.map(x=>x.score)) : null; };
+  const sb = store.get('sprints',[]).reduce((m,s)=>Math.max(m,s.score),0);
+  const mm = store.get('mm',[]);
+  const row = (id, ico, col, title, sub, extra) => `<button class="drill" data-t="${id}"><span class="ico" style="background:${col}">${ico}</span><span class="grow"><b>${title}</b><span class="mut small">${sub}${extra?'<br>'+extra:''}</span></span></button>`;
+  app.innerHTML = `<h1>Tests</h1><p class="sub">Timed, no feedback until the end, like the real thing.</p>
+    ${row('oa80','80','#f2b84b','80 in 8 simulator',PRESETS.oa80.sub, best('oa80')!=null?`Best ${best('oa80')}`:'')}
+    ${row('sprint','+×','#f2b84b','Zetamac sprint',`Integers only, auto-submit, ${settings.sprintSecs}s.`, sb?`Best ${sb}`:'')}
+    ${row('seq','1,2','#7aa2ff','Sequences',PRESETS.seq.sub, best('seq')!=null?`Best ${best('seq')}/15`:'')}
+    ${row('prob','P','#7aa2ff','Probability & EV',PRESETS.prob.sub, best('prob')!=null?`Best ${best('prob')}/12`:'')}
+    ${row('fpga','RTL','#4ec9a0','FPGA technical',PRESETS.fpga.sub, best('fpga')!=null?`Best ${best('fpga')}/25`:'')}
+    ${row('mm','$','#b48cff','Market-making game','Quote a market on a hidden card sum while cards are revealed. Some counterparties know the answer.', mm.length?`Games ${mm.length} · avg P&L ${fmt(mm.reduce((a,g)=>a+g.pnl,0)/mm.length,1)}`:'')}
+    <p class="sub" style="margin-top:14px">Formats follow candidate reports (e.g. Optiver's widely reported 80-in-8). Firms change their tests, so treat these as practice, not a replica.</p>`;
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') startMM(); else startTest(t); });
+}
+function startTest(k){ const p=PRESETS[k]; ts={kind:'test', key:k, p, i:0, score:0, right:0, wrong:0, skip:0, end:Date.now()+p.secs*1000, log:[], over:false}; ts.item=p.make(0); renderTestQ(); startTimer(); }
+function startTimer(){ clearInterval(window._tt); window._tt = setInterval(() => { if (!ts || ts.kind!=='test' || ts.over) return clearInterval(window._tt); const left=Math.max(0,Math.ceil((ts.end-Date.now())/1000)); const el=$('#tm'); if (el) el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`; if (left<=0) endTest(); }, 250); }
+function renderTestQ(){
+  const p=ts.p;
+  app.innerHTML = `<div class="row"><h1 class="grow">${p.title}</h1><span class="timer" id="tm"></span></div>
+    <p class="sub">Q ${ts.i+1}/${p.n} · ${p.pm?`score ${ts.score}`:`${ts.right} right`} <button class="chip" id="quit" style="float:right">End</button></p><div id="itm"></div>`;
+  $('#quit').onclick = endTest;
+  renderItem($('#itm'), ts.item, {test:true, done: res => {
+    const it=ts.item; ts.log.push({it, ...res});
+    if (res.skipped) ts.skip++; else if (res.ok){ ts.right++; ts.score++; } else { ts.wrong++; if (p.pm) ts.score--; }
+    bumpCat(it.cat, res.ok); bumpGen(it.gid, res.ok); if (!res.ok) logMistake(it, res.skipped?'(skipped)':res.given);
+    ts.i++; if (ts.i>=p.n || Date.now()>=ts.end) return endTest();
+    ts.item=p.make(ts.i); renderTestQ();
+  }});
+}
+function endTest(){
+  if (!ts || ts.over) return; ts.over=true; clearInterval(window._tt); kp=null;
+  const th=store.get('tests',{}); (th[ts.key]=th[ts.key]||[]).push({d:today(), score:ts.p.pm?ts.score:ts.right, n:ts.i, right:ts.right, wrong:ts.wrong, secs:Math.round((ts.p.secs*1000-(ts.end-Date.now()))/1000)}); th[ts.key]=th[ts.key].slice(-100); store.set('tests',th);
+  renderTestEnd();
+}
+function renderTestEnd(){
+  const p=ts.p, miss=ts.log.filter(x=>!x.ok);
+  app.innerHTML = `<h1>${p.title}: done</h1>
+    <div class="stat"><div><b>${p.pm?ts.score:ts.right}</b><span>${p.pm?'score':'correct'}</span></div><div><b>${ts.wrong}</b><span>wrong</span></div><div><b>${ts.skip + (p.n-ts.i)}</b><span>skipped/unseen</span></div></div>
+    ${miss.length?`<h2>Review your misses</h2>${miss.map(x=>`<div class="card small"><div>${x.it.type==='card'?md(x.it.card.q):qh(x.it.q)}</div><div class="a">Answer: <b>${md(answerText(x.it))}</b>${x.given?` · you: ${esc(x.given)}`:x.skipped?' · skipped':''}${x.it.why?`<br><span class="mut">${md(x.it.why)}</span>`:''}</div>${PRIMERS[conceptOf(x.it)]?`<div class="pslot"></div><button class="chip" data-pr="${conceptOf(x.it)}" style="margin-top:10px">Learn: ${esc(PRIMERS[conceptOf(x.it)].title)}</button>`:''}</div>`).join('')}`:'<p class="sub">No mistakes. Raise the bar: go faster next time.</p>'}
+    <button class="big" id="again">Go again</button><button class="big ghost" id="back">Back to tests</button>`;
+  $('#again').onclick = () => startTest(ts.key); $('#back').onclick = () => { ts=null; renderTests(); };
+  app.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => { b.previousElementSibling.innerHTML = primerHTML(PRIMERS[b.dataset.pr]); b.remove(); });
+}
+
+/* ---- Zetamac sprint ---- */
+function sprintQ(){ const op=rnd(0,3); if (op===0){const a=rnd(2,100),b=rnd(2,100); return {t:`${a} + ${b}`,a:a+b};} if (op===1){const a=rnd(2,100),b=rnd(2,100); return {t:`${a+b} − ${a}`,a:b};} if (op===2){const a=rnd(2,12),b=rnd(2,100); return Math.random()<.5?{t:`${a} × ${b}`,a:a*b}:{t:`${b} × ${a}`,a:a*b};} const a=rnd(2,12),b=rnd(2,100); return {t:`${a*b} ÷ ${a}`,a:b}; }
+function startSprint(){ ts={kind:'sprint', score:0, end:Date.now()+settings.sprintSecs*1000, q:sprintQ(), over:false, val:''}; renderSprint(); }
+function renderSprint(){
+  if (ts.over){ const h=store.get('sprints',[]), best=h.reduce((m,s)=>Math.max(m,s.score),0); kp=null;
+    app.innerHTML = `<h1>Sprint over</h1><div class="card" style="text-align:center"><div class="mut">Score</div><div class="sprint-q">${ts.score}</div><div class="mut small">Best ${best} · last 5: ${h.slice(-5).map(s=>s.score).join(', ')}</div><button class="big" id="again">Go again</button><button class="big ghost" id="back">Back</button></div>`;
+    $('#again').onclick=startSprint; $('#back').onclick=()=>{ts=null; renderTests();}; return; }
+  app.innerHTML = `<div class="row"><h1 class="grow">Sprint</h1><span class="timer" id="tm"></span></div><p class="sub">Score <b id="sc">${ts.score}</b> · answers submit automatically <button class="chip" id="quit" style="float:right">Quit</button></p>
+    <div class="card"><div class="sprint-q" id="sq">${ts.q.t}</div><div class="disp" id="disp"></div>${keypadHTML('num')}</div>`;
+  const disp=$('#disp');
+  bindKeypad(app, {get:()=>ts.val, set:v=>{ ts.val=v.replace(/[^0-9]/g,''); disp.textContent=ts.val; if (ts.val!=='' && +ts.val===ts.q.a){ ts.score++; ts.q=sprintQ(); ts.val=''; $('#sq').textContent=ts.q.t; $('#sc').textContent=ts.score; disp.textContent=''; } }, submit:()=>{ ts.val=''; disp.textContent=''; }});
+  $('#quit').onclick = () => { clearInterval(ts.tick); ts=null; kp=null; renderTests(); };
+  const upd = () => { if (!ts || ts.kind!=='sprint' || ts.over) return; const left=Math.max(0,Math.ceil((ts.end-Date.now())/1000)); const tm=$('#tm'); if (tm) tm.textContent=left+'s';
+    if (left<=0){ clearInterval(ts.tick); ts.over=true; const h=store.get('sprints',[]); h.push({d:today(), score:ts.score, secs:settings.sprintSecs}); store.set('sprints',h.slice(-300)); markActive(); renderSprint(); } };
+  clearInterval(ts.tick); ts.tick=setInterval(upd,200); upd();
+}
+
+/* ---- market-making game ---- */
+const CARDNAME = v => ({1:'A',11:'J',12:'Q',13:'K'})[v] || String(v);
+const MAXSPREAD = [10,8,6,4];
+function startMM(){
+  const deck=shuffle([...Array(52)].map((_,i)=>i%13+1)); const hand=deck.slice(0,5);
+  ts={kind:'mm', hand, sum:hand.reduce((a,b)=>a+b,0), round:0, pos:0, cash:0, hist:[], field:'bid', bid:'', ask:'', over:false, msg:''}; renderMM();
+}
+const mmFair = (hand, r) => { const s=hand.slice(0,r).reduce((a,b)=>a+b,0); return s + (5-r)*(364-s)/(52-r); };
+function renderMM(){
+  const g=ts, r=g.round;
+  if (g.over){ kp=null;
+    const pnl=g.cash+g.pos*g.sum; const err=g.hist.reduce((a,h)=>a+Math.abs(h.mid-h.fair),0)/g.hist.length;
+    app.innerHTML = `<h1>Settlement</h1><div class="card"><div class="cards">${g.hand.map(v=>`<span class="pc">${CARDNAME(v)}</span>`).join('')}</div>
+      <p>Sum = <b>${g.sum}</b>. Final position ${g.pos>0?'+':''}${g.pos}, cash ${g.cash}.</p>
+      <div class="stat"><div><b style="color:${pnl>=0?'var(--good)':'var(--bad)'}">${pnl>0?'+':''}${pnl}</b><span>P&L</span></div><div><b>${fmt(err,2)}</b><span>avg |mid − fair|</span></div><div><b>${g.hist.filter(h=>h.trade).length}</b><span>trades</span></div></div>
+      <div class="list">${g.hist.map((h,i)=>`<div class="li"><span>R${i+1}: ${h.bid} – ${h.ask}</span><span class="mut">fair ${fmt(h.fair,2)} · ${h.trade||'no trade'}</span></div>`).join('')}</div>
+      <p class="small mut">Judge yourself on quote error, not P&L: one game's P&L is mostly luck. A mid close to fair value, tightening as cards appear, is the skill.</p>
+      <button class="big" id="again">New game</button><button class="big ghost" id="back">Back</button></div>`;
+    $('#again').onclick=startMM; $('#back').onclick=()=>{ts=null; renderTests();}; return; }
+  const shown=g.hand.slice(0,r);
+  app.innerHTML = `<div class="row"><h1 class="grow">Make a market</h1><button class="chip" id="quit">Quit</button></div>
+    <p class="sub">Settlement = sum of 5 cards from one deck (A=1 … K=13). Round ${r+1}/4. Max spread ${MAXSPREAD[r]}. Each trade is 1 lot.</p>
+    <div class="card"><div class="cards">${g.hand.map((v,i)=>`<span class="pc ${i<r?'':'hid'}">${i<r?CARDNAME(v):'?'}</span>`).join('')}</div>
+      <p class="small">Position <b>${g.pos>0?'+':''}${g.pos}</b> · cash <b>${g.cash}</b>${g.msg?`<br><span class="mut">${g.msg}</span>`:''}</p>
+      <div class="row"><button class="qf ${g.field==='bid'?'on':''}" data-f="bid"><small>Bid</small>${g.bid||'—'}</button><button class="qf ${g.field==='ask'?'on':''}" data-f="ask"><small>Ask</small>${g.ask||'—'}</button></div>
+      ${keypadHTML('num')}</div>`;
+  app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { g.field=b.dataset.f; renderMM(); });
+  $('#quit').onclick = () => { ts=null; kp=null; renderTests(); };
+  bindKeypad(app, {get:()=>g[g.field], set:v=>{ g[g.field]=v.replace(/[^0-9.]/g,''); renderMM(); }, submit:()=>{
+    if (g.field==='bid' && g.bid){ g.field='ask'; return renderMM(); }
+    const b=parseFloat(g.bid), a=parseFloat(g.ask);
+    if (!isFinite(b)||!isFinite(a)) return toast('Enter a bid and an ask');
+    if (a<=b) return toast('Ask must be above bid');
+    if (a-b>MAXSPREAD[r]) return toast(`Spread too wide (max ${MAXSPREAD[r]})`);
+    const fair=mmFair(g.hand,r); let trade='';
+    if (Math.random()<0.5){ if (g.sum>a){ g.pos--; g.cash+=a; trade=`informed bought @ ${a}`; } else if (g.sum<b){ g.pos++; g.cash-=b; trade=`informed sold @ ${b}`; } }
+    else { if (Math.random()<.5){ g.pos--; g.cash+=a; trade=`noise bought @ ${a}`; } else { g.pos++; g.cash-=b; trade=`noise sold @ ${b}`; } }
+    g.hist.push({bid:b, ask:a, mid:(a+b)/2, fair, trade});
+    g.msg = `${trade || 'No trade'}. Fair value was ${fmt(fair,2)}, your mid ${fmt((a+b)/2,2)}.`;
+    g.round++; g.bid=''; g.ask=''; g.field='bid';
+    if (g.round>=4){ g.over=true; const h=store.get('mm',[]); h.push({d:today(), pnl:g.cash+g.pos*g.sum, err:g.hist.reduce((s,x)=>s+Math.abs(x.mid-x.fair),0)/4}); store.set('mm',h.slice(-200)); markActive(); }
+    renderMM();
+  }});
+}
+
+/* ================= REVIEW (mistakes + guides) ================= */
+let rvw = {view:'session', cat:'all', drill:null};
+function renderReview(){
+  if (rvw.drill) return renderDrill();
+  kp=null;
+  const views = {session:'This session', open:'To fix', fixed:'Fixed', guides:'Study guides'};
+  const base = rvw.view==='session' ? mistakes.filter(m=>m.sess===SESSION) : rvw.view==='open' ? mistakes.filter(m=>!m.fixed) : rvw.view==='fixed' ? mistakes.filter(m=>m.fixed) : [];
+  const byCat = {}; base.forEach(m => byCat[m.it.cat]=(byCat[m.it.cat]||0)+1);
+  const list = base.filter(m => rvw.cat==='all' || m.it.cat===rvw.cat).sort((a,b)=>b.t-a.t);
+  const openN = mistakes.filter(m=>!m.fixed).length;
+  app.innerHTML = `<h1>Review</h1><p class="sub">Every question you get wrong is saved here. Answer it right twice to mark it fixed.</p>
+    <div class="chips">${Object.entries(views).map(([k,t])=>`<button class="chip ${rvw.view===k?'on':''}" data-v="${k}">${t}${k==='open'?`<span class="n">${openN}</span>`:k==='session'?`<span class="n">${mistakes.filter(m=>m.sess===SESSION).length}</span>`:''}</button>`).join('')}</div>
+    <div id="rbody"></div>`;
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { rvw.view=b.dataset.v; rvw.cat='all'; renderReview(); });
+  const body = $('#rbody');
+  if (rvw.view==='guides'){
+    const cs = store.get('cstat',{});
+    body.innerHTML = `<p class="sub" style="margin-top:12px">Offline guides behind the "Learn" buttons.</p>` + Object.values(PRIMERS).map(p => `<div class="card guide"><button class="gh" data-g="${p.id}"><b>${esc(p.title)}</b><span class="mut">▾</span></button><div class="gb" id="g-${p.id}" style="display:none">${mdLong(p.body)}</div></div>`).join('');
+    body.querySelectorAll('.gh').forEach(b => b.onclick = () => { const el=$('#g-'+b.dataset.g); el.style.display = el.style.display==='none' ? 'block' : 'none'; });
+    return;
+  }
+  const topics = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  body.innerHTML = `${topics.length>1?`<div class="chips" style="margin-top:8px"><button class="chip ${rvw.cat==='all'?'on':''}" data-c="all">All<span class="n">${base.length}</span></button>${topics.map(([c,n])=>`<button class="chip ${rvw.cat===c?'on':''}" data-c="${c}">${esc(CATS[c]?CATS[c].t:c)}<span class="n">${n}</span></button>`).join('')}</div>`:''}
+    ${rvw.view!=='fixed' && list.some(m=>!m.fixed) ? `<button class="big" id="drill">Retry these (${list.filter(m=>!m.fixed).length})</button>` : ''}
+    ${topics.length && rvw.view!=='fixed' ? `<div class="card small"><b>What to work on:</b> ${topics.slice(0,3).map(([c,n])=>`${esc(CATS[c]?CATS[c].t:c)} (${n})`).join(', ')}. Turn on 🎯 Weak spots in Train to get more of these.</div>` : ''}
+    ${list.length ? list.slice(0,150).map(m => { const it=unsnap(m); if (!it) return ''; const pr=PRIMERS[conceptOf(it)];
+      return `<div class="card small mk"><span class="tag">${esc(CATS[it.cat]?CATS[it.cat].t:it.cat)}${m.n>1?` · missed ${m.n}×`:''}${m.fixed?' · fixed':''}</span>
+        <div class="q" style="font-size:15px">${it.type==='card'?md(it.card.q):qh(it.q)}</div>
+        <div class="a">${it.type==='card'?md(it.card.a):`Answer: <b>${md(answerText(it))}</b>${m.given?` · you: <span style="color:var(--bad)">${esc(m.given)}</span>`:''}${it.why?`<div class="why">${md(it.why)}</div>`:''}`}</div>
+        <div class="pslot"></div>
+        <div class="row" style="gap:8px;margin-top:10px">${pr?`<button class="chip" data-pr="${pr.id}">Learn</button>`:''}${!m.fixed?`<button class="chip" data-one="${m.key}">Retry</button>`:''}${it.gid?`<button class="chip" data-sim="${m.key}">Similar</button>`:''}${!m.fixed?`<button class="chip" data-fix="${m.key}">Got it</button>`:''}</div></div>`; }).join('')
+      : `<div class="card empty">${rvw.view==='session'?'No mistakes yet this session.':rvw.view==='open'?'Nothing to fix. 🎉':'Nothing fixed yet.'}</div>`}
+    ${rvw.view==='fixed' && list.length ? `<button class="big ghost" id="clr">Clear fixed</button>`:''}`;
+  body.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { rvw.cat=b.dataset.c; renderReview(); });
+  body.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => { b.closest('.card').querySelector('.pslot').innerHTML = primerHTML(PRIMERS[b.dataset.pr]); b.remove(); });
+  body.querySelectorAll('[data-fix]').forEach(b => b.onclick = () => { const m=mistakes.find(x=>x.key===b.dataset.fix); m.fixed=true; store.set('mistakes',mistakes); renderReview(); });
+  body.querySelectorAll('[data-one]').forEach(b => b.onclick = () => startDrill([mistakes.find(x=>x.key===b.dataset.one)], false));
+  body.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => startDrill([mistakes.find(x=>x.key===b.dataset.sim)], true));
+  const d=$('#drill'); if (d) d.onclick = () => startDrill(list.filter(m=>!m.fixed), false);
+  const cl=$('#clr'); if (cl) cl.onclick = () => { mistakes = mistakes.filter(m=>!m.fixed); store.set('mistakes',mistakes); renderReview(); };
+}
+function startDrill(ms, similar){
+  const q=[]; shuffle([...ms]).forEach(m => { const it=unsnap(m); if (!it) return; if (similar){ const g=GENS.find(x=>x.gid===it.gid); for (let i=0;i<5;i++){ const n=g&&makeGen(g); if (n) q.push({...n, simOf:m.key}); } } else { q.push({...it, retryKey:m.key}); const g=it.gid&&GENS.find(x=>x.gid===it.gid); if (g){ const n=makeGen(g); if (n) q.push({...n, simOf:m.key}); } } });
+  rvw.drill={q, i:0, ok:0}; renderDrill();
+}
+function renderDrill(){
+  const d=rvw.drill; if (d.i>=d.q.length){ kp=null; app.innerHTML = `<h1>Retry done</h1><div class="card" style="text-align:center"><div class="sprint-q">${d.ok}/${d.q.length}</div><p class="sub">Mistakes answered right twice move to Fixed.</p><button class="big" id="bk">Back to review</button></div>`; $('#bk').onclick=()=>{ rvw.drill=null; renderReview(); }; return; }
+  const it=d.q[d.i];
+  app.innerHTML = `<div class="row"><h1 class="grow">Retry</h1><span class="pill">${d.i+1}/${d.q.length}</span><button class="chip" id="stop" style="margin-left:8px">Stop</button></div><p class="sub">${it.retryKey?'The exact question you missed.':'A fresh one of the same kind.'}</p><div id="itm"></div>`;
+  $('#stop').onclick = () => { rvw.drill=null; renderReview(); };
+  renderItem($('#itm'), it, {done: res => {
+    if (it.retryKey){ const m=mistakes.find(x=>x.key===it.retryKey); if (m) retryResult(m, res.ok); }
+    else if (!res.ok) logMistake(it, res.given);
+    if (!res.card){ bumpCat(it.cat,res.ok); bumpGen(it.gid,res.ok); }
+    if (res.ok) d.ok++; d.i++; renderDrill();
+  }});
+}
+
+/* ================= CARDS (SRS review) ================= */
+let rv = {deck:store.get('lastDeck','all'), queue:null};
+function counts(deck){ const now=Date.now(); let due=0,nw=0; for (const c of CARDS){ if (deck!=='all'&&c.deck!==deck) continue; const s=srs[c.id]; if (!s) nw++; else if (s.d<=now) due++; } return {due, nw:Math.min(nw, Math.max(0,settings.newPerDay-newToday()))}; }
+function buildQueue(){ const now=Date.now(); const pool=CARDS.filter(c=>rv.deck==='all'||c.deck===rv.deck); const due=shuffle(pool.filter(c=>srs[c.id]&&srs[c.id].d<=now)); let fresh=pool.filter(c=>!srs[c.id]); if (rv.deck==='all') shuffle(fresh); fresh=fresh.slice(0,Math.max(0,settings.newPerDay-newToday())); rv.queue=due.concat(fresh); }
+function renderCards(){
+  if (!rv.queue) buildQueue();
+  const decks=[{id:'all',title:'All'}].concat(DECKS);
+  app.innerHTML = `<h1>Cards</h1><p class="sub">${CARDS.length} flashcards with spaced repetition. Due cards also appear in Train.</p>
+    <div class="chips">${decks.map(d=>{const k=counts(d.id); return `<button class="chip ${rv.deck===d.id?'on':''}" data-deck="${d.id}">${esc(d.title)}<span class="n">${k.due+k.nw}</span></button>`;}).join('')}</div><div id="itm"></div>`;
+  app.querySelectorAll('[data-deck]').forEach(b => b.onclick = () => { rv.deck=b.dataset.deck; store.set('lastDeck',rv.deck); rv.queue=null; renderCards(); });
+  const c=rv.queue[0];
+  if (!c){ kp=null; $('#itm').innerHTML = `<div class="card empty"><b style="color:var(--fg)">Done for now.</b><br>Nothing due here. Train never runs out.<button class="big" id="gotr">Go to Train</button></div>`; $('#gotr').onclick=()=>tab('train'); return; }
+  renderItem($('#itm'), {type:'card', card:c, cat:c.cat}, {done: res => { const x=rv.queue.shift(); if (srs[x.id] && srs[x.id].i===0) rv.queue.splice(Math.min(3,rv.queue.length),0,x); renderCards(); }});
+}
+
+/* ================= PROGRESS ================= */
+function streak(){ const set=new Set(store.get('days',[])); let n=0; const d=new Date(); if (!set.has(d.toISOString().slice(0,10))) d.setDate(d.getDate()-1); while (set.has(d.toISOString().slice(0,10))){ n++; d.setDate(d.getDate()-1); } return n; }
+function spark(vals, label){ if (!vals.length) return ''; const max=Math.max(1,...vals.map(Math.abs)); const w=300/vals.length; return `<div class="card"><svg viewBox="0 0 300 90" width="100%" height="90" role="img" aria-label="${label}">${vals.map((v,i)=>{const h=Math.max(2,70*Math.abs(v)/max); return `<rect x="${i*w+3}" y="${80-h}" width="${Math.max(2,w-6)}" height="${h}" rx="3" fill="${v<0?'#ff6b6b':'#7aa2ff'}"/>`+(vals.length<=12?`<text x="${i*w+w/2}" y="${76-h}" font-size="10" fill="#9aa1ae" text-anchor="middle">${fmt(v,1)}</text>`:'');}).join('')}<line x1="0" y1="80.5" x2="300" y2="80.5" stroke="#2a2f3a"/></svg></div>`; }
+function renderStats(){
+  kp=null; renderStatsInner(); app.insertAdjacentHTML('beforeend', '<div id="morebox"></div>'); renderMore($('#morebox'));
+}
+function renderStatsInner(){
+  const cs=store.get('cstat',{}), th=store.get('tests',{}), sp=store.get('sprints',[]), mm=store.get('mm',[]);
+  const total=Object.values(cs).reduce((a,c)=>a+c.n,0);
+  const seen=CARDS.filter(c=>srs[c.id]).length, due=CARDS.filter(c=>srs[c.id]&&srs[c.id].d<=Date.now()).length;
+  const accRows = Object.entries(CATS).filter(([k])=>cs[k]).sort((a,b)=>(cs[a[0]].ok/cs[a[0]].n)-(cs[b[0]].ok/cs[b[0]].n)).map(([k,v])=>{const c=cs[k]; const p=Math.round(100*c.ok/c.n); return `<div class="list"><div class="li"><span>${v.t}</span><span class="mut">${c.ok}/${c.n} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${p>=80?'var(--good)':p>=60?'var(--warn)':'var(--bad)'}"></i></div></div>`;}).join('');
+  app.innerHTML = `<h1>Progress</h1><p class="sub">Stored in this browser only. Back it up from More.</p>
+    <div class="stat"><div><b>${streak()}</b><span>day streak</span></div><div><b>${total}</b><span>questions answered</span></div><div><b>${due}</b><span>cards due</span></div></div>
+    <h2>Accuracy by topic <span class="mut small">(weakest first)</span></h2>${accRows||'<p class="sub">Answer some questions in Train or Tests.</p>'}
+    <h2>80 in 8</h2>${(th.oa80||[]).length?spark(th.oa80.slice(-20).map(x=>x.score),'80 in 8 scores'):'<p class="sub">No runs yet.</p>'}
+    <h2>Zetamac sprint</h2>${sp.length?spark(sp.slice(-20).map(x=>x.score),'Sprint scores')+`<p class="sub">Best ${Math.max(...sp.map(s=>s.score))} · avg last 10 ${fmt(sp.slice(-10).reduce((a,s)=>a+s.score,0)/Math.min(10,sp.length),1)}</p>`:'<p class="sub">No runs yet.</p>'}
+    <h2>Other tests</h2><div class="list">${['seq','prob','fpga'].map(k=>{const h=th[k]||[]; return `<div class="li"><span>${PRESETS[k].title}</span><span class="mut">${h.length?`best ${Math.max(...h.map(x=>x.score))}/${PRESETS[k].n} · last ${h[h.length-1].score} · ${h.length} runs`:'—'}</span></div>`;}).join('')}</div>
+    <h2>Market making</h2>${mm.length?spark(mm.slice(-20).map(x=>+x.err.toFixed(2)),'Average quote error per game')+`<p class="sub">Bars: average distance of your mid from fair value per game (lower is better). ${mm.length} games, total P&L ${mm.reduce((a,g)=>a+g.pnl,0)}.</p>`:'<p class="sub">No games yet.</p>'}
+    <h2>Cards</h2><p class="sub">${seen}/${CARDS.length} seen · ${CARDS.filter(c=>srs[c.id]&&srs[c.id].i>=21).length} mature</p>`;
+}
+
+/* ================= MORE ================= */
+function renderMore(host){
+  host.innerHTML = `<h1 style="margin-top:28px">Settings & backup</h1>
+    <h2>Add your own card</h2><div class="card"><label>Front (supports <code>\`code\`</code>, <code>**bold**</code>, <code>\`\`\`</code> blocks)</label><textarea id="cq"></textarea><label>Back</label><textarea id="ca"></textarea><button class="big" id="addc">Add to "My cards"</button></div>
+    <h2>Settings</h2><div class="card"><label>New cards per day (Cards tab)</label><input id="snew" type="number" inputmode="numeric" min="0" max="500" value="${settings.newPerDay}"><label>Zetamac sprint length</label><select id="ssec">${[60,120,180].map(s=>`<option ${s===settings.sprintSecs?'selected':''}>${s}</option>`).join('')}</select><label style="display:flex;gap:10px;align-items:center;color:var(--fg);font-size:15px"><input type="checkbox" id="sauto" style="width:auto" ${settings.autoNext?'checked':''}> Auto-advance after a correct answer</label><button class="big ghost" id="saves">Save</button></div>
+    <h2>Backup</h2><div class="card"><p class="small mut" style="margin-top:0">Progress lives in this browser and can be cleared. Copy a backup now and then.</p><button class="big ghost" id="exp">Copy backup</button><label>Restore</label><textarea id="imp" placeholder="Paste backup here"></textarea><button class="big ghost" id="doimp">Restore</button></div>
+    <h2>Install</h2><div class="card small">In Chrome on Android: <b>⋮ → Install app</b> (or Add to Home screen). Once installed it works offline. ${navigator.serviceWorker && navigator.serviceWorker.controller ? '<b style="color:var(--good)">Offline mode is active.</b>' : 'Offline mode not active on this page.'}</div>
+    <p class="sub" style="margin-top:14px">${CARDS.length} cards · ${MCB.length} multiple-choice · ${GENS.length} problem generators.</p>`;
+  $('#addc').onclick = () => { const q=$('#cq').value.trim(), a=$('#ca').value.trim(); if (!q||!a) return toast('Fill in both sides'); const custom=store.get('custom',[]); const c={id:hash('mine'+q+Date.now()), q, a}; custom.push(c); store.set('custom',custom); if (!DECKS.find(d=>d.id==='mine')) DECKS.push({id:'mine',title:'My cards',cat:'mine'}); CARDS.push({...c,deck:'mine',cat:'mine'}); rv.queue=null; $('#cq').value=''; $('#ca').value=''; toast('Card added'); };
+  $('#saves').onclick = () => { settings.newPerDay=Math.max(0,+$('#snew').value||0); settings.sprintSecs=+$('#ssec').value; settings.autoNext=$('#sauto').checked; store.set('settings',settings); rv.queue=null; toast('Saved'); };
+  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','cstat','gstat','mistakes','revlog','days','settings','newday']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
+  $('#doimp').onclick = () => { try{ const o=JSON.parse($('#imp').value); if (!o.edge) throw 0; Object.entries(o.data).forEach(([k,v])=>{ if (v!==null) store.set(k,v); }); toast('Restored, reloading'); setTimeout(()=>location.reload(),600); }catch(e){ toast("That doesn't look like a backup"); } };
+}
+
+/* ================= tabs ================= */
+let cur='train';
+function tab(t){
+  if (ts && t!=='tests'){ if (ts.tick) clearInterval(ts.tick); if (ts.kind==='test' && !ts.over){ /* leaving abandons the test */ clearInterval(window._tt); } ts=null; }
+  cur=t; kp=null;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  ({train:renderTrain, tests:renderTests, review:renderReview, cards:renderCards, stats:renderStats})[t]();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; tab(b.dataset.tab); });
+if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost') && !location.hostname.endsWith('claude.ai') && window.top===window){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS};
+tab('train');
+})();
+
+</script>
+</body>
+</html>
