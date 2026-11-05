@@ -103,15 +103,48 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 6px}
 .deep .dh{font-size:16px;margin:0 0 6px}
 .mk .a{margin-top:10px;padding-top:10px}
 a{color:var(--acc)}
+
+/* ---- learn ---- */
+.tracks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.track{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left}
+.track b{display:block;font-size:15px} .track span{font-size:12px;color:var(--mut)} .track.on{border-color:var(--acc);background:rgba(122,162,255,.08)}
+.lessons{display:flex;flex-direction:column;gap:6px}
+.lrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:left;font-size:15px}
+.lchk{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:12px;flex:0 0 auto;color:#0b1020}
+.lrow.done .lchk{background:var(--good);border-color:var(--good)}
+.lbody{font-size:16px;line-height:1.6} .lbody p{margin:10px 0} .lbody .li2{margin:4px 0 4px 6px}
+.task{font-size:15px;border-color:rgba(122,162,255,.5)} .task p{margin:6px 0}
+.ed{display:flex;background:#0b0d11;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
+.ed .gut{margin:0;padding:10px 6px 10px 8px;text-align:right;color:#4b5263;font:13px/1.5 var(--mono);user-select:none;background:#0d1015;border:0;border-radius:0;min-width:30px;overflow:hidden}
+.ed .gut b{color:var(--bad)}
+.ed textarea{flex:1;border:0;border-radius:0;background:transparent;font:13px/1.5 var(--mono);padding:10px;resize:none;white-space:pre;overflow-x:auto;overflow-y:hidden;tab-size:2;min-height:120px;color:#e7e9ee}
+.ed textarea:focus{outline:none}
+.syms{display:flex;gap:5px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.syms::-webkit-scrollbar{display:none}
+.syms button{flex:0 0 auto;min-width:36px;padding:8px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font:600 15px var(--mono)}
+.out .fb{margin-top:12px}
+.msg{font:13px/1.45 var(--mono);margin-top:6px;white-space:pre-wrap} .msg a{color:inherit;text-decoration:underline}
+.warns{margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(242,184,75,.08);border:1px solid rgba(242,184,75,.35)}
+.msg.warn{color:#f2cf8a} .msg.err{color:#ffb4b4}
+.wave{overflow-x:auto;background:#0b0d11;border:1px solid var(--line);border-radius:10px;margin-top:10px;padding:6px 0}
+.wave svg{display:block}
+.mis{border-color:rgba(255,107,107,.45)}
+.hint{margin-top:10px;padding:12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:15px}
+.win{margin-top:12px;padding:14px;border-radius:12px;background:rgba(78,201,160,.18);border:1px solid var(--good);font-weight:700;text-align:center;font-size:17px}
+details.lib{margin-top:6px} details.lib summary{cursor:pointer;color:var(--acc);font-size:14px;padding:6px 0}
+.sim .ctrls{display:grid;gap:8px;margin-top:10px} .sim label{display:block;font-size:13px;color:var(--mut);margin:0}
+.sim label b{color:var(--fg);margin-left:6px} .sim input[type=range]{padding:0;margin-top:4px;background:none;border:0;accent-color:var(--acc)}
+.sim select{margin-top:4px;padding:8px}
+.simplot svg{margin-top:10px;background:#0b0d11;border-radius:8px}
 </style>
 </head>
 <body>
 <main id="app"></main>
 <nav><div>
-  <button data-tab="train" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Train</button>
+  <button data-tab="learn" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c0 1.5 2.7 3 6 3s6-1.5 6-3V9"/></svg>Learn</button>
+  <button data-tab="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Practice</button>
   <button data-tab="tests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Tests</button>
   <button data-tab="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Review</button>
-  <button data-tab="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/></svg>Cards</button>
   <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
 </div></nav>
 <div class="toast" id="toast"></div>
@@ -1856,6 +1889,2837 @@ On x86-64 Linux each member is aligned to its own size (char 1, short 2, int 4, 
 - **Hot-path rules:** no allocation, no locks, no syscalls; predictable branches; contiguous data.
 
 </script>
+<script type="text/plain" id="course_v">
+@chapter basics | Basics
+@lesson wire | Your first module
+@body
+Verilog doesn't describe steps; it describes **hardware**: wires and gates that all run at the same time.
+
+A design lives inside a `module`. The port list says which signals come in and go out:
+
+```
+module top_module(input in, output out);
+  assign out = in;
+endmodule
+```
+
+`assign` creates a **continuous connection**: `out` is permanently wired to `in`. Whenever `in` changes, `out` changes with it. There's no "running" an assign; it's a piece of wire.
+
+Every exercise in this course uses a module called `top_module`. The checker drives your inputs, runs a reference design next to yours, and compares the outputs on every test vector. Mismatches show up in red on the waveform.
+@example
+module top_module(input in, output out);
+  assign out = in;
+endmodule
+@task
+Build a module with one input `in` and one output `out` that behaves like a wire.
+@starter
+module top_module(input in, output out);
+  // connect out to in
+
+endmodule
+@solution
+module top_module(input in, output out);
+  assign out = in;
+endmodule
+@spec {"type":"comb"}
+@hint Use one `assign` statement: `assign out = in;`
+@end
+
+@lesson multiports | Several inputs and outputs
+@body
+Ports are separated by commas. You can group ports of the same direction: `input a, b, c` declares three 1-bit inputs.
+
+The order of `assign` statements doesn't matter: they all exist at the same time, like wires on a board. Two assigns can read the same input (fan-out), but **one output can only have one driver**. Assigning the same wire twice is an error.
+@example
+module top_module(input a, b, output x, y);
+  assign y = b;   // order doesn't matter
+  assign x = a;
+endmodule
+@task
+Inputs `a`, `b`, `c`. Outputs `w`, `x`, `y`, `z`. Wire them like this: `a → w`, `b → x`, `b → y`, `c → z`.
+@starter
+module top_module(input a, b, c, output w, x, y, z);
+
+endmodule
+@solution
+module top_module(input a, b, c, output w, x, y, z);
+  assign w = a;
+  assign x = b;
+  assign y = b;
+  assign z = c;
+endmodule
+@spec {"type":"comb"}
+@hint You need four assign statements. `b` drives two outputs.
+@end
+
+@lesson gates | Logic gates
+@body
+Bitwise operators build gates:
+
+- `~a` NOT
+- `a & b` AND, `a | b` OR, `a ^ b` XOR
+- `~(a & b)` NAND, `~(a | b)` NOR, `~(a ^ b)` XNOR (also written `a ~^ b`)
+
+There's also a **logical** NOT, `!a`. For a 1-bit signal `~a` and `!a` are the same, but for vectors they differ: `~4'b0101 = 4'b1010` while `!4'b0101 = 0` (the vector is non-zero, i.e. "true"). Use `~` for gates.
+
+Try changing the example: make `y` a NAND and run it again to see the waveform change.
+@example
+module top_module(input a, b, output y);
+  assign y = a & b;
+endmodule
+@task
+Inputs `a`, `b`. Produce all of these outputs: `out_and`, `out_or`, `out_xor`, `out_nand`, `out_nor`, `out_xnor`, and `out_anotb` (a AND NOT b).
+@starter
+module top_module(
+  input a, b,
+  output out_and, out_or, out_xor,
+  output out_nand, out_nor, out_xnor,
+  output out_anotb
+);
+
+endmodule
+@solution
+module top_module(
+  input a, b,
+  output out_and, out_or, out_xor,
+  output out_nand, out_nor, out_xnor,
+  output out_anotb
+);
+  assign out_and   = a & b;
+  assign out_or    = a | b;
+  assign out_xor   = a ^ b;
+  assign out_nand  = ~(a & b);
+  assign out_nor   = ~(a | b);
+  assign out_xnor  = ~(a ^ b);
+  assign out_anotb = a & ~b;
+endmodule
+@spec {"type":"comb"}
+@hint NAND is `~(a & b)`: the brackets matter, because `~a & b` is a different gate.
+@end
+
+@lesson wires | Internal wires
+@body
+Not every signal is a port. Declare internal connections with `wire`:
+
+```
+wire t;
+assign t = a & b;
+assign y = t | c;
+```
+
+Internal wires let you name intermediate results, exactly as you'd label nets on a schematic. A `wire` declared without a range is 1 bit.
+@example
+module top_module(input a, b, c, output y);
+  wire t;
+  assign t = a & b;
+  assign y = t | c;
+endmodule
+@task
+Implement `out = (a & b) | (c & d)` and `out_n = ~out`. Use two internal wires for the two AND gates.
+@starter
+module top_module(input a, b, c, d, output out, out_n);
+
+endmodule
+@solution
+module top_module(input a, b, c, d, output out, out_n);
+  wire ab, cd;
+  assign ab = a & b;
+  assign cd = c & d;
+  assign out = ab | cd;
+  assign out_n = ~out;
+endmodule
+@spec {"type":"comb"}
+@hint Declare `wire ab, cd;` then assign each, then combine them.
+@end
+
+@chapter vectors | Vectors
+@lesson vec | Vectors and part-selects
+@body
+A **vector** groups bits: `input [7:0] a` is 8 bits, `a[7]` is the MSB, `a[0]` the LSB. The **left index of the declaration is the MSB**.
+
+- `a[3]` one bit
+- `a[7:4]` the upper nibble (a part-select)
+
+A part-select must go in the **same direction** as the declaration: for `[7:0]` write `a[7:4]`, never `a[4:7]`. This is one of the most common beginner mistakes; the simulator will stop you.
+
+Width matters: assigning an 8-bit value to a 4-bit wire silently drops the top bits. Watch the warnings panel for width mismatches.
+@example
+module top_module(input [7:0] a, output [3:0] hi, lo, output msb);
+  assign hi  = a[7:4];
+  assign lo  = a[3:0];
+  assign msb = a[7];
+endmodule
+@task
+Split a 16-bit input `in` into its upper byte `out_hi` and lower byte `out_lo`.
+@starter
+module top_module(input [15:0] in, output [7:0] out_hi, output [7:0] out_lo);
+
+endmodule
+@solution
+module top_module(input [15:0] in, output [7:0] out_hi, output [7:0] out_lo);
+  assign out_hi = in[15:8];
+  assign out_lo = in[7:0];
+endmodule
+@spec {"type":"comb"}
+@hint `in[15:8]` is the upper byte.
+@end
+
+@lesson byteswap | Byte swap (endianness)
+@body
+Network data (Ethernet, ITCH) is **big-endian**: the most significant byte comes first. x86 CPUs are **little-endian**. Hardware often needs to swap byte order, which costs zero logic: it's just wiring.
+
+Assign each output byte from the matching input byte:
+
+```
+assign out[31:24] = in[7:0];
+```
+
+You can also build the whole result with a **concatenation**, `{ … }`, where the first item becomes the most significant bits.
+@example
+module top_module(input [15:0] in, output [15:0] out);
+  assign out = {in[7:0], in[15:8]};   // swap two bytes
+endmodule
+@task
+Reverse the byte order of a 32-bit word: byte 0 ↔ byte 3, byte 1 ↔ byte 2.
+@starter
+module top_module(input [31:0] in, output [31:0] out);
+
+endmodule
+@solution
+module top_module(input [31:0] in, output [31:0] out);
+  assign out = {in[7:0], in[15:8], in[23:16], in[31:24]};
+endmodule
+@wrong
+module top_module(input [31:0] in, output [31:0] out);
+  assign out = {in[31:24], in[23:16], in[15:8], in[7:0]};
+endmodule
+@spec {"type":"comb"}
+@hint Byte k is `in[8k+7 : 8k]`. Concatenate them lowest byte first.
+@hint `assign out = {in[7:0], in[15:8], in[23:16], in[31:24]};`
+@end
+
+@lesson bitwise | Bitwise vs logical operators
+@body
+- **Bitwise** `|`, `&`, `^`, `~` work bit by bit and keep the width: `3'b101 | 3'b010 = 3'b111`.
+- **Logical** `||`, `&&`, `!` treat a whole vector as true (non-zero) or false, and give **1 bit**: `3'b100 || 3'b000 = 1`.
+
+Mixing them up is a classic bug: `a | b` assigned to a 1-bit output keeps only bit 0.
+@example
+module top_module(input [2:0] a, b, output [2:0] bw, output lg);
+  assign bw = a | b;    // 3 bits
+  assign lg = a || b;   // 1 bit
+endmodule
+@task
+Inputs `a[2:0]`, `b[2:0]`. Output the bitwise OR as `out_or_bitwise[2:0]`, the logical OR as `out_or_logical`, and `out_not[5:0]` with the inverse of `b` in the upper half and the inverse of `a` in the lower half.
+@starter
+module top_module(
+  input [2:0] a, b,
+  output [2:0] out_or_bitwise,
+  output out_or_logical,
+  output [5:0] out_not
+);
+
+endmodule
+@solution
+module top_module(
+  input [2:0] a, b,
+  output [2:0] out_or_bitwise,
+  output out_or_logical,
+  output [5:0] out_not
+);
+  assign out_or_bitwise = a | b;
+  assign out_or_logical = a || b;
+  assign out_not = {~b, ~a};
+endmodule
+@wrong
+module top_module(
+  input [2:0] a, b,
+  output [2:0] out_or_bitwise,
+  output out_or_logical,
+  output [5:0] out_not
+);
+  assign out_or_bitwise = a | b;
+  assign out_or_logical = a | b;
+  assign out_not = {~a, ~b};
+endmodule
+@spec {"type":"comb"}
+@hint `{~b, ~a}`: the first item in a concatenation is the upper bits.
+@end
+
+@lesson reduce | Reduction operators
+@body
+A unary `&`, `|` or `^` in front of a vector combines **all its bits** into one:
+
+- `&v` 1 only if every bit is 1
+- `|v` 1 if any bit is 1
+- `^v` XOR of all bits = **parity** (1 if an odd number of ones)
+
+Parity is used for error detection: append `^data` to a word and the receiver can spot any single flipped bit. They also scale: `^data` works for any width without changing the code.
+@example
+module top_module(input [7:0] d, output all1, any1, odd);
+  assign all1 = &d;
+  assign any1 = |d;
+  assign odd  = ^d;
+endmodule
+@task
+For a 4-bit input `in`, output `out_and` (AND of all bits), `out_or` (OR of all bits) and `out_xor` (XOR of all bits), using reduction operators.
+@starter
+module top_module(input [3:0] in, output out_and, out_or, out_xor);
+
+endmodule
+@solution
+module top_module(input [3:0] in, output out_and, out_or, out_xor);
+  assign out_and = &in;
+  assign out_or  = |in;
+  assign out_xor = ^in;
+endmodule
+@spec {"type":"comb"}
+@hint `assign out_and = &in;`
+@end
+
+@lesson concat | Concatenation
+@body
+`{a, b, c}` joins vectors; the **first** item becomes the most significant bits, and widths add up. Concatenations work on the left of an assign too, which splits a value:
+
+```
+assign {cout, sum} = a + b;   // 9-bit result split into carry + 8-bit sum
+```
+
+Every item needs a known width: write `2'b11`, not `3` (an unsized number is 32 bits).
+@example
+module top_module(input [3:0] a, b, output [7:0] y, output [1:0] top, output [5:0] rest);
+  assign y = {a, b};
+  assign {top, rest} = y;
+endmodule
+@task
+Inputs `a`–`f` are 5 bits each (30 bits total). Concatenate them with two 1 bits (`2'b11`) at the end to make 32 bits, then split the result into four 8-bit outputs `w` (MSBs), `x`, `y`, `z` (LSBs).
+@starter
+module top_module(
+  input [4:0] a, b, c, d, e, f,
+  output [7:0] w, x, y, z
+);
+
+endmodule
+@solution
+module top_module(
+  input [4:0] a, b, c, d, e, f,
+  output [7:0] w, x, y, z
+);
+  assign {w, x, y, z} = {a, b, c, d, e, f, 2'b11};
+endmodule
+@spec {"type":"comb","n":150}
+@hint Put a concatenation on both sides: `assign {w, x, y, z} = {…};`
+@end
+
+@lesson reverse | Reversing bit order
+@body
+To reverse a vector you can't use `in[0:7]` on a `[7:0]` vector. Reversed part-selects aren't allowed. Instead:
+
+- write a **concatenation** of single bits: `{in[0], in[1], …}`, or
+- use a **for loop** inside a combinational always block. The loop is unrolled into plain wiring at synthesis; it doesn't run in time.
+
+```
+integer i;
+always @(*)
+  for (i = 0; i < 8; i = i + 1)
+    out[i] = in[7 - i];
+```
+
+(Outputs assigned in an `always` block must be declared `reg`. More on that in the Procedures chapter.)
+@example
+module top_module(input [3:0] in, output [3:0] out);
+  assign out = {in[0], in[1], in[2], in[3]};
+endmodule
+@task
+Reverse the bit order of an 8-bit input: `out[0] = in[7]`, `out[7] = in[0]`.
+@starter
+module top_module(input [7:0] in, output [7:0] out);
+
+endmodule
+@solution
+module top_module(input [7:0] in, output [7:0] out);
+  assign out = {in[0], in[1], in[2], in[3], in[4], in[5], in[6], in[7]};
+endmodule
+@wrong
+module top_module(input [7:0] in, output [7:0] out);
+  assign out = ~in;
+endmodule
+@spec {"type":"comb"}
+@hint `~in` inverts bits; it doesn't reverse them. You need to move bits.
+@end
+
+@lesson replicate | Replication and sign extension
+@body
+`{n{x}}` repeats `x` n times: `{3{2'b01}} = 6'b010101`. Inside a larger concatenation the replication needs its **own** braces:
+
+```
+{{24{in[7]}}, in}    // correct: note the double braces
+{24{in[7]}, in}      // syntax error
+```
+
+**Sign extension**: to widen a two's-complement number without changing its value, copy the sign bit (the MSB) into the new upper bits. 8'hF6 (−10) becomes 32'hFFFFFFF6, still −10.
+@example
+module top_module(input [3:0] in, output [7:0] zext, sext);
+  assign zext = {4'b0000, in};
+  assign sext = {{4{in[3]}}, in};
+endmodule
+@task
+Sign-extend an 8-bit number `in` to 32 bits.
+@starter
+module top_module(input [7:0] in, output [31:0] out);
+
+endmodule
+@solution
+module top_module(input [7:0] in, output [31:0] out);
+  assign out = {{24{in[7]}}, in};
+endmodule
+@wrong
+module top_module(input [7:0] in, output [31:0] out);
+  assign out = {{24{in[0]}}, in};
+endmodule
+@spec {"type":"comb"}
+@hint The sign bit of an 8-bit number is `in[7]`, not `in[0]`.
+@end
+
+@chapter modules | Modules and hierarchy
+@lesson inst_name | Instantiating a module (by name)
+@body
+Big designs are built from smaller modules. To use one, **instantiate** it: give the module type, an instance name, and its connections.
+
+```
+mod_a u1 (.in1(a), .in2(b), .out(y));
+```
+
+`.in1(a)` means "connect my signal `a` to its port `in1`". Named connections can go in any order and survive changes to the submodule's port order. Prefer them.
+
+The submodule's code lives in its own `module … endmodule` block. **Never** put one module inside another, and don't redefine a module that already exists (that's a "declared twice" error).
+@example
+module and2(input x, y, output z);
+  assign z = x & y;
+endmodule
+
+module top_module(input a, b, c, output y);
+  wire t;
+  and2 g1 (.x(a), .y(b), .z(t));
+  and2 g2 (.x(t), .y(c), .z(y));
+endmodule
+@task
+`mod_a` is provided (`input in1, input in2, output out`). Instantiate it inside `top_module`, connecting `a → in1`, `b → in2`, `out → out`. Use named connections.
+@lib
+module mod_a(input in1, input in2, output out);
+  assign out = in1 ^ ~in2;
+endmodule
+@starter
+module top_module(input a, input b, output out);
+
+endmodule
+@solution
+module top_module(input a, input b, output out);
+  mod_a inst1 (.in1(a), .in2(b), .out(out));
+endmodule
+@spec {"type":"comb"}
+@hint `mod_a inst1 (.in1(a), .in2(b), .out(out));`. Count your brackets.
+@end
+
+@lesson inst_pos | Connecting by position
+@body
+Positional connections follow the submodule's port **order**:
+
+```
+mod_b u1 (o1, o2, a, b);   // matches mod_b(output, output, input, input)
+```
+
+It's shorter, but if someone reorders the ports of `mod_b`, every positional instance silently mis-wires. In real code, use named connections; you still need to read positional style in old code and in exams.
+@example
+module xor2(output z, input x, input y);
+  assign z = x ^ y;
+endmodule
+
+module top_module(input a, b, output y);
+  xor2 g (y, a, b);
+endmodule
+@task
+`mod_b` is provided with ports in this order: `(output out1, output out2, input in1, input in2, input in3, input in4)`. Connect `out1, out2, a, b, c, d` **by position**.
+@lib
+module mod_b(output out1, output out2, input in1, input in2, input in3, input in4);
+  assign out1 = (in1 & in2) | in3;
+  assign out2 = in4 ^ in1;
+endmodule
+@starter
+module top_module(input a, b, c, d, output out1, out2);
+
+endmodule
+@solution
+module top_module(input a, b, c, d, output out1, out2);
+  mod_b u (out1, out2, a, b, c, d);
+endmodule
+@spec {"type":"comb"}
+@hint The order is outputs first, then the four inputs.
+@end
+
+@lesson inst_chain | A chain of instances
+@body
+Instances connect through internal wires. To chain three flip-flops, declare the two wires between them:
+
+```
+wire q1, q2;
+my_dff s1 (.clk(clk), .d(d),  .q(q1));
+my_dff s2 (.clk(clk), .d(q1), .q(q2));
+```
+
+An instance isn't an expression: you can't write `assign x = my_dff(...)`. Its **output port connection** is what drives the wire.
+@example
+module inv(input a, output y);
+  assign y = ~a;
+endmodule
+
+module top_module(input in, output out);
+  wire t;
+  inv i1 (.a(in), .y(t));
+  inv i2 (.a(t),  .y(out));
+endmodule
+@task
+`my_dff` is provided (`input clk, input d, output q`, a D flip-flop). Chain three of them so that `d` passes through all three to `q`: a 3-cycle delay line.
+@lib
+module my_dff(input clk, input d, output reg q);
+  always @(posedge clk) q <= d;
+endmodule
+@starter
+module top_module(input clk, input d, output q);
+
+endmodule
+@solution
+module top_module(input clk, input d, output q);
+  wire a, b;
+  my_dff s1 (.clk(clk), .d(d), .q(a));
+  my_dff s2 (.clk(clk), .d(a), .q(b));
+  my_dff s3 (.clk(clk), .d(b), .q(q));
+endmodule
+@wrong
+module top_module(input clk, input d, output q);
+  wire a;
+  my_dff s1 (.clk(clk), .d(d), .q(a));
+  my_dff s3 (.clk(clk), .d(a), .q(q));
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":60}
+@hint Only the last instance drives the top-level `q`; the first two drive internal wires.
+@end
+
+@lesson adder32 | Two levels of hierarchy: a 32-bit adder
+@body
+A **full adder** adds three bits:
+
+- `sum  = a ^ b ^ cin`
+- `cout = (a & b) | (a & cin) | (b & cin)` (the majority function)
+
+The provided `add16` contains **16 instances of `add1`**, a module that you write. Your `top_module` instantiates two `add16`s: the low half's carry-out feeds the high half's carry-in (a ripple between the halves). Carry-in of the low half is `1'b0`; the final carry-out is ignored.
+
+You write two modules here, `add1` and `top_module`, one after the other (not nested).
+@task
+Write `module add1(input a, input b, input cin, output sum, output cout);` and a `top_module` that adds two 32-bit numbers using two `add16` instances: `add16(input [15:0] a, input [15:0] b, input cin, output [15:0] sum, output cout)`.
+@lib
+module add16(input [15:0] a, input [15:0] b, input cin, output [15:0] sum, output cout);
+  wire [16:0] c;
+  assign c[0] = cin;
+  genvar i;
+  generate for (i = 0; i < 16; i = i + 1) begin : fa
+    add1 u (.a(a[i]), .b(b[i]), .cin(c[i]), .sum(sum[i]), .cout(c[i+1]));
+  end endgenerate
+  assign cout = c[16];
+endmodule
+@starter
+module top_module(input [31:0] a, input [31:0] b, output [31:0] sum);
+
+endmodule
+
+module add1(input a, input b, input cin, output sum, output cout);
+  // full adder here
+endmodule
+@solution
+module top_module(input [31:0] a, input [31:0] b, output [31:0] sum);
+  wire c;
+  add16 lo (.a(a[15:0]),  .b(b[15:0]),  .cin(1'b0), .sum(sum[15:0]),  .cout(c));
+  add16 hi (.a(a[31:16]), .b(b[31:16]), .cin(c),    .sum(sum[31:16]), .cout());
+endmodule
+
+module add1(input a, input b, input cin, output sum, output cout);
+  assign sum  = a ^ b ^ cin;
+  assign cout = (a & b) | (a & cin) | (b & cin);
+endmodule
+@wrong
+module top_module(input [31:0] a, input [31:0] b, output [31:0] sum);
+  add16 lo (.a(a[15:0]),  .b(b[15:0]),  .cin(1'b0), .sum(sum[15:0]),  .cout());
+  add16 hi (.a(a[31:16]), .b(b[31:16]), .cin(1'b0), .sum(sum[31:16]), .cout());
+endmodule
+module add1(input a, input b, input cin, output sum, output cout);
+  assign sum  = a ^ b ^ cin;
+  assign cout = (a & b) | (a & cin) | (b & cin);
+endmodule
+@spec {"type":"comb","n":200}
+@hint Declare `wire c;` for the carry between the two halves.
+@hint `*` is multiplication, not XOR: the sum is `a ^ b ^ cin`.
+@end
+
+@chapter procedures | Procedural blocks (combinational)
+@lesson always_comb | always @(*)
+@body
+For more complex logic you can write **procedural** code:
+
+```
+reg y;
+always @(*) begin
+  y = a & b;
+end
+```
+
+`always @(*)` re-evaluates whenever any input it reads changes, so it describes **combinational** logic, same as `assign`.
+
+Two rules:
+- Anything assigned inside an `always` block must be declared `reg` (or `logic`). For outputs: `output reg y`. Despite the name, `reg` does **not** mean a register here.
+- In combinational blocks use **blocking** `=`.
+@example
+module top_module(input a, b, output wire y1, output reg y2);
+  assign y1 = a & b;
+  always @(*) y2 = a & b;     // same hardware
+endmodule
+@task
+Build an AND gate twice: `out_assign` with an assign statement, and `out_alwaysblock` with an `always @(*)` block.
+@starter
+module top_module(input a, input b, output out_assign, output out_alwaysblock);
+
+endmodule
+@solution
+module top_module(input a, input b, output out_assign, output reg out_alwaysblock);
+  assign out_assign = a & b;
+  always @(*) out_alwaysblock = a & b;
+endmodule
+@spec {"type":"comb"}
+@hint Change the port to `output reg out_alwaysblock`.
+@end
+
+@lesson ifmux | if statements make muxes
+@body
+Inside an always block, `if … else` selects between values: in hardware that's a **multiplexer**.
+
+```
+always @(*) begin
+  if (sel) y = b;
+  else     y = a;
+end
+```
+
+Equivalent one-liner: `assign y = sel ? b : a;`. Same hardware.
+
+Use `begin … end` when a branch has more than one statement.
+@example
+module top_module(input sel, input [3:0] a, b, output reg [3:0] y);
+  always @(*) begin
+    if (sel) y = b;
+    else     y = a;
+  end
+endmodule
+@task
+Output `b` when **both** `sel_b1` and `sel_b2` are 1, otherwise `a`. Produce it twice: `out_assign` using `?:` and `out_always` using `if`.
+@starter
+module top_module(input a, b, sel_b1, sel_b2, output out_assign, output reg out_always);
+
+endmodule
+@solution
+module top_module(input a, b, sel_b1, sel_b2, output out_assign, output reg out_always);
+  assign out_assign = (sel_b1 & sel_b2) ? b : a;
+  always @(*) begin
+    if (sel_b1 & sel_b2) out_always = b;
+    else out_always = a;
+  end
+endmodule
+@spec {"type":"comb"}
+@hint The condition is `sel_b1 & sel_b2`.
+@end
+
+@lesson latches | Avoiding latches
+@body
+In a combinational block, **every output must be assigned on every path**. If some path doesn't assign `y`, the hardware has to *remember* the old value, and the synthesizer builds a **latch**. Latches are almost always a bug in FPGA designs: they create timing headaches and glitches.
+
+```
+always @(*) if (en) y = d;          // latch! (what is y when en = 0?)
+
+always @(*) begin
+  y = 1'b0;                          // default first
+  if (en) y = d;                     // then override: no latch
+end
+```
+
+Fix: give every output a **default** at the top of the block, or make sure every `if` has an `else` and every `case` a `default`. Watch the warnings panel: the simulator flags inferred latches.
+@example
+module top_module(input en, d, output reg y);
+  always @(*) begin
+    if (en) y = d;    // latch warning: try adding a default
+  end
+endmodule
+@task
+The starter code has **latch bugs**. Fix them:
+- If the CPU is overheated (`cpu_overheated`), `shut_off_computer = 1`, otherwise 0.
+- If you haven't arrived (`~arrived`), keep driving: `keep_driving = ~gas_tank_empty`. If you have arrived, `keep_driving = 0`.
+@starter
+module top_module(
+  input cpu_overheated, output reg shut_off_computer,
+  input arrived, input gas_tank_empty, output reg keep_driving
+);
+  always @(*) begin
+    if (cpu_overheated)
+      shut_off_computer = 1;
+  end
+
+  always @(*) begin
+    if (~arrived)
+      keep_driving = ~gas_tank_empty;
+  end
+endmodule
+@solution
+module top_module(
+  input cpu_overheated, output reg shut_off_computer,
+  input arrived, input gas_tank_empty, output reg keep_driving
+);
+  always @(*) begin
+    if (cpu_overheated) shut_off_computer = 1;
+    else shut_off_computer = 0;
+  end
+
+  always @(*) begin
+    if (~arrived) keep_driving = ~gas_tank_empty;
+    else keep_driving = 0;
+  end
+endmodule
+@wrong
+module top_module(
+  input cpu_overheated, output reg shut_off_computer,
+  input arrived, input gas_tank_empty, output reg keep_driving
+);
+  always @(*) begin
+    if (cpu_overheated) shut_off_computer = 1;
+  end
+  always @(*) begin
+    if (~arrived) keep_driving = ~gas_tank_empty;
+  end
+endmodule
+@spec {"type":"comb","vectors":[{"cpu_overheated":1,"arrived":0,"gas_tank_empty":0},{"cpu_overheated":0,"arrived":0,"gas_tank_empty":1},{"cpu_overheated":1,"arrived":1,"gas_tank_empty":0},{"cpu_overheated":0,"arrived":1,"gas_tank_empty":0},{"cpu_overheated":0,"arrived":0,"gas_tank_empty":0},{"cpu_overheated":1,"arrived":1,"gas_tank_empty":1},{"cpu_overheated":0,"arrived":1,"gas_tank_empty":1},{"cpu_overheated":1,"arrived":0,"gas_tank_empty":1}]}
+@hint Add an `else` that assigns 0 to each output.
+@end
+
+@lesson case | case statements
+@body
+`case` picks one branch by comparing a value against labels; it's a wide multiplexer.
+
+```
+always @(*) begin
+  case (sel)
+    2'd0: y = a;
+    2'd1: y = b;
+    2'd2: y = c;
+    default: y = 4'd0;
+  endcase
+end
+```
+
+- No `break`: only the matching branch runs.
+- Always include `default` (or cover every value), otherwise you get a latch.
+- One label can list several values: `2'd1, 2'd2: y = b;`
+@example
+module top_module(input [1:0] sel, input [3:0] a, b, c, output reg [3:0] y);
+  always @(*) begin
+    case (sel)
+      2'd0: y = a;
+      2'd1: y = b;
+      2'd2: y = c;
+      default: y = 4'd0;
+    endcase
+  end
+endmodule
+@task
+A 6-to-1 multiplexer: when `sel` is 0–5 output `data0`…`data5`; for any other `sel` output 0. Data inputs are 4 bits, `sel` is 3 bits.
+@starter
+module top_module(
+  input [2:0] sel,
+  input [3:0] data0, data1, data2, data3, data4, data5,
+  output reg [3:0] out
+);
+
+endmodule
+@solution
+module top_module(
+  input [2:0] sel,
+  input [3:0] data0, data1, data2, data3, data4, data5,
+  output reg [3:0] out
+);
+  always @(*) begin
+    case (sel)
+      3'd0: out = data0;
+      3'd1: out = data1;
+      3'd2: out = data2;
+      3'd3: out = data3;
+      3'd4: out = data4;
+      3'd5: out = data5;
+      default: out = 4'd0;
+    endcase
+  end
+endmodule
+@spec {"type":"comb","n":200,"gen":"sel3"}
+@hint Six labels plus `default: out = 4'd0;`.
+@end
+
+@lesson casez | casez and priority encoders
+@body
+A **priority encoder** reports the position of the first 1 bit. `casez` lets labels contain `?` (or `z`) meaning **don't care**:
+
+```
+casez (in)
+  4'b???1: pos = 0;   // bit 0 set: others don't matter
+  4'b??10: pos = 1;
+  4'b?100: pos = 2;
+  4'b1000: pos = 3;
+  default: pos = 0;
+endcase
+```
+
+The **first matching** label wins, so order the labels by priority. (Avoid `casex`: it also treats X values as don't-care and can hide simulation bugs.)
+@example
+module top_module(input [3:0] in, output reg [1:0] pos);
+  always @(*) begin
+    casez (in)
+      4'b???1: pos = 2'd0;
+      4'b??10: pos = 2'd1;
+      4'b?100: pos = 2'd2;
+      4'b1000: pos = 2'd3;
+      default: pos = 2'd0;
+    endcase
+  end
+endmodule
+@task
+8-bit priority encoder: output the position (0–7) of the **lowest** set bit of `in`. If no bit is set, output 0.
+@starter
+module top_module(input [7:0] in, output reg [2:0] pos);
+
+endmodule
+@solution
+module top_module(input [7:0] in, output reg [2:0] pos);
+  always @(*) begin
+    casez (in)
+      8'b???????1: pos = 3'd0;
+      8'b??????10: pos = 3'd1;
+      8'b?????100: pos = 3'd2;
+      8'b????1000: pos = 3'd3;
+      8'b???10000: pos = 3'd4;
+      8'b??100000: pos = 3'd5;
+      8'b?1000000: pos = 3'd6;
+      8'b10000000: pos = 3'd7;
+      default:     pos = 3'd0;
+    endcase
+  end
+endmodule
+@spec {"type":"comb"}
+@hint Start from `8'b???????1: pos = 0;` and shift the pattern left each line.
+@end
+
+@lesson defaults | Default assignments
+@body
+When a block has several outputs and only some are set in each branch, the cleanest pattern is: **assign every output a default at the top**, then override in the branches.
+
+```
+always @(*) begin
+  up = 0; down = 0;          // defaults
+  case (code)
+    8'h75: up = 1;
+    8'h72: down = 1;
+  endcase
+end
+```
+
+No `else` chains, no latches, and adding a new case later is safe.
+@example
+module top_module(input [1:0] k, output reg a, b);
+  always @(*) begin
+    a = 0; b = 0;
+    case (k)
+      2'd1: a = 1;
+      2'd2: b = 1;
+    endcase
+  end
+endmodule
+@task
+Decode a 16-bit keyboard scancode into arrow keys: `16'he06b` → `left`, `16'he072` → `down`, `16'he074` → `right`, `16'he075` → `up`. All other codes: all four outputs 0.
+@starter
+module top_module(input [15:0] scancode, output reg left, down, right, up);
+
+endmodule
+@solution
+module top_module(input [15:0] scancode, output reg left, down, right, up);
+  always @(*) begin
+    left = 0; down = 0; right = 0; up = 0;
+    case (scancode)
+      16'he06b: left = 1;
+      16'he072: down = 1;
+      16'he074: right = 1;
+      16'he075: up = 1;
+    endcase
+  end
+endmodule
+@spec {"type":"comb","n":150,"gen":"scancode"}
+@hint Four default assignments at the top of the block, then a case with four labels.
+@end
+
+@chapter comb2 | More combinational logic
+@lesson ternary | Conditional operator: minimum of four
+@body
+`c ? x : y` is a 2:1 mux in one expression. Comparisons (`<`, `>`, `==`) give 1 bit, so they fit naturally as conditions.
+
+To combine many values, build a **tree** of small steps with intermediate wires:
+
+```
+wire [7:0] m1 = (a < b) ? a : b;
+```
+
+(`wire x = expr;` declares and assigns in one line.)
+@example
+module top_module(input [7:0] a, b, output [7:0] mn, mx);
+  assign mn = (a < b) ? a : b;
+  assign mx = (a > b) ? a : b;
+endmodule
+@task
+Output the minimum of four unsigned 8-bit numbers `a`, `b`, `c`, `d`.
+@starter
+module top_module(input [7:0] a, b, c, d, output [7:0] min);
+
+endmodule
+@solution
+module top_module(input [7:0] a, b, c, d, output [7:0] min);
+  wire [7:0] m1 = (a < b) ? a : b;
+  wire [7:0] m2 = (c < d) ? c : d;
+  assign min = (m1 < m2) ? m1 : m2;
+endmodule
+@spec {"type":"comb","n":200}
+@hint Two pairwise minimums, then the minimum of those.
+@end
+
+@lesson overflow | Signed addition and overflow
+@body
+Adding two 8-bit **two's-complement** numbers gives an 8-bit result that can **overflow**: 100 + 100 = 200, which doesn't fit in −128…127 and wraps to −56.
+
+**Signed overflow** happens when both operands have the same sign but the result's sign is different:
+
+```
+assign overflow = (a[7] == b[7]) && (s[7] != a[7]);
+```
+
+(The carry-out bit indicates **unsigned** overflow, a different thing.)
+@example
+module top_module(input [7:0] a, b, output [7:0] s, output cout);
+  assign {cout, s} = a + b;   // unsigned carry
+endmodule
+@task
+Add two 8-bit two's-complement numbers. Output the 8-bit sum `s` and `overflow`, which is 1 when a signed overflow occurs.
+@starter
+module top_module(input [7:0] a, input [7:0] b, output [7:0] s, output overflow);
+
+endmodule
+@solution
+module top_module(input [7:0] a, input [7:0] b, output [7:0] s, output overflow);
+  assign s = a + b;
+  assign overflow = (a[7] == b[7]) && (s[7] != a[7]);
+endmodule
+@wrong
+module top_module(input [7:0] a, input [7:0] b, output [7:0] s, output overflow);
+  wire c;
+  assign {c, s} = a + b;
+  assign overflow = c;
+endmodule
+@spec {"type":"comb","n":250}
+@hint Overflow depends only on the three sign bits: `a[7]`, `b[7]`, `s[7]`.
+@end
+
+@lesson popcount | Loops: population count
+@body
+A `for` loop in a combinational block is unrolled at synthesis into parallel hardware. It's a compact way to describe repetitive structure.
+
+```
+integer i;
+always @(*) begin
+  count = 0;                     // default first
+  for (i = 0; i < 8; i = i + 1)
+    count = count + in[i];
+end
+```
+
+Here blocking `=` matters: each iteration adds to the value from the previous line. The result is a chain (or tree) of adders, not a loop running over time.
+@example
+module top_module(input [3:0] in, output reg [2:0] count);
+  integer i;
+  always @(*) begin
+    count = 0;
+    for (i = 0; i < 4; i = i + 1)
+      count = count + in[i];
+  end
+endmodule
+@task
+Count the number of 1 bits in a 16-bit input `in`. Output the count on `out` (5 bits).
+@starter
+module top_module(input [15:0] in, output reg [4:0] out);
+
+endmodule
+@solution
+module top_module(input [15:0] in, output reg [4:0] out);
+  integer i;
+  always @(*) begin
+    out = 0;
+    for (i = 0; i < 16; i = i + 1)
+      out = out + in[i];
+  end
+endmodule
+@spec {"type":"comb","n":200}
+@hint Set `out = 0;` before the loop, otherwise you get a latch and a wrong sum.
+@end
+
+@chapter seq | Sequential logic
+@lesson dff | The D flip-flop
+@body
+Combinational logic has no memory. **State** lives in flip-flops: on each rising clock edge a flip-flop copies `d` to `q`, and holds it until the next edge.
+
+```
+always @(posedge clk)
+  q <= d;
+```
+
+- `posedge clk`: the block runs only on the clock's rising edge.
+- `<=` is a **nonblocking** assignment: every right-hand side in the block is read first, then all the left sides update together. That's exactly how real flip-flops behave. **Always use `<=` in clocked blocks.**
+
+On the waveform, `q` changes only at rising edges of `clk`, one cycle after `d`.
+@example
+module top_module(input clk, input d, output reg q);
+  always @(posedge clk)
+    q <= d;
+endmodule
+@task
+Build 8 D flip-flops: on every rising edge of `clk`, `q` takes the value of `d` (both 8 bits).
+@starter
+module top_module(input clk, input [7:0] d, output [7:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input [7:0] d, output reg [7:0] q);
+  always @(posedge clk) q <= d;
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":40}
+@hint `q` is assigned in an always block, so declare it `output reg [7:0] q`.
+@end
+
+@lesson syncreset | Synchronous reset
+@body
+A **reset** forces registers to a known value. With a **synchronous** reset, it's checked inside the clocked block, so it only takes effect on a clock edge:
+
+```
+always @(posedge clk) begin
+  if (reset) q <= 8'd0;     // reset has priority
+  else       q <= d;
+end
+```
+
+Reset clears the **register** `q`, not the input `d`. `d` belongs to whoever drives your module.
+@example
+module top_module(input clk, reset, input [3:0] d, output reg [3:0] q);
+  always @(posedge clk)
+    if (reset) q <= 4'd0;
+    else       q <= d;
+endmodule
+@task
+8 flip-flops with an active-high **synchronous** reset to 0.
+@starter
+module top_module(input clk, input reset, input [7:0] d, output reg [7:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input reset, input [7:0] d, output reg [7:0] q);
+  always @(posedge clk) begin
+    if (reset) q <= 8'd0;
+    else q <= d;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":80,"reset":{"name":"reset","prob":0.15}}
+@hint Inside `always @(posedge clk)`: `if (reset) q <= 0; else q <= d;`
+@end
+
+@lesson asyncreset | Asynchronous reset
+@body
+An **asynchronous** reset acts immediately, without waiting for a clock edge. Add it to the sensitivity list:
+
+```
+always @(posedge clk or posedge areset) begin
+  if (areset) q <= 0;
+  else        q <= d;
+end
+```
+
+- Edge keywords (`posedge`, `negedge`) appear **only** in the sensitivity list. Inside the block you test the level: `if (areset)`.
+- The block must start with the reset check.
+
+On the waveform, compare: an async reset clears `q` in the middle of a cycle; a sync reset waits for the next rising edge.
+@example
+module top_module(input clk, areset, input [3:0] d, output reg [3:0] q);
+  always @(posedge clk or posedge areset)
+    if (areset) q <= 4'd0;
+    else        q <= d;
+endmodule
+@task
+8 flip-flops with an active-high **asynchronous** reset `areset` to 0.
+@starter
+module top_module(input clk, input areset, input [7:0] d, output [7:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input areset, input [7:0] d, output reg [7:0] q);
+  always @(posedge clk or posedge areset) begin
+    if (areset) q <= 8'd0;
+    else q <= d;
+  end
+endmodule
+@wrong
+module top_module(input clk, input areset, input [7:0] d, output reg [7:0] q);
+  always @(posedge clk) begin
+    if (areset) q <= 8'd0;
+    else q <= d;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":80,"reset":{"name":"areset","prob":0.2}}
+@hint `always @(posedge clk or posedge areset)`
+@end
+
+@lesson enable | Clock enables
+@body
+A register that only updates sometimes uses an **enable**:
+
+```
+always @(posedge clk)
+  if (en) q <= d;      // otherwise q keeps its value
+```
+
+Unlike a combinational block, a missing `else` here is fine: a flip-flop holds its value anyway. That's not a latch, it's a flip-flop with an enable.
+
+**Never** gate the clock itself (`assign gclk = clk & en`) in an FPGA design: use an enable. Gated clocks cause skew and glitches.
+@example
+module top_module(input clk, en, input [3:0] d, output reg [3:0] q);
+  always @(posedge clk)
+    if (en) q <= d;
+endmodule
+@task
+A 16-bit register with byte enables: on each rising edge, if `byteena[1]` is set, update `q[15:8]` from `d[15:8]`; if `byteena[0]` is set, update `q[7:0]` from `d[7:0]`. Synchronous active-low reset `resetn` clears all 16 bits to 0 (it has priority).
+@starter
+module top_module(input clk, input resetn, input [1:0] byteena, input [15:0] d, output reg [15:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input resetn, input [1:0] byteena, input [15:0] d, output reg [15:0] q);
+  always @(posedge clk) begin
+    if (!resetn) q <= 16'd0;
+    else begin
+      if (byteena[1]) q[15:8] <= d[15:8];
+      if (byteena[0]) q[7:0]  <= d[7:0];
+    end
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":100,"reset":{"name":"resetn","active":0,"prob":0.08}}
+@hint Active-low means reset when `resetn == 0`: `if (!resetn)`.
+@end
+
+@lesson shift | Shift registers
+@body
+A shift register moves data along a chain of flip-flops each clock:
+
+```
+always @(posedge clk)
+  q <= {in, q[3:1]};      // shift right, new bit enters at the top
+```
+
+Nonblocking `<=` matters here. Every bit reads the **old** value of its neighbour. With blocking `=`, written in the wrong order, all stages would see the new value at once and the chain would collapse. Shift registers are everywhere: serial links, delay lines, and parsing byte streams.
+@example
+module top_module(input clk, input in, output reg [3:0] q);
+  always @(posedge clk)
+    q <= {in, q[3:1]};
+endmodule
+@task
+A 4-bit shift-right register with asynchronous reset `areset` (to 0), synchronous `load` and `ena`:
+- `load` = 1: load `data` (load has priority over `ena`)
+- else `ena` = 1: shift right, `q[3]` becomes 0
+- otherwise hold
+@starter
+module top_module(input clk, input areset, input load, input ena, input [3:0] data, output reg [3:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input areset, input load, input ena, input [3:0] data, output reg [3:0] q);
+  always @(posedge clk or posedge areset) begin
+    if (areset) q <= 4'd0;
+    else if (load) q <= data;
+    else if (ena) q <= {1'b0, q[3:1]};
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":120,"reset":{"name":"areset","prob":0.05},"gen":"loadena"}
+@hint Priority order: `if (areset) … else if (load) … else if (ena) …`
+@end
+
+@lesson counter | Counters
+@body
+A counter is a register plus an adder feeding back into itself:
+
+```
+always @(posedge clk)
+  if (reset) q <= 0;
+  else       q <= q + 1'b1;
+```
+
+A 4-bit counter wraps from 15 to 0 by itself, because the carry is dropped. For any other range, compare and wrap explicitly:
+
+```
+else if (q == 4'd9) q <= 0;
+```
+
+Counters drive timers, state machines, FIFO pointers and timestamps (like the latency counters in an HFT pipeline).
+@example
+module top_module(input clk, reset, output reg [3:0] q);
+  always @(posedge clk)
+    if (reset) q <= 4'd0;
+    else       q <= q + 1'b1;
+endmodule
+@task
+A decade counter: counts 0, 1, …, 9, 0, … with an active-high synchronous `reset` to 0.
+@starter
+module top_module(input clk, input reset, output reg [3:0] q);
+
+endmodule
+@solution
+module top_module(input clk, input reset, output reg [3:0] q);
+  always @(posedge clk) begin
+    if (reset || q == 4'd9) q <= 4'd0;
+    else q <= q + 1'b1;
+  end
+endmodule
+@wrong
+module top_module(input clk, input reset, output reg [3:0] q);
+  always @(posedge clk) begin
+    if (reset || q == 4'd10) q <= 4'd0;
+    else q <= q + 1'b1;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":120,"reset":{"name":"reset","prob":0.02}}
+@hint Wrap when `q == 9`, not 10.
+@end
+
+@lesson edge | Edge detection
+@body
+To detect a rising edge on a signal, compare it with its value **one clock ago**:
+
+```
+reg prev;
+always @(posedge clk) prev <= in;
+assign rise = in & ~prev;     // was 0, now 1
+```
+
+Works bit-by-bit on vectors too. Edge detectors turn levels into one-cycle pulses: "a new message has started", "the button was just pressed".
+@example
+module top_module(input clk, input in, output rise, fall);
+  reg prev;
+  always @(posedge clk) prev <= in;
+  assign rise = in & ~prev;
+  assign fall = ~in & prev;
+endmodule
+@task
+For each bit of an 8-bit input `in`, set the corresponding bit of `pedge` for **one cycle** after a 0→1 transition. `pedge` should be registered: on the clock edge where `in` is seen as 1 and was 0 the cycle before, set the bit.
+@starter
+module top_module(input clk, input [7:0] in, output reg [7:0] pedge);
+
+endmodule
+@solution
+module top_module(input clk, input [7:0] in, output reg [7:0] pedge);
+  reg [7:0] prev;
+  always @(posedge clk) begin
+    prev  <= in;
+    pedge <= in & ~prev;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":120}
+@hint Keep a register `prev` with last cycle's `in`. In the same clocked block, `pedge <= in & ~prev;`
+@end
+
+@lesson toggle | Feedback: a toggle flip-flop
+@body
+A flip-flop can feed its own output back. In
+
+```
+always @(posedge clk)
+  out <= in ^ out;
+```
+
+the right-hand side reads the **old** `out`, so `out` flips on every clock where `in` is 1, and holds where `in` is 0. That's a T (toggle) flip-flop.
+
+Without a reset the starting value is unknown in real hardware. This simulator starts registers at 0, but a real design should reset them.
+@example
+module top_module(input clk, input in, output reg out);
+  always @(posedge clk)
+    out <= in ^ out;
+endmodule
+@task
+Build the toggle circuit above, but add an active-high synchronous `reset` that clears `out` to 0.
+@starter
+module top_module(input clk, input reset, input in, output reg out);
+
+endmodule
+@solution
+module top_module(input clk, input reset, input in, output reg out);
+  always @(posedge clk) begin
+    if (reset) out <= 1'b0;
+    else out <= in ^ out;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":80,"reset":{"name":"reset","prob":0.08}}
+@hint Don't assign to `in`: it's an input. Only `out` changes.
+@end
+
+@chapter fsm | Finite state machines
+@lesson fsm1 | Your first FSM
+@body
+A **finite state machine** is a state register plus logic to compute the next state. Write it in three parts:
+
+```
+localparam A = 1'b0, B = 1'b1;
+reg state, next;
+
+always @(*) begin              // 1. next-state logic (combinational)
+  case (state)
+    A: next = in ? A : B;
+    B: next = in ? B : A;
+    default: next = A;
+  endcase
+end
+
+always @(posedge clk)          // 2. state register
+  if (reset) state <= B;
+  else       state <= next;
+
+assign out = (state == B);     // 3. output logic
+```
+
+In a **Moore** machine, outputs depend only on the state. In a **Mealy** machine they also depend on the inputs.
+@task
+Implement the FSM above: a Moore machine with states A and B, synchronous active-high `reset` to **B**. In state B: stay in B if `in` = 1, go to A if `in` = 0. In state A: stay in A if `in` = 1, go to B if `in` = 0. Output `out` = 1 in state B.
+@starter
+module top_module(input clk, input reset, input in, output out);
+
+endmodule
+@solution
+module top_module(input clk, input reset, input in, output out);
+  localparam A = 1'b0, B = 1'b1;
+  reg state, next;
+  always @(*) begin
+    case (state)
+      A: next = in ? A : B;
+      B: next = in ? B : A;
+      default: next = B;
+    endcase
+  end
+  always @(posedge clk) begin
+    if (reset) state <= B;
+    else state <= next;
+  end
+  assign out = (state == B);
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":100,"reset":{"name":"reset","prob":0.05}}
+@hint Copy the three-part structure from the lesson.
+@end
+
+@lesson seqdet | Sequence detector
+@body
+FSMs recognise patterns in a bit stream. To detect `101`, track how much of the pattern you've seen so far:
+
+- `S0` nothing useful yet
+- `S1` seen `1`
+- `S2` seen `10`
+- `S3` seen `101`: the output is 1 here (Moore)
+
+**Overlapping** detection: after `101`, the final `1` can start the next match (`10101` contains two). So from `S3`, a `0` goes to `S2` and a `1` goes to `S1`.
+
+Draw the state diagram on paper first: for each state and each input value, ask "what's the longest suffix of what I've seen that is a prefix of the pattern?"
+@task
+Moore FSM that sets `out` = 1 for one cycle after the input stream has just completed the pattern `101` (overlapping allowed). Synchronous active-high `reset` returns to the initial state (output 0).
+@starter
+module top_module(input clk, input reset, input in, output out);
+
+endmodule
+@solution
+module top_module(input clk, input reset, input in, output out);
+  localparam S0 = 2'd0, S1 = 2'd1, S2 = 2'd2, S3 = 2'd3;
+  reg [1:0] state, next;
+  always @(*) begin
+    case (state)
+      S0: next = in ? S1 : S0;
+      S1: next = in ? S1 : S2;
+      S2: next = in ? S3 : S0;
+      S3: next = in ? S1 : S2;
+      default: next = S0;
+    endcase
+  end
+  always @(posedge clk) begin
+    if (reset) state <= S0;
+    else state <= next;
+  end
+  assign out = (state == S3);
+endmodule
+@wrong
+module top_module(input clk, input reset, input in, output out);
+  localparam S0 = 2'd0, S1 = 2'd1, S2 = 2'd2, S3 = 2'd3;
+  reg [1:0] state, next;
+  always @(*) begin
+    case (state)
+      S0: next = in ? S1 : S0;
+      S1: next = in ? S1 : S2;
+      S2: next = in ? S3 : S0;
+      S3: next = S0;
+      default: next = S0;
+    endcase
+  end
+  always @(posedge clk) begin
+    if (reset) state <= S0;
+    else state <= next;
+  end
+  assign out = (state == S3);
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":200,"reset":{"name":"reset","prob":0.02}}
+@hint From S3 (just saw 101): on 0 you've seen "10" → S2; on 1 you've seen "1" → S1.
+@end
+
+@lesson lemmings | Lemmings: a walker FSM
+@body
+FSMs model behaviour. A Lemming walks left or right and turns around when it bumps into something:
+
+- `bump_left` → it was walking left, now walks right
+- `bump_right` → it was walking right, now walks left
+- bumped on both sides at once → it turns around
+
+Asynchronous reset `areset` makes it walk left. Moore outputs: `walk_left`, `walk_right`.
+
+Pattern for async reset in an FSM:
+
+```
+always @(posedge clk or posedge areset)
+  if (areset) state <= LEFT;
+  else        state <= next;
+```
+@task
+Implement the Lemming: two states LEFT and RIGHT, async reset to LEFT. In LEFT, go RIGHT if `bump_left`. In RIGHT, go LEFT if `bump_right`. Outputs `walk_left` = (state is LEFT), `walk_right` = (state is RIGHT).
+@starter
+module top_module(input clk, input areset, input bump_left, input bump_right, output walk_left, output walk_right);
+
+endmodule
+@solution
+module top_module(input clk, input areset, input bump_left, input bump_right, output walk_left, output walk_right);
+  localparam LEFT = 1'b0, RIGHT = 1'b1;
+  reg state, next;
+  always @(*) begin
+    case (state)
+      LEFT:  next = bump_left  ? RIGHT : LEFT;
+      RIGHT: next = bump_right ? LEFT  : RIGHT;
+      default: next = LEFT;
+    endcase
+  end
+  always @(posedge clk or posedge areset) begin
+    if (areset) state <= LEFT;
+    else state <= next;
+  end
+  assign walk_left  = (state == LEFT);
+  assign walk_right = (state == RIGHT);
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":150,"reset":{"name":"areset","prob":0.04}}
+@hint In LEFT only `bump_left` matters; in RIGHT only `bump_right`.
+@end
+
+@chapter fpga | FPGA design and HFT patterns
+@lesson gray | Gray code encoder
+@body
+Consecutive Gray codes differ in **exactly one bit**. That property is why FIFO pointers are Gray-coded before crossing between clock domains: if the receiving clock samples while the pointer is changing, it gets either the old or the new value, never a corrupted mix.
+
+Binary to Gray is one XOR per bit:
+
+```
+assign gray = bin ^ (bin >> 1);
+```
+
+Try it in the example and watch only one bit change between neighbouring values.
+@example
+module top_module(input [3:0] bin, output [3:0] gray);
+  assign gray = bin ^ (bin >> 1);
+endmodule
+@task
+Convert an 8-bit binary number to Gray code.
+@starter
+module top_module(input [7:0] bin, output [7:0] gray);
+
+endmodule
+@solution
+module top_module(input [7:0] bin, output [7:0] gray);
+  assign gray = bin ^ (bin >> 1);
+endmodule
+@spec {"type":"comb"}
+@hint `bin >> 1` shifts in a 0 at the top, so the MSB passes through unchanged.
+@end
+
+@lesson gray2bin | Gray code decoder
+@body
+Going back from Gray to binary is a **prefix XOR from the top**:
+
+- `bin[N-1] = gray[N-1]`
+- `bin[i] = bin[i+1] ^ gray[i]`
+
+Equivalently, `bin[i]` is the XOR of all Gray bits from `i` upward: `bin[i] = ^(gray >> i)`. A loop expresses this neatly:
+
+```
+integer i;
+always @(*)
+  for (i = 0; i < 8; i = i + 1)
+    bin[i] = ^(gray >> i);
+```
+@task
+Convert an 8-bit Gray code back to binary.
+@starter
+module top_module(input [7:0] gray, output reg [7:0] bin);
+
+endmodule
+@solution
+module top_module(input [7:0] gray, output reg [7:0] bin);
+  integer i;
+  always @(*) begin
+    for (i = 0; i < 8; i = i + 1)
+      bin[i] = ^(gray >> i);
+  end
+endmodule
+@spec {"type":"comb"}
+@hint Bit i of the result is the reduction XOR of `gray >> i`.
+@end
+
+@lesson sync2 | Two-flop synchroniser
+@body
+When a signal comes from **another clock domain** (or the outside world), it can change right at your clock edge. The capturing flop may go **metastable**: its output hovers between 0 and 1 for an unpredictable time.
+
+The standard fix for a **single bit**: pass it through **two flip-flops** in the destination clock. The first may go metastable; the extra cycle lets it settle before any logic uses it.
+
+```
+reg s1, s2;
+always @(posedge clk) begin
+  s1 <= async_in;
+  s2 <= s1;
+end
+```
+
+Rules: the source must come straight from a flop (no glitchy logic), and **never** synchronise a multi-bit bus bit-by-bit (bits can resolve on different cycles). Use Gray code, a handshake, or an async FIFO for buses. In Vivado, mark the flops with `(* ASYNC_REG = "TRUE" *)` so they're placed close together.
+
+(Simulation can't show metastability; it only shows the 2-cycle latency. The safety comes from the structure.)
+@task
+Synchronise the 1-bit `async_in` into the `clk` domain with two flops, then output `rise`: a one-cycle pulse when the **synchronised** signal goes from 0 to 1. Also output `sync_out` (the second flop). Synchronous active-high `reset` clears all registers.
+@starter
+module top_module(input clk, input reset, input async_in, output sync_out, output rise);
+
+endmodule
+@solution
+module top_module(input clk, input reset, input async_in, output sync_out, output rise);
+  reg s1, s2, s3;
+  always @(posedge clk) begin
+    if (reset) begin s1 <= 0; s2 <= 0; s3 <= 0; end
+    else begin
+      s1 <= async_in;
+      s2 <= s1;
+      s3 <= s2;
+    end
+  end
+  assign sync_out = s2;
+  assign rise = s2 & ~s3;
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":150,"reset":{"name":"reset","prob":0.03},"gen":"slowbit"}
+@hint You need a third flop holding the previous `sync_out` to detect the edge: `rise = s2 & ~s3`.
+@end
+
+@lesson pipeline | Pipelining and latency
+@body
+Long combinational paths limit your clock speed: everything between two registers must settle within one period. **Pipelining** splits a long path with registers:
+
+- more stages → shorter paths → higher f_max
+- but each stage adds **one cycle of latency**
+
+In HFT the trade-off is explicit: a design might run at 322 MHz with 6 stages, or 156 MHz with 3. What matters is total nanoseconds, and whether it keeps up with line rate.
+
+Every pipeline stage registers *all* the signals that travel together, so values from the same input stay aligned.
+@example
+module top_module(input clk, input [7:0] a, b, output reg [8:0] s);
+  reg [7:0] ra, rb;
+  always @(posedge clk) begin
+    ra <= a; rb <= b;      // stage 1: register inputs
+    s  <= ra + rb;         // stage 2: add, register result
+  end
+endmodule
+@task
+Compute `y = a * b + c` (a, b, c are 8 bits; y is 16 bits) as a **2-stage pipeline**:
+- stage 1 registers `a * b` (16 bits) and `c` (delayed so it stays aligned)
+- stage 2 registers the sum into `y`
+
+So `y` shows the result for inputs presented two clock edges earlier. No reset needed.
+@starter
+module top_module(input clk, input [7:0] a, b, c, output reg [15:0] y);
+
+endmodule
+@solution
+module top_module(input clk, input [7:0] a, b, c, output reg [15:0] y);
+  reg [15:0] p;
+  reg [7:0] c1;
+  always @(posedge clk) begin
+    p  <= a * b;
+    c1 <= c;
+    y  <= p + c1;
+  end
+endmodule
+@wrong
+module top_module(input clk, input [7:0] a, b, c, output reg [15:0] y);
+  reg [15:0] p;
+  always @(posedge clk) begin
+    p <= a * b;
+    y <= p + c;
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":80}
+@hint `c` must also be delayed one cycle, or it gets added to the wrong product.
+@hint `a * b` needs a 16-bit destination: declare `reg [15:0] p;`
+@end
+
+@lesson fifo | Synchronous FIFO
+@body
+A **FIFO** buffers data between a producer and a consumer that run at different rates. In a market-data pipeline, a FIFO absorbs a burst of messages while the order book processes them.
+
+A FIFO of depth 2ᴺ needs:
+- a memory `mem`
+- a write pointer and a read pointer, each **N+1 bits** wide
+- **empty** when the pointers are equal
+- **full** when the low N bits are equal and the top bits differ (the writer has lapped the reader)
+
+```
+wire empty = (wptr == rptr);
+wire full  = (wptr[3] != rptr[3]) && (wptr[2:0] == rptr[2:0]);   // depth 8
+```
+
+Only write when not full and only read when not empty. That protects the data.
+@task
+An 8-deep, 8-bit synchronous FIFO with synchronous active-high `reset` (pointers to 0):
+- `wr_en && !full`: write `din` at the write pointer, advance it
+- `rd_en && !empty`: advance the read pointer
+- `dout` is **combinational**: the word at the read pointer (`mem[rptr[2:0]]`)
+- outputs `full`, `empty`, and `count` (number of stored words, 4 bits)
+@starter
+module top_module(
+  input clk, input reset,
+  input wr_en, input [7:0] din,
+  input rd_en,
+  output [7:0] dout,
+  output full, output empty,
+  output [3:0] count
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input reset,
+  input wr_en, input [7:0] din,
+  input rd_en,
+  output [7:0] dout,
+  output full, output empty,
+  output [3:0] count
+);
+  reg [7:0] mem [0:7];
+  reg [3:0] wptr, rptr;
+  assign empty = (wptr == rptr);
+  assign full  = (wptr[3] != rptr[3]) && (wptr[2:0] == rptr[2:0]);
+  assign count = wptr - rptr;
+  assign dout  = mem[rptr[2:0]];
+  always @(posedge clk) begin
+    if (reset) begin
+      wptr <= 4'd0;
+      rptr <= 4'd0;
+    end else begin
+      if (wr_en && !full) begin
+        mem[wptr[2:0]] <= din;
+        wptr <= wptr + 1'b1;
+      end
+      if (rd_en && !empty) rptr <= rptr + 1'b1;
+    end
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":250,"reset":{"name":"reset","prob":0.01},"gen":"fifo"}
+@hint `count = wptr - rptr` works because the pointers have one extra bit.
+@hint Memory: `reg [7:0] mem [0:7];` and index with `wptr[2:0]`.
+@end
+
+@lesson field | Parsing a byte stream
+@body
+Market data arrives as a stream of bytes. A parser counts bytes from the start of each message and captures fields at fixed offsets. Fields are **big-endian**: the first byte is the most significant.
+
+A first attempt usually looks like this:
+
+```
+if (valid) begin
+  if (sop) idx <= 1; else idx <= idx + 1;
+  if (idx == 2) field[15:8] <= byte_in;
+  if (idx == 3) field[7:0]  <= byte_in;
+end
+```
+
+It looks right, but on the `sop` byte it still tests the **old** `idx`. If the previous message was only 2 bytes long, `idx` is still 2 when the next message's byte 0 arrives, and byte 0 gets captured as if it were byte 2.
+
+The fix is to compute **the index of the byte arriving now** combinationally, and use it for every decision:
+
+```
+wire [7:0] cur = sop ? 8'd0 : idx;
+```
+
+Bytes only count when `valid` is high; gaps between bytes are allowed. Edge cases like short messages are exactly what real feeds throw at you, and what interviewers ask about.
+@task
+Bytes arrive on `byte_in` when `valid` = 1. `sop` (start of packet) is high together with byte 0 of each message. Capture bytes **2 and 3** of each message as a big-endian 16-bit `field` (byte 2 is the upper byte). On the clock edge that receives byte 3, also set `field_valid` to 1 for one cycle (it's 0 otherwise). Messages can be as short as 2 bytes; then there is no field and `field_valid` must stay 0. Synchronous `reset` clears `field_valid` and the byte index.
+@starter
+module top_module(
+  input clk, input reset,
+  input valid, input sop, input [7:0] byte_in,
+  output reg [15:0] field,
+  output reg field_valid
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input reset,
+  input valid, input sop, input [7:0] byte_in,
+  output reg [15:0] field,
+  output reg field_valid
+);
+  reg [7:0] idx;
+  wire [7:0] cur = sop ? 8'd0 : idx;
+  always @(posedge clk) begin
+    if (reset) begin
+      idx <= 8'd0;
+      field_valid <= 1'b0;
+    end else begin
+      field_valid <= 1'b0;
+      if (valid) begin
+        idx <= cur + 8'd1;
+        if (cur == 8'd2) field[15:8] <= byte_in;
+        if (cur == 8'd3) begin
+          field[7:0] <= byte_in;
+          field_valid <= 1'b1;
+        end
+      end
+    end
+  end
+endmodule
+@wrong
+module top_module(
+  input clk, input reset,
+  input valid, input sop, input [7:0] byte_in,
+  output reg [15:0] field,
+  output reg field_valid
+);
+  reg [7:0] idx;
+  always @(posedge clk) begin
+    if (reset) begin idx <= 0; field_valid <= 0; end
+    else begin
+      field_valid <= 0;
+      if (valid) begin
+        if (sop) idx <= 1; else idx <= idx + 1;
+        if (idx == 2) field[15:8] <= byte_in;
+        if (idx == 3) begin field[7:0] <= byte_in; field_valid <= 1; end
+      end
+    end
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":300,"reset":{"name":"reset","prob":0.0,"cycles":2},"gen":"stream"}
+@hint `cur = sop ? 0 : idx` is the index of the byte arriving now. Store `idx <= cur + 1` when `valid`.
+@hint Default `field_valid <= 0;` at the top of the else branch, then set it to 1 on byte 3.
+@end
+
+@lesson bestbid | Tracking the best price
+@body
+An order book's **best bid** is the highest price anyone will pay. A minimal version of that logic: keep a register with the maximum price seen, update it when a higher one arrives.
+
+```
+always @(posedge clk)
+  if (reset) best <= 0;
+  else if (valid && price > best) best <= price;
+```
+
+A real book also handles cancels and executions (so the best price can go *down*), which needs per-level storage, the kind of structure in your ITCH pipeline project.
+@task
+Track the best (highest) bid and the best (lowest) ask. Inputs: `valid`, `side` (0 = bid, 1 = ask), `price` (16 bits). Synchronous `reset` sets `best_bid` to 0 and `best_ask` to 16'hFFFF. On a valid bid above `best_bid`, update `best_bid`. On a valid ask below `best_ask`, update `best_ask`. Output `crossed` (combinational) = 1 when `best_bid >= best_ask`.
+@starter
+module top_module(
+  input clk, input reset,
+  input valid, input side, input [15:0] price,
+  output reg [15:0] best_bid, output reg [15:0] best_ask,
+  output crossed
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input reset,
+  input valid, input side, input [15:0] price,
+  output reg [15:0] best_bid, output reg [15:0] best_ask,
+  output crossed
+);
+  always @(posedge clk) begin
+    if (reset) begin
+      best_bid <= 16'd0;
+      best_ask <= 16'hFFFF;
+    end else if (valid) begin
+      if (!side && price > best_bid) best_bid <= price;
+      if (side && price < best_ask) best_ask <= price;
+    end
+  end
+  assign crossed = (best_bid >= best_ask);
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":200,"reset":{"name":"reset","prob":0.03},"gen":"book"}
+@hint Two separate ifs inside `else if (valid)`, one per side.
+@end
+
+</script>
+<script type="text/plain" id="course_q">
+@chapter ev | Expectation
+@lesson ev | Expected value and fair prices
+@body
+The **expected value** of a random outcome is its long-run average: each value weighted by its probability.
+
+E[die] = (1 + 2 + 3 + 4 + 5 + 6) / 6 = **3.5**
+
+Shortcut: the faces pair up (1+6, 2+5, 3+4 = 7 each), so the mean of a fair n-sided die is **(n+1)/2**.
+
+In trading, expected value is the **fair price** of a bet: if a game pays the face value of a die, a fair price to play is 3.5. Charge more and you profit on average; that gap is your **edge**.
+
+**Try it:** run the simulation a few times. With 100 rolls the average wanders; with 10,000 it hugs the theory line. That's the law of large numbers, and it's why a small edge repeated many times is what trading firms live on.
+@sim die
+@practice prob:linearity
+@end
+
+@lesson linearity | Linearity of expectation
+@body
+**E[X + Y] = E[X] + E[Y]**, always, even when X and Y are dependent. It's the most useful tool in interview probability.
+
+To find an expected **count**, write it as a sum of **indicator** variables: 1 if something happens, else 0. Then add their probabilities.
+
+**Example:** expected number of distinct faces in k rolls of an n-sided die. Face j appears at least once with probability 1 − ((n−1)/n)ᵏ. There are n faces, so
+
+E[distinct] = n · (1 − ((n−1)/n)ᵏ)
+
+No need to work out the full distribution. Interviewers love this because the "obvious" approach (enumerating cases) is slow and error-prone.
+
+**Try it:** change n and k and check the simulation agrees with the formula.
+@sim distinct
+@practice prob:linearity
+@end
+
+@chapter waiting | Waiting times
+@lesson geometric | How long until…? (geometric)
+@body
+Repeat independent trials that each succeed with probability p. The expected number of trials up to the first success is **1/p**.
+
+Derive it with **first-step analysis**: you always spend one trial; with probability (1 − p) you fail and are back where you started:
+
+E = 1 + (1 − p) · E  ⟹  **E = 1/p**
+
+Rolling until a 6: p = 1/6, so 6 rolls on average. Rolling until you get t or more on an n-sided die: p = (n − t + 1)/n.
+
+The common mistake is writing E = 1 + p·E. The recursion uses the probability of **continuing**.
+@sim waituntil
+@practice prob:geometric
+@end
+
+@lesson patterns | Patterns: why HH takes longer than HT
+@body
+Expected flips of a fair coin until you see:
+- **HT**: 4
+- **HH**: 6
+- **HHH**: 14 (in general k heads in a row: 2ᵏ⁺¹ − 2)
+
+Why does HH take longer than HT? Both have probability 1/4 at any given spot. But after a failure, HT keeps your progress (you're waiting for H then T; a T after H finishes it, an H after H still leaves you one step away). For HH, a T throws you back to the start.
+
+**States method:** let S = expected flips from scratch, H = expected flips after one head.
+- HH: S = 1 + ½H + ½S, H = 1 + ½·0 + ½S → S = 6
+- HT: S = 1 + ½H + ½S, H = 1 + ½·0 + ½H → H = 2, S = 4
+
+Patterns that **overlap themselves** take longer.
+@sim pattern
+@practice prob:geometric
+@end
+
+@lesson coupon | Collecting everything (coupon collector)
+@body
+How many rolls of a die until you've seen all six faces?
+
+Split the wait into stages. When you already have i distinct faces, a new one appears with probability (6 − i)/6, so that stage takes 6/(6 − i) rolls on average (geometric). Add the stages:
+
+6/6 + 6/5 + 6/4 + 6/3 + 6/2 + 6/1 = 6 · (1 + 1/2 + … + 1/6) = **14.7**
+
+In general: **n · Hₙ** where Hₙ = 1 + 1/2 + … + 1/n ≈ ln n + 0.577.
+
+The last face takes the longest (6 rolls on average by itself). Notice the long right tail in the histogram.
+@sim coupon
+@practice prob:coupon
+@end
+
+@chapter cond | Conditional probability
+@lesson bayes | Bayes and the false-positive trap
+@body
+A test for a rare condition (1% of people) is 90% sensitive and has a 9% false-positive rate. You test positive. What's the chance you have it?
+
+Most people say ~90%. The answer is about **9%**.
+
+**Natural frequencies** make it obvious. Picture 10,000 people:
+- 100 have it → 90 test positive
+- 9,900 don't → 891 test positive
+- P(have it | positive) = 90 / (90 + 891) ≈ 9.2%
+
+When the condition is rare, false positives from the huge healthy group swamp the true positives. In trading terms: a signal that is "90% accurate" can still be mostly noise if the event it predicts is rare.
+
+**Try it:** drag the prevalence up and watch P(sick | positive) climb.
+@sim bayes
+@practice prob:bayes
+@end
+
+@lesson condition | Conditioning on information
+@body
+To find P(A | B) when outcomes are equally likely: **restrict to the outcomes where B is true, then count how many also satisfy A.**
+
+Two dice, "at least one shows a 6": 11 of the 36 outcomes. Only (6,6) is a double six. So P(double six | at least one 6) = **1/11**.
+
+Compare: "the **first** die shows a 6" leaves 6 outcomes, and P(double six) = 1/6. **What exactly you're told** changes the sample space. That's the whole trick behind the boy-girl paradox and Monty Hall.
+
+**Monty Hall:** switching wins whenever your first pick was wrong, which happens 2/3 of the time. Run the simulation to convince yourself.
+@sim monty
+@practice prob:conditional
+@end
+
+@lesson counting | Counting and the birthday problem
+@body
+- Choose k from n, order irrelevant: C(n, k) = n! / (k!(n−k)!)
+- Arrangements of letters with repeats: n! / (a!·b!·…), so BANANA = 6!/(3!·2!) = 60
+- Draws without replacement: multiply shrinking fractions. Two aces: (4/52)(3/51) = 1/221
+
+**Birthday problem:** how many people until a shared birthday is more likely than not? Only **23**. The probability all n birthdays differ is
+
+(365/365)·(364/365)·…·((365 − n + 1)/365)
+
+and with 23 people there are C(23,2) = 253 pairs, each a chance to match. Counting **pairs**, not people, is the insight.
+@sim birthday
+@practice prob:combinatorics
+@end
+
+@chapter decisions | Decisions and games
+@lesson stopping | Optimal stopping: the reroll game
+@body
+You roll a die and may either keep the result or reroll once (and must keep the second roll). What's the best strategy, and what's the game worth?
+
+**Work backwards.** If you reroll, you get 3.5 on average. So keep any first roll **above 3.5** (4, 5, 6) and reroll 1–3:
+
+E = ½ · 5 + ½ · 3.5 = **4.25**
+
+With two rerolls, continuing is worth 4.25, so on the first roll keep only 5 or 6: E = 14/3 ≈ 4.67.
+
+**Try it:** slide the "keep if ≥" threshold and see which gives the highest average. The simulation lets you check your intuition, which is how you build it.
+@sim reroll
+@practice prob:stopping
+@end
+
+@lesson ruin | Fair games and gambler's ruin
+@body
+You start with £k and flip a fair coin, winning or losing £1 each time, stopping at £0 or £N. P(reach N)?
+
+In a **fair** game your expected wealth never changes (a **martingale**). When you stop, you have either 0 or N, so
+
+P(reach N) · N + P(ruin) · 0 = k  ⟹  **P(reach N) = k/N**
+
+No series, no recursion: just a conserved expectation. The expected game length is k(N − k) flips.
+
+The interview lesson: whenever a process is "fair", look for the quantity whose expectation stays constant.
+@sim ruin
+@practice prob:martingale
+@end
+
+@lesson variance | Variance: measuring risk
+@body
+Two bets can have the same expected value but very different **risk**. Variance measures spread:
+
+Var(X) = E[X²] − E[X]²
+
+- Fair die: E[X²] = 91/6, so Var = 91/6 − 49/4 = **35/12** (sd ≈ 1.71)
+- Independent sums: variances **add**. The sum of k dice has variance 35k/12, so sd grows like √k, not k.
+
+That √k is why diversification and repeated small bets work: the average of many independent bets is far less volatile than one big bet. **Try it:** increase k and watch the histogram's shape (and its relative width).
+@sim sumdice
+@practice prob:variance
+@end
+
+@chapter mm | Markets
+@lesson fairvalue | Fair value and quoting
+@body
+A market maker quotes a **bid** (price they'll buy at) and an **ask** (price they'll sell at) around their estimate of **fair value**.
+
+**Fair value = expected settlement given what you know.** If a contract settles at the sum of 5 cards from a deck (A=1 … K=13), before any card is shown each card is worth 364/52 = 7 on average, so fair value is 35. After one card is revealed as a 4: 4 + 4 × (364 − 4)/51 ≈ 32.2.
+
+**Spread width** compensates you for:
+- uncertainty (wider early, tighter as information arrives)
+- **adverse selection**: some counterparties know more than you
+- inventory risk: if you're long, **skew** both quotes down to encourage selling
+
+**Try it:** the simulation shows your average profit per trade against a mix of random ("noise") traders and informed traders. Too tight and the informed traders eat you; too wide and nobody trades.
+@sim mmspread
+@practice mm:fairvalue
+@end
+
+@lesson pnl | Positions and P&L
+@body
+Track two numbers:
+- **Position**: units held (+ long, − short)
+- **Cash**: money received minus money paid
+
+Buy q at p: position += q, cash −= q·p. Sell q at p: position −= q, cash += q·p.
+
+**P&L = cash + position × mark price.**
+
+Example: sell 10 at 102 (+1020), buy 9 at 109 (−981). Cash +39, position −1. Mark at 110 → P&L = 39 − 110 = **−71**.
+
+**Edge on a trade** = how much better than fair value you traded. Selling at 54 when fair value is 50 earns 4 per unit of edge, whatever happens to the price afterwards. Over many trades, edge is what you keep; the price noise averages out.
+@practice mm:pnl
+@end
+
+@lesson options | Options in one page
+@body
+- **Call**: the right to buy at strike K. Payoff max(S − K, 0).
+- **Put**: the right to sell at K. Payoff max(K − S, 0).
+- **Put–call parity** (European, r = 0): **C − P = S − K**. A long call plus a short put is the same as owning the stock and owing K. If prices break parity, buy the cheap side and sell the expensive side: arbitrage.
+- More **volatility** makes both calls and puts more valuable (more upside, downside capped at zero).
+- **Delta** ≈ how much the option moves per unit move in the stock (an at-the-money call ≈ 0.5).
+@practice mm:options
+@end
+
+@chapter speed | Speed skills
+@lesson mental | Mental arithmetic for online assessments
+@body
+Online assessments like the widely reported Optiver 80-in-8 reward **accuracy under time pressure**. Techniques that save seconds:
+
+- **Near a round number:** 98 × 97 = (100 − 2)(100 − 3) = 10000 − 500 + 6 = 9506
+- **Difference of squares:** 47 × 53 = 50² − 3² = 2491
+- **Squares ending in 5:** 65² → 6 × 7 = 42, append 25 → 4225
+- **×25** = ×100 ÷ 4; **×5** = ×10 ÷ 2; **×9** = ×10 − x
+- **Percentages swap:** 8% of 25 = 25% of 8 = 2
+- **Decimals:** multiply as integers, then place the point: 0.3 × 0.7 = 0.21
+- **Fractions of a number:** divide first: 5/8 of 48 = 6 × 5 = 30
+
+With −1 marking for wrong answers, **skipping beats guessing** unless you're more than 50% sure.
+@practice quant:arith
+@end
+
+@lesson sequences | Number sequences
+@body
+A checklist that cracks most "next term" questions:
+1. **Differences**: constant → arithmetic; second differences constant → quadratic; differences doubling → geometric part
+2. **Ratios**: constant → geometric
+3. **Interleaved**: look at odd and even positions separately
+4. **Recursive**: sum of previous two, or a·x + b
+5. **Alternating operations**: +p, ×q, +p, ×q…
+6. **Known families**: squares, cubes, primes, triangular numbers, each possibly ± a constant
+
+Write the differences under the sequence straight away. Most questions fall to step 1 or 3.
+@practice quant:seq
+@end
+
+</script>
+<script>
+/* VSim: a small, teaching-oriented Verilog / SystemVerilog-subset simulator.
+   Two-state (0/1), BigInt values, width/sign rules per IEEE 1364 for the synthesizable subset.
+   Exposes: VSim.compile(src, top) -> {design | errors, warnings}
+            VSim.check(userSrc, refSrc, spec) -> test result with waveform samples
+            VSim.play(src, spec) -> simulate without a reference                         */
+const VSim = (() => {
+'use strict';
+class VErr extends Error { constructor(msg, line){ super(msg); this.line = line; } }
+const B = BigInt;
+const MASKS = []; const M = w => (MASKS[w] ??= (1n << B(w)) - 1n);
+function ext(v, fw, tw, s){ v &= M(fw); if (tw <= fw) return v & M(tw); if (s && fw > 0 && ((v >> B(fw-1)) & 1n)) v |= M(tw) ^ M(fw); return v; }
+const sval = (v, w) => ((v >> B(w-1)) & 1n) ? v - (1n << B(w)) : v;
+
+/* ------------------------------------------------------------------ lexer */
+const KW = new Set(['module','endmodule','input','output','inout','wire','reg','logic','integer','genvar','signed','unsigned','assign','always','always_comb','always_ff','always_latch','initial','begin','end','if','else','case','casez','casex','endcase','default','posedge','negedge','or','parameter','localparam','for','generate','endgenerate','function','endfunction','task','endtask','bit','int','unique','priority','tri','supply0','supply1','while','repeat','forever']);
+const OPS = ['<<<','>>>','===','!==','<=','>=','==','!=','&&','||','<<','>>','~&','~|','~^','^~','+:','-:','**','++','--','+=','-=','|=','&=','^=','::'];
+function lex(src){
+  const toks = []; let i = 0, line = 1; const n = src.length;
+  while (i < n){
+    const c = src[i];
+    if (c === '\n'){ line++; i++; continue; }
+    if (c === ' ' || c === '\t' || c === '\r'){ i++; continue; }
+    if (c === '/' && src[i+1] === '/'){ while (i < n && src[i] !== '\n') i++; continue; }
+    if (c === '/' && src[i+1] === '*'){ i += 2; while (i < n && !(src[i] === '*' && src[i+1] === '/')){ if (src[i] === '\n') line++; i++; } i += 2; continue; }
+    if (c === '`'){ while (i < n && src[i] !== '\n') i++; continue; }
+    if (/[A-Za-z_$]/.test(c)){ let j = i+1; while (j < n && /[A-Za-z0-9_$]/.test(src[j])) j++; const v = src.slice(i,j); toks.push({t: KW.has(v) ? v : (v[0]==='$' ? 'sys' : 'id'), v, line}); i = j; continue; }
+    if (/[0-9]/.test(c) || (c === "'" && /[sSbBoOdDhH]/.test(src[i+1] || ''))){
+      let j = i; while (j < n && /[0-9_]/.test(src[j])) j++;
+      let k = j; while (k < n && src[k] === ' ') k++;
+      if (src[k] === "'" && /[sSbBoOdDhH]/.test(src[k+1] || '')){
+        const size = j > i ? parseInt(src.slice(i,j).replace(/_/g,'')) : null;
+        k++; let signed = false; if (/[sS]/.test(src[k])){ signed = true; k++; }
+        const base = src[k].toLowerCase(); k++;
+        while (k < n && src[k] === ' ') k++;
+        let d = k; while (d < n && /[0-9a-fA-FxXzZ_?]/.test(src[d])) d++;
+        if (d === k) throw new VErr(`Number is missing its digits after '${base}`, line);
+        toks.push({t:'num', base, size, signed, digits: src.slice(k,d).replace(/_/g,''), line}); i = d; continue;
+      }
+      if (src[j] === '.' && /[0-9]/.test(src[j+1]||'')) throw new VErr('Real (decimal-point) numbers are not synthesizable here', line);
+      toks.push({t:'num', base:'d', size:null, signed:true, digits: src.slice(i,j).replace(/_/g,''), line}); i = j; continue;
+    }
+    let op = OPS.find(o => src.startsWith(o, i)) || c;
+    if (!'()[]{};:,.#@=+-*/%&|^~!<>?'.includes(op[0])) throw new VErr(`Unexpected character '${c}'`, line);
+    toks.push({t: op, v: op, line}); i += op.length;
+  }
+  toks.push({t:'eof', v:'', line}); return toks;
+}
+function numVal(tk){
+  const {base, digits} = tk; let v = 0n, hasX = false;
+  const radix = {b:2n, o:8n, d:10n, h:16n}[base];
+  const per = {b:1, o:3, h:4}[base];
+  for (const ch of digits){
+    let dv;
+    if (/[xXzZ?]/.test(ch)){ hasX = true; dv = 0n; }
+    else { dv = B(parseInt(ch, 16)); if (dv >= radix) throw new VErr(`Digit '${ch}' isn't valid in base ${radix}`, tk.line); }
+    v = v * radix + dv;
+  }
+  let w = tk.size;
+  if (w == null){ w = 32; }
+  if (w === 0) throw new VErr('Number size must be at least 1', tk.line);
+  const minw = per ? digits.length * per : v.toString(2).length;
+  return {v: v & M(w), w, s: tk.size == null ? (base === 'd' && tk.signed) || tk.signed : tk.signed, hasX, unsized: tk.size == null, over: tk.size != null && minw > w && v > M(w)};
+}
+
+/* ------------------------------------------------------------------ parser */
+const PREC = [ ['||'], ['&&'], ['|'], ['^','~^','^~'], ['&'], ['==','!=','===','!=='], ['<','<=','>','>='], ['<<','>>','<<<','>>>'], ['+','-'], ['*','/','%'], ['**'] ];
+function parse(src){
+  const T = lex(src); let p = 0;
+  const at = (t, o=0) => T[p+o].t === t;
+  const eat = t => T[p].t === t ? T[p++] : null;
+  const desc = tk => tk.t === 'eof' ? 'the end of the file' : tk.t === 'num' ? 'a number' : `'${tk.v}'`;
+  const need = (t, what) => { if (T[p].t === t) return T[p++]; throw new VErr(`Expected ${what || `'${t}'`} but found ${desc(T[p])}` + (t === ';' ? ' (missing semicolon on the line before?)' : ''), t === ';' && p > 0 ? T[p-1].line : T[p].line); };
+  const modules = {};
+  while (!at('eof')){
+    if (at('module')){ const m = parseModule(); if (modules[m.name]) throw new VErr(`Module '${m.name}' is declared twice`, m.line); modules[m.name] = m; }
+    else throw new VErr(`Expected 'module' but found ${desc(T[p])}. Everything must be inside module … endmodule.`, T[p].line);
+  }
+  return modules;
+
+  function parseRange(){ if (!at('[')) return null; need('['); const msb = expr(); need(':', "':' in the range"); const lsb = expr(); need(']'); return {msb, lsb}; }
+  function parseType(){ // returns {kind, signed, range}
+    let kind = null, signed = false;
+    if (at('wire') || at('reg') || at('logic') || at('tri') || at('bit')) kind = T[p++].t;
+    else if (at('integer') || at('int')){ p++; return {kind:'integer', signed:true, range:null}; }
+    if (eat('signed')) signed = true; else eat('unsigned');
+    const range = parseRange();
+    return {kind, signed, range};
+  }
+  function parseModule(){
+    const line = need('module').line; const name = need('id', 'a module name').v;
+    const m = {name, line, params:[], ports:[], items:[], ansi:false};
+    if (eat('#')){ need('('); if (!at(')')) do { eat('parameter'); eat('localparam'); const ty = at('id') && (at('=',1)) ? {} : parseType(); const id = need('id','a parameter name'); need('='); m.params.push({name:id.v, range:ty.range, signed:ty.signed, expr:expr(), line:id.line}); } while (eat(',')); need(')'); }
+    if (eat('(')){
+      if (!at(')')){
+        let cur = null;
+        do {
+          if (at('input') || at('output') || at('inout')){ const dir = T[p++].t; const ty = parseType(); cur = {dir, ...ty}; m.ansi = true; }
+          const id = need('id', 'a port name');
+          if (cur) m.ports.push({name:id.v, ...cur, line:id.line}); else m.ports.push({name:id.v, nonAnsi:true, line:id.line});
+          if (at('[')) throw new VErr(`Put the range before the port name: e.g. 'input [7:0] ${id.v}'`, id.line);
+        } while (eat(','));
+      }
+      need(')', "')' to close the port list");
+    }
+    need(';', "';' after the module header");
+    while (!at('endmodule')){
+      if (at('eof')) throw new VErr(`Missing 'endmodule' for module '${name}'`, T[p].line);
+      if (at('module')) throw new VErr(`Missing 'endmodule' before the next 'module' (modules can't be nested)`, T[p].line);
+      m.items.push(...parseItem());
+    }
+    need('endmodule'); return m;
+  }
+  function parseItem(){
+    const tk = T[p], line = tk.line;
+    if (eat(';')) return [];
+    if (at('input') || at('output') || at('inout')){ const dir = T[p++].t; const ty = parseType(); const names = []; do { names.push(need('id','a port name').v); } while (eat(',')); need(';'); return [{k:'decl', dir, ...ty, names: names.map(n => ({name:n})), line}]; }
+    if (at('wire') || at('reg') || at('logic') || at('integer') || at('int') || at('bit') || at('tri') || at('genvar')){
+      if (eat('genvar')){ const names = []; do { names.push({name: need('id','a genvar name').v}); } while (eat(',')); need(';'); return [{k:'decl', kind:'genvar', names, line}]; }
+      const ty = parseType(); const names = [];
+      do {
+        const id = need('id', 'a signal name'); const d = {name:id.v, line:id.line};
+        if (at('[')) d.arr = parseRange();
+        if (eat('=')) d.init = expr();
+        names.push(d);
+      } while (eat(','));
+      need(';'); return [{k:'decl', ...ty, names, line}];
+    }
+    if (at('parameter') || at('localparam')){ const local = T[p++].t === 'localparam'; const ty = parseType(); const out = []; do { const id = need('id','a parameter name'); need('='); out.push({k:'param', local, name:id.v, range:ty.range, signed:ty.signed, expr:expr(), line:id.line}); } while (eat(',')); need(';'); return out; }
+    if (eat('assign')){ const out = []; do { const lhs = lvalue(); if (at('<=')) throw new VErr("Use '=' with assign ('<=' is only for always blocks)", T[p].line); need('=', "'=' in the assign"); out.push({k:'assign', lhs, rhs:expr(), line}); } while (eat(',')); need(';', "';' after the assign"); return out; }
+    if (at('always') || at('always_comb') || at('always_ff') || at('always_latch')){
+      const kw = T[p++].t; let sens = null;
+      if (kw === 'always_comb' || kw === 'always_latch') sens = 'comb';
+      else {
+        if (!at('@')) throw new VErr(`'${kw}' needs a sensitivity list, e.g. always @(posedge clk) or always @(*)`, line);
+        need('@');
+        if (eat('*')) sens = 'comb';
+        else { need('('); if (eat('*')) { sens = 'comb'; } else { sens = []; do { let edge = null; if (at('posedge') || at('negedge')) edge = T[p++].t; const e = expr(); sens.push({edge, e}); } while (eat('or') || eat(',')); } need(')'); }
+        if (Array.isArray(sens) && sens.every(s => !s.edge)) sens = {list: sens};
+      }
+      return [{k:'always', kw, sens, body: stmt(), line}];
+    }
+    if (eat('initial')) return [{k:'initial', body: stmt(), line}];
+    if (eat('generate')){ const out = []; while (!eat('endgenerate')){ if (at('eof')) throw new VErr("Missing 'endgenerate'", line); out.push(...parseItem()); } return out; }
+    if (at('for')) return [genFor()];
+    if (at('if')) return [genIf()];
+    if (at('begin')){ p++; let label = null; if (eat(':')) label = need('id').v; const items = []; while (!eat('end')){ if (at('eof')) throw new VErr("Missing 'end'", line); items.push(...parseItem()); } return [{k:'genblock', label, items, line}]; }
+    if (at('function') || at('task')) throw new VErr('Functions and tasks are not supported in this simulator yet', line);
+    if (at('id') && (at('id',1) || at('#',1))){
+      const mod = T[p++].v; let params = null;
+      if (eat('#')){ need('('); params = conns(); need(')'); }
+      const out = [];
+      do { const nm = need('id', 'an instance name'); need('(', `'(' after instance name ${nm.v}`); const c = at(')') ? [] : conns(); need(')', `')' to close the port list of ${nm.v}`); out.push({k:'inst', mod, params, name:nm.v, conns:c, line:nm.line}); } while (eat(','));
+      need(';', "';' after the instance"); return out;
+    }
+    if (at('id') && (at('=',1) || at('<=',1) || at('[',1))) throw new VErr(`Statements like '${tk.v} = …' must be inside an always block, or use 'assign ${tk.v} = …'`, line);
+    if (at('if') || at('case')) throw new VErr(`'${tk.v}' must be inside an always block`, line);
+    throw new VErr(`Unexpected ${desc(tk)} here`, line);
+  }
+  function genFor(){ const line = need('for').line; need('('); const v = need('id','the genvar').v; need('='); const init = expr(); need(';'); const cond = expr(); need(';'); const v2 = need('id').v; let step; if (eat('++')) step = {op:'+', a:{op:'id', name:v2}, b:{op:'num', v:1n, w:32, s:true, unsized:true}}; else { need('='); step = expr(); } need(')'); let label = null, items;
+    if (eat('begin')){ if (eat(':')) label = need('id').v; items = []; while (!eat('end')){ if (at('eof')) throw new VErr("Missing 'end'", line); items.push(...parseItem()); } } else items = parseItem();
+    return {k:'genfor', v, init, cond, step, label, items, line}; }
+  function genIf(){ const line = need('if').line; if (!at('(')) throw new VErr("'if' needs its condition in parentheses: if (cond) … — and if/case statements belong inside an always block", line); need('('); const cond = expr(); need(')'); const blk = () => { if (eat('begin')){ if (eat(':')) need('id'); const it = []; while (!eat('end')) it.push(...parseItem()); return it; } return parseItem(); }; const a = blk(); let b = []; if (eat('else')) b = at('if') ? [genIf()] : blk(); return {k:'genif', cond, a, b, line}; }
+  function conns(){ const out = []; do { if (eat('.')){ const nm = need('id','a port name'); need('(', `'(' after .${nm.v}`); const e = at(')') ? null : expr(); need(')', `')' after .${nm.v}(…`); out.push({name:nm.v, e, line:nm.line}); } else if (at(',') || at(')')) out.push({name:null, e:null, line:T[p].line}); else out.push({name:null, e: expr(), line:T[p].line}); } while (eat(',')); return out; }
+
+  /* statements */
+  function stmt(){
+    const tk = T[p], line = tk.line;
+    if (eat(';')) return {k:'nop'};
+    if (eat('begin')){ let label = null; if (eat(':')) label = need('id').v; const body = []; while (!eat('end')){ if (at('eof')) throw new VErr("Missing 'end' for 'begin'", line); if (at('endmodule')) throw new VErr("Missing 'end' for the 'begin' on line " + line, T[p].line); body.push(stmt()); } if (eat(':')) need('id'); return {k:'block', body, line}; }
+    if (at('unique') || at('priority')) p++;
+    if (eat('if')){ need('(', "'(' after if"); const c = expr(); need(')', "')' after the if condition"); const a = stmt(); let b = null; if (eat('else')) b = stmt(); return {k:'if', c, a, b, line}; }
+    if (at('case') || at('casez') || at('casex')){
+      const kind = T[p++].t; need('('); const sel = expr(); need(')'); const items = []; let def = null;
+      while (!eat('endcase')){
+        if (at('eof') || at('endmodule')) throw new VErr("Missing 'endcase'", line);
+        if (eat('default')){ eat(':'); def = stmt(); continue; }
+        const labels = []; do { labels.push(expr()); } while (eat(','));
+        need(':', "':' after the case label"); items.push({labels, s: stmt()});
+      }
+      return {k:'case', kind, sel, items, def, line};
+    }
+    if (eat('for')){ need('('); eat('integer'); eat('int'); const init = simpleAssign(); need(';'); const cond = expr(); need(';'); const step = simpleAssign(); need(')'); return {k:'for', init, cond, step, body: stmt(), line}; }
+    if (at('while') || at('repeat') || at('forever')) throw new VErr(`'${tk.v}' loops aren't supported; use a bounded for loop`, line);
+    if (eat('#')){ if (at('num')) p++; else expr(); throw new VErr('Delays (#) are simulation-only and are ignored by synthesis; remove them from your design', line); }
+    if (at('@')) throw new VErr('Timing controls (@) inside a block are not synthesizable', line);
+    if (at('sys')){ p++; if (eat('(')){ let d = 1; while (d && !at('eof')){ if (at('(')) d++; if (at(')')) d--; p++; } } need(';'); return {k:'nop'}; }
+    if (at('id') || at('{')){
+      const lhs = lvalue();
+      if (eat('<=')){ const rhs = expr(); need(';', "';' after the assignment"); return {k:'nba', lhs, rhs, line}; }
+      if (eat('=')){ const rhs = expr(); need(';', "';' after the assignment"); return {k:'ba', lhs, rhs, line}; }
+      if (at('++') || at('--')){ const op = T[p++].t; need(';'); return {k:'ba', lhs, rhs:{op: op==='++'?'+':'-', a: lhs, b:{op:'num', v:1n, w:32, s:true, unsized:true}}, line}; }
+      for (const op of ['+=','-=','|=','&=','^=']) if (eat(op)){ const r = expr(); need(';'); return {k:'ba', lhs, rhs:{op: op[0], a: lhs, b: r}, line}; }
+      throw new VErr(`Expected '=' or '<=' after ${tk.v}`, T[p].line);
+    }
+    if (at('assign')) throw new VErr("'assign' goes outside always blocks. Inside, just write  x = …;", line);
+    if (at('wire') || at('reg') || at('logic')) throw new VErr('Declare signals at module level, not inside an always block', line);
+    if (at('end') || at('endmodule') || at('endcase')) throw new VErr(`Unexpected '${tk.v}' (an extra end, or a missing begin?)`, line);
+    throw new VErr(`Unexpected ${desc(tk)} in a statement`, line);
+  }
+  function simpleAssign(){ const lhs = lvalue(); if (at('++')){ p++; return {k:'ba', lhs, rhs:{op:'+', a:lhs, b:{op:'num', v:1n, w:32, s:true, unsized:true}}}; } need('='); return {k:'ba', lhs, rhs: expr()}; }
+  function lvalue(){
+    if (at('{')){ const line = T[p].line; need('{'); const parts = []; do { parts.push(lvalue()); } while (eat(',')); need('}'); return {op:'concat', parts, line}; }
+    const id = need('id', 'a signal name'); return selects({op:'id', name:id.v, line:id.line});
+  }
+  function selects(node){
+    while (at('[')){
+      const line = T[p].line; need('['); const a = expr();
+      if (eat(':')){ const b = expr(); need(']'); node = {op:'part', base:node, m:a, l:b, line}; }
+      else if (eat('+:')){ const b = expr(); need(']'); node = {op:'ipart', base:node, start:a, width:b, up:true, line}; }
+      else if (eat('-:')){ const b = expr(); need(']'); node = {op:'ipart', base:node, start:a, width:b, up:false, line}; }
+      else { need(']'); node = {op:'bit', base:node, i:a, line}; }
+    }
+    return node;
+  }
+  /* expressions */
+  function expr(){ const c = binary(0); if (eat('?')){ const a = expr(); need(':', "':' in the ?: expression"); const b = expr(); return {op:'?:', c, a, b, line:c.line}; } return c; }
+  function binary(lvl){
+    if (lvl >= PREC.length) return unary();
+    let a = binary(lvl+1);
+    while (PREC[lvl].includes(T[p].t)){ const tk = T[p++]; const b = binary(lvl + (tk.t === '**' ? 0 : 1)); a = {op:tk.t, a, b, line:tk.line}; }
+    return a;
+  }
+  function unary(){
+    const tk = T[p];
+    if (['+','-','!','~','&','|','^','~&','~|','~^','^~'].includes(tk.t)){ p++; const a = unary(); return {op:'u'+tk.t, a, line:tk.line}; }
+    return primary();
+  }
+  function primary(){
+    const tk = T[p];
+    if (eat('num')){ const n = numVal(tk); return {op:'num', ...n, base: tk.base, digits: tk.digits, line:tk.line}; }
+    if (eat('(')){ const e = expr(); need(')', "')'"); return e; }
+    if (at('{')){
+      need('{'); const first = expr();
+      if (at('{')){ need('{'); const parts = []; do { parts.push(expr()); } while (eat(',')); need('}', "'}' closing the replication"); need('}', "'}' (replication needs double braces: {n{x}})"); return selects({op:'repl', n:first, parts, line:tk.line}); }
+      const parts = [first]; while (eat(',')) parts.push(expr()); need('}', "'}' closing the concatenation"); return selects({op:'concat', parts, line:tk.line});
+    }
+    if (at('sys')){ p++; const args = []; if (eat('(')){ if (!at(')')) do { args.push(expr()); } while (eat(',')); need(')'); } return {op:'sys', name:tk.v, args, line:tk.line}; }
+    if (at('id')){ p++; if (at('(')) throw new VErr(`'${tk.v}(…)' looks like a function call; functions aren't supported. To use a module, instantiate it on its own line.`, tk.line); if (eat('::')) need('id'); return selects({op:'id', name:tk.v, line:tk.line}); }
+    if (at('posedge') || at('negedge')) throw new VErr(`'${tk.v}' only belongs in a sensitivity list, e.g. always @(posedge clk). Inside the block test the level: if (reset)`, tk.line);
+    throw new VErr(`Expected an expression but found ${desc(tk)}`, tk.line);
+  }
+}
+
+/* ------------------------------------------------------------------ elaboration */
+function elaborate(mods, topName){
+  const sigs = [];            // {name, w, msb, lsb, s, kind, dir, arr, line, local}
+  const vals = [];            // BigInt per signal (or array for memories)
+  const procs = [];           // {kind:'assign'|'comb'|'seq'|'init', run, writes:Set, line, edges, ...}
+  const warnings = [], seen = new Set();
+  const warn = (msg, line) => { const k = msg + '@' + line; if (!seen.has(k)){ seen.add(k); warnings.push({msg, line}); } };
+  const S = {nba: null};
+  if (!mods[topName]) throw new VErr(`There's no module named '${topName}'. The top module must be called ${topName}.`, 1);
+  const top = elabModule(mods[topName], '', [], 0);
+  return {sigs, vals, procs, warnings, top, S};
+
+  function newSig(o){ o.id = sigs.length; sigs.push(o); vals.push(o.arr ? Array.from({length:o.arr.n}, () => 0n) : 0n); return o; }
+  function elabModule(def, prefix, paramConns, depth){
+    if (depth > 20) throw new VErr(`Module '${def.name}' instantiates itself recursively`, def.line);
+    const sc = {names: new Map(), parent: null, prefix, mod: def.name, depth};
+    // parameters (with overrides)
+    const pvals = {}; const named = paramConns && paramConns.length && paramConns[0].name != null;
+    def.params.forEach((pd, i) => { let ov = null; if (paramConns){ if (named){ const c = paramConns.find(c => c.name === pd.name); if (c) ov = c; } else if (paramConns[i]) ov = paramConns[i]; } pvals[pd.name] = {pd, ov}; });
+    if (paramConns && named) paramConns.forEach(c => { if (!def.params.find(p => p.name === c.name) && !def.items.find(it => it.k === 'param' && !it.local && it.name === c.name)) throw new VErr(`Module '${def.name}' has no parameter '${c.name}'`, c.line); });
+    for (const pd of def.params) defineParam(sc, pd, pvals[pd.name].ov ? pvals[pd.name].ov.parentConst : null);
+    // body params that are overridable (non-ANSI style "parameter W = 8;")
+    const ports = [];
+    // first pass: port declarations
+    for (const pt of def.ports){ if (!pt.nonAnsi){ const s = declare(sc, pt.name, pt, pt.dir, pt.line); ports.push(s); } }
+    const pass1 = items => { for (const it of items){
+      if (it.k === 'param'){ const ov = paramConns && named && !it.local ? paramConns.find(c => c.name === it.name) : null; defineParam(sc, it, ov ? ov.parentConst : null); }
+      if (it.k === 'decl') for (const d of it.names){
+        if (it.dir){ const pt = def.ports.find(x => x.name === d.name); if (!pt) throw new VErr(`'${d.name}' is declared as ${it.dir} but isn't in the module's port list`, it.line); if (def.ansi) throw new VErr(`Port '${d.name}' is already declared in the header`, it.line); const s = declare(sc, d.name, it, it.dir, it.line); ports.push(s); }
+        else if (it.kind === 'genvar') sc.names.set(d.name, {genvar:true});
+        else {
+          const ex = sc.names.get(d.name);
+          if (ex && ex.dir && !def.ansi && !ex.kindSet){ ex.kind = it.kind || ex.kind; ex.kindSet = true; if (it.range){ const [w,msb,lsb] = rangeW(sc, it.range); ex.w = w; ex.msb = msb; ex.lsb = lsb; } if (it.signed) ex.s = true; continue; }
+          if (ex && !ex.genvar) throw new VErr(ex.dir && def.ansi ? `'${d.name}' is already declared as a port. To make an output a reg, write 'output reg ${d.name}' in the header.` : `'${d.name}' is declared twice`, d.line || it.line);
+          declare(sc, d.name, {...it, arr: d.arr}, null, d.line || it.line, d);
+        }
+      }
+    } };
+    pass1(def.items);
+    for (const pt of def.ports) if (pt.nonAnsi && !sc.names.get(pt.name)) throw new VErr(`Port '${pt.name}' needs a direction: add 'input ${pt.name};' or 'output ${pt.name};'`, pt.line);
+    // second pass
+    items2(sc, def.items, def);
+    // decl initialisers become continuous assigns (wire x = …) or initial values (reg x = …)
+    return {sc, ports: def.ports.map(pt => sc.names.get(pt.name))};
+  }
+  function defineParam(sc, pd, overrideConst){
+    let c = overrideConst || constEval(compileExpr(pd.expr, sc), pd.line);
+    let w = c.w, s = c.s;
+    if (pd.range){ const [rw] = rangeW(sc, pd.range); w = rw; s = !!pd.signed; c = {v: ext(c.v, c.w, w, c.s), w, s}; }
+    if (sc.names.has(pd.name) && !sc.names.get(pd.name).param) throw new VErr(`'${pd.name}' is already declared`, pd.line);
+    sc.names.set(pd.name, {param:true, v: c.v & M(w), w, s});
+  }
+  function rangeW(sc, r){
+    const msb = Number(sval(constEval(compileExpr(r.msb, sc), r.msb.line).v, 64)), lsb = Number(sval(constEval(compileExpr(r.lsb, sc), r.lsb.line).v, 64));
+    const w = Math.abs(msb - lsb) + 1; if (w > 4096) throw new VErr('Vector too wide (max 4096 bits here)', r.msb.line);
+    return [w, msb, lsb];
+  }
+  function declare(sc, name, ty, dir, line, d){
+    if (sc.names.has(name)){ const ex = sc.names.get(name); if (ex.genvar) {} else throw new VErr(`'${name}' is declared twice`, line); }
+    let w = 1, msb = 0, lsb = 0, s = !!ty.signed, kind = ty.kind;
+    if (kind === 'integer'){ w = 32; msb = 31; s = true; }
+    else if (ty.range){ [w, msb, lsb] = rangeW(sc, ty.range); }
+    let arr = null;
+    if (ty.arr){ const [n, a, b] = rangeW(sc, ty.arr); arr = {n, lo: Math.min(a,b), hi: Math.max(a,b)}; }
+    const sig = newSig({name: sc.prefix + name, local: name, w, msb, lsb, s, kind: kind || (dir ? 'wire' : 'wire'), kindSet: !!kind, explicitKind: kind, dir, arr, line, drivers: []});
+    sc.names.set(name, sig);
+    if (d && d.init){
+      if (arr) throw new VErr('Memories can\'t have an initialiser here', line);
+      if (kind === 'reg' || kind === 'integer') { const r = compileExpr(d.init, sc); const c = constEval(r, line); vals[sig.id] = ext(c.v, c.w, w, c.s); sig.initVal = true; }
+      else items2(sc, [{k:'assign', lhs:{op:'id', name, line}, rhs:d.init, line, fromDecl:true}], null);
+    }
+    return sig;
+  }
+  function lookup(sc, name, line){
+    for (let s = sc; s; s = s.parent){ if (s.names.has(name)) return s.names.get(name); }
+    throw new VErr(`'${name}' is not declared. Declare it first, e.g. 'wire ${name};'`, line);
+  }
+  function items2(sc, items, def){
+    for (const it of items){
+      if (it.k === 'assign'){
+        const lv = compileLV(it.lhs, sc, 'assign', it.line); const r = compileExpr(it.rhs, sc);
+        widthWarn(r, lv, it.line);
+        const W = Math.max(lv.w, r.w);
+        const run = () => { lv.prep(r.ev(W, r.s))(); };
+        procs.push({kind:'assign', run, writes: lv.targets, partial: lv.partial, line: it.line, reads: r.reads});
+      } else if (it.k === 'always'){
+        compileAlways(it, sc);
+      } else if (it.k === 'initial'){
+        const ctx = {kind:'init', writes:new Map()}; const run = compileStmt(it.body, sc, ctx);
+        procs.push({kind:'init', run, writes: new Set(ctx.writes.keys()), line: it.line});
+      } else if (it.k === 'inst'){
+        instantiate(it, sc);
+      } else if (it.k === 'genfor'){
+        let gv = constEval(compileExpr(it.init, sc), it.line).v; let guard = 0;
+        if (!lookupMaybe(sc, it.v) || !lookupMaybe(sc, it.v).genvar) { if (!lookupMaybe(sc, it.v)) throw new VErr(`'${it.v}' must be declared as a genvar`, it.line); }
+        while (true){
+          const ls = {names:new Map([[it.v, {param:true, v: gv, w:32, s:true}]]), parent: sc, prefix: sc.prefix + (it.label ? `${it.label}[${sval(gv,32)}].` : `gen${it.line}[${sval(gv,32)}].`)};
+          if (!(constEval(compileExpr(it.cond, ls), it.line).v)) break;
+          if (++guard > 1024) throw new VErr('Generate loop runs more than 1024 times', it.line);
+          const sub = {names:new Map(), parent: ls, prefix: ls.prefix};
+          passDecls(sub, it.items); items2(sub, it.items, null);
+          gv = constEval(compileExpr(it.step, ls), it.line).v & M(32);
+        }
+      } else if (it.k === 'genif'){
+        const c = constEval(compileExpr(it.cond, sc), it.line).v; const body = c ? it.a : it.b; const sub = {names:new Map(), parent: sc, prefix: sc.prefix}; passDecls(sub, body); items2(sub, body, null);
+      } else if (it.k === 'genblock'){
+        const sub = {names:new Map(), parent: sc, prefix: sc.prefix + (it.label ? it.label + '.' : '')}; passDecls(sub, it.items); items2(sub, it.items, null);
+      }
+    }
+  }
+  function lookupMaybe(sc, n){ for (let s = sc; s; s = s.parent) if (s.names.has(n)) return s.names.get(n); return null; }
+  function passDecls(sc, items){ for (const it of items){ if (it.k === 'param') defineParam(sc, it, null); if (it.k === 'decl') for (const d of it.names){ if (it.kind === 'genvar') sc.names.set(d.name, {genvar:true}); else declare(sc, d.name, {...it, arr:d.arr}, null, d.line || it.line, d); } } }
+  function widthWarn(r, lv, line){ if (r.vw > lv.w && !r.isConst) warn(`Width mismatch: a ${r.vw}-bit value is assigned to ${lv.w}-bit '${lv.label}'; the upper ${r.vw - lv.w} bit(s) are dropped`, line); }
+  function instantiate(it, sc){
+    const def = mods[it.mod];
+    if (!def) throw new VErr(`Unknown module '${it.mod}'. Check the spelling, or define module ${it.mod}.`, it.line);
+    const pconns = it.params ? it.params.map(c => ({...c, parentConst: c.e ? constEval(compileExpr(c.e, sc), it.line) : null})) : null;
+    const child = elabModule(def, sc.prefix + it.name + '.', pconns, (sc.depth || 0) + 1);
+    const cports = child.ports; const named = it.conns.length && it.conns[0].name != null;
+    if (!named && it.conns.length > cports.length) throw new VErr(`Instance '${it.name}' connects ${it.conns.length} signals but '${it.mod}' has only ${cports.length} ports`, it.line);
+    const conns = named ? it.conns : it.conns.map((c, i) => ({...c, name: def.ports[i].name}));
+    if (named) for (const c of it.conns){ if (!def.ports.find(p => p.name === c.name)) throw new VErr(`Module '${it.mod}' has no port named '${c.name}'. Its ports are: ${def.ports.map(p=>p.name).join(', ')}`, c.line); if (it.conns.filter(x=>x.name===c.name).length > 1) throw new VErr(`Port '${c.name}' is connected twice`, c.line); }
+    if (!named && it.conns.length < cports.length) warn(`Instance '${it.name}' connects only ${it.conns.length} of ${cports.length} ports`, it.line);
+    for (const port of cports){
+      const c = conns.find(c => c.name === port.local);
+      if (!c || !c.e){ if (port.dir === 'input') warn(`Input '${port.local}' of instance '${it.name}' is unconnected (reads as 0)`, it.line); continue; }
+      if (port.dir === 'input'){
+        const r = compileExpr(c.e, sc); const lv = compileLV({op:'id', name: port.local, line: it.line}, child.sc, 'port', it.line, true); const W = Math.max(lv.w, r.w);
+        if (r.w !== port.w && !r.unsized && !r.isConst) warn(`Port '${port.local}' of '${it.name}' is ${port.w} bits but is connected to a ${r.w}-bit value`, it.line);
+        procs.push({kind:'assign', run: () => lv.prep(r.ev(W, r.s))(), writes: lv.targets, line: it.line, portIn: true});
+      } else {
+        const lv = compileLV(c.e, sc, 'portout', it.line); const r = compileExpr({op:'id', name: port.local, line: it.line}, child.sc); const W = Math.max(lv.w, r.w);
+        if (r.w !== lv.w) warn(`Port '${port.local}' of '${it.name}' is ${port.w} bits but is connected to ${lv.w}-bit '${lv.label}'`, it.line);
+        procs.push({kind:'assign', run: () => lv.prep(r.ev(W, r.s))(), writes: lv.targets, partial: lv.partial, line: it.line});
+      }
+    }
+  }
+  function compileAlways(it, sc){
+    const comb = it.sens === 'comb' || (it.sens && it.sens.list);
+    if (it.kw === 'always_ff' && comb) throw new VErr('always_ff needs an edge: always_ff @(posedge clk)', it.line);
+    if (it.kw === 'always_comb' && !comb) throw new VErr('always_comb has no sensitivity list', it.line);
+    if (it.sens && it.sens.list) warn('Explicit sensitivity lists are easy to get wrong; use always @(*) for combinational logic', it.line);
+    if (Array.isArray(it.sens) && it.sens.some(s => !s.edge)) throw new VErr('Mixing edge and level signals in one sensitivity list is not synthesizable. Use only posedge/negedge (clock, async reset).', it.line);
+    const ctx = {kind: comb ? 'comb' : 'seq', writes: new Map(), line: it.line};
+    const run = compileStmt(it.body, sc, ctx);
+    const writes = new Set(ctx.writes.keys());
+    if (comb){
+      const def = defAssigned(it.body, sc);
+      for (const id of writes) if (!def.has(id) && !sigs[id].tempOnly) warn(`Latch inferred for '${sigs[id].local}': not every path through this always @(*) assigns it, so it must hold its old value. Add a default assignment at the top, or an else / default.`, it.line);
+      procs.push({kind:'comb', run, writes, line: it.line, kw: it.kw});
+    } else {
+      const edges = it.sens.map(s => { const r = compileExpr(s.e, sc); if (!r.sigId && r.sigId !== 0) throw new VErr('Sensitivity list entries must be plain signals', it.line); return {sig: r.sigId, pos: s.edge === 'posedge'}; });
+      // async reset sanity: if more than one edge, body should start with if (reset)
+      if (edges.length > 1){ const first = it.body.k === 'block' ? it.body.body[0] : it.body; if (!first || first.k !== 'if') warn('With an async reset in the sensitivity list, the block should start with  if (reset) …  else …', it.line); }
+      procs.push({kind:'seq', run, writes, edges, line: it.line});
+    }
+  }
+  function defAssigned(st, sc){
+    const E = new Set();
+    const go = st => {
+      if (!st) return new Set();
+      switch (st.k){
+        case 'ba': case 'nba': return lvTargets(st.lhs, sc);
+        case 'block': { const s = new Set(); st.body.forEach(x => go(x).forEach(i => s.add(i))); return s; }
+        case 'if': { if (!st.b) return new Set(); const a = go(st.a), b = go(st.b); return new Set([...a].filter(x => b.has(x))); }
+        case 'case': { const sets = st.items.map(x => go(x.s)); let full = !!st.def; if (st.def) sets.push(go(st.def)); else { try { const r = compileExpr(st.sel, sc); const vals = new Set(); let ok = true; st.items.forEach(x => x.labels.forEach(l => { try { const c = constEval(compileExpr(l, sc), 0); if (c.hasX) ok = false; vals.add(c.v); } catch(e){ ok = false; } })); full = ok && r.w <= 16 && vals.size >= 2 ** r.w; } catch(e){} }
+          if (!full || !sets.length) return new Set(); return sets.reduce((a,b) => new Set([...a].filter(x => b.has(x)))); }
+        case 'for': return go(st.body);
+        default: return E;
+      }
+    };
+    return go(st);
+  }
+  function lvTargets(lv, sc){ if (lv.op === 'concat'){ const s = new Set(); lv.parts.forEach(p => lvTargets(p, sc).forEach(x => s.add(x))); return s; } let b = lv; while (b.base) b = b.base; const sg = lookupMaybe(sc, b.name); return new Set(sg && sg.id != null ? [sg.id] : []); }
+
+  /* --- statements */
+  function compileStmt(st, sc, ctx){
+    switch (st.k){
+      case 'nop': return () => {};
+      case 'block': { const fs = st.body.map(x => compileStmt(x, sc, ctx)); return () => { for (const f of fs) f(); }; }
+      case 'if': { const c = compileExpr(st.c, sc); const a = compileStmt(st.a, sc, ctx), b = st.b ? compileStmt(st.b, sc, ctx) : null; return () => { if (c.ev(c.w, c.s)) a(); else if (b) b(); }; }
+      case 'case': {
+        const sel = compileExpr(st.sel, sc);
+        const items = st.items.map(x => ({labels: x.labels.map(l => { const lc = compileExpr(l, sc); let care = null; if (st.kind !== 'case' && l.op === 'num' && /[zZ?xX]/.test(l.digits || '')){} return lc; }), raw: x.labels, f: compileStmt(x.s, sc, ctx)}));
+        // casez/casex: build don't-care masks for literal labels
+        const dc = items.map(x => x.raw.map(l => (st.kind !== 'case' && l.op === 'num') ? dcMask(l, st.kind) : null));
+        const def = st.def ? compileStmt(st.def, sc, ctx) : null;
+        return () => {
+          for (let i = 0; i < items.length; i++){
+            const it = items[i];
+            for (let j = 0; j < it.labels.length; j++){
+              const l = it.labels[j]; const W = Math.max(sel.w, l.w), S = sel.s && l.s;
+              const a = sel.ev(W, S), b = l.ev(W, S); const m = dc[i][j];
+              if (m != null ? ((a ^ b) & ~m & M(W)) === 0n : a === b){ it.f(); return; }
+            }
+          }
+          if (def) def();
+        };
+      }
+      case 'for': {
+        lvTargets(st.init.lhs, sc).forEach(id => { sigs[id].tempOnly = true; });
+        const init = compileStmt(st.init, sc, ctx), step = compileStmt(st.step, sc, ctx), c = compileExpr(st.cond, sc), body = compileStmt(st.body, sc, ctx);
+        return () => { let g = 0; for (init(); c.ev(c.w, c.s); step()){ if (++g > 4096) throw new VErr('for loop ran more than 4096 iterations', st.line); body(); } };
+      }
+      case 'ba': case 'nba': {
+        const lv = compileLV(st.lhs, sc, ctx.kind, st.line); const r = compileExpr(st.rhs, sc); const W = Math.max(lv.w, r.w);
+        for (const id of lv.targets){ if (!ctx.writes.has(id)) ctx.writes.set(id, st.k); }
+        if (ctx.kind === 'comb' && st.k === 'nba') warn("Use blocking '=' in combinational always blocks ('<=' is for clocked blocks)", st.line);
+        if (ctx.kind === 'seq' && st.k === 'ba' && ![...lv.targets].every(id => sigs[id].tempOnly || sigs[id].kind === 'integer')) warn(`Blocking '=' to '${lv.label}' in a clocked block. Use '<=' for registers; '=' makes later lines see the new value (it can collapse a pipeline).`, st.line);
+        widthWarn(r, lv, st.line);
+        if (st.k === 'ba' || ctx.kind === 'init') return () => { lv.prep(r.ev(W, r.s))(); };
+        return () => { S.nba.push(lv.prep(r.ev(W, r.s))); };
+      }
+    }
+    throw new VErr('Unsupported statement', st.line);
+  }
+  function dcMask(l, kind){ // bits that are ? / z (casez) or x/z/? (casex) are don't-care
+    const per = {b:1, o:3, h:4}[l.base || 'b']; if (!per) return null; const ds = (l.digits || '').split(''); let m = 0n;
+    ds.forEach(ch => { m <<= B(per); if (/[zZ?]/.test(ch) || (kind === 'casex' && /[xX]/.test(ch))) m |= M(per); });
+    return m;
+  }
+
+  /* --- lvalues: returns {w, targets:Set, prep(v) -> commit fn, label} */
+  function compileLV(node, sc, ctxKind, line, internal){
+    if (node.op === 'concat'){
+      const parts = node.parts.map(p => compileLV(p, sc, ctxKind, line, internal));
+      const w = parts.reduce((a, p) => a + p.w, 0); const targets = new Set(); parts.forEach(p => p.targets.forEach(t => targets.add(t)));
+      return {w, targets, label: '{…}', partial: true, prep: v => { const cs = []; let sh = 0; for (let i = parts.length - 1; i >= 0; i--){ cs.push(parts[i].prep((v >> B(sh)) & M(parts[i].w))); sh += parts[i].w; } return () => cs.forEach(f => f()); }};
+    }
+    let base = node; const chain = []; while (base.base){ chain.unshift(base); base = base.base; }
+    if (base.op !== 'id') throw new VErr('Invalid assignment target', line);
+    const sg = lookup(sc, base.name, base.line || line);
+    if (sg.param) throw new VErr(`Can't assign to parameter '${base.name}'`, line);
+    if (sg.genvar) throw new VErr(`Can't assign to genvar '${base.name}' here`, line);
+    checkDriver(sg, ctxKind, line, internal);
+    const targets = new Set([sg.id]); const id = sg.id;
+    if (sg.arr){
+      if (!chain.length || chain[0].op !== 'bit') throw new VErr(`'${base.name}' is a memory; write one element, e.g. ${base.name}[addr] = …`, line);
+      const ix = compileExpr(chain[0].i, sc); const rest = chain.slice(1);
+      const sub = rest.length ? selLV(rest, sg, sc, line) : null;
+      return {w: sub ? sub.w : sg.w, targets, label: base.name + '[…]', partial: true, prep: v => { const i = Number(ix.ev(ix.w, false)) - sg.arr.lo; if (i < 0 || i >= sg.arr.n) return () => {}; if (!sub) { v &= M(sg.w); return () => { vals[id][i] = v; }; } const f = sub.mk(v); return () => { vals[id][i] = f(vals[id][i]); }; }};
+    }
+    if (!chain.length) return {w: sg.w, targets, label: base.name, prep: v => { v &= M(sg.w); return () => { vals[id] = v; }; }};
+    const sub = selLV(chain, sg, sc, line);
+    return {w: sub.w, targets, label: base.name + '[…]', partial: true, prep: v => { const f = sub.mk(v); return () => { vals[id] = f(vals[id]); }; }};
+  }
+  function bitPos(sg, idx){ return sg.msb >= sg.lsb ? idx - sg.lsb : sg.lsb - idx; }
+  function selLV(chain, sg, sc, line){ // one level of bit/part select on a vector (element width = sg.w)
+    if (chain.length > 1) throw new VErr('Only one bit/part select is supported on the left-hand side', line);
+    const s = chain[0];
+    if (s.op === 'bit'){ const ix = compileExpr(s.i, sc); return {w:1, mk: v => { const pos = bitPos(sg, Number(sval(ix.ev(Math.max(ix.w,32), ix.s), Math.max(ix.w,32)))); return old => (pos < 0 || pos >= sg.w) ? old : (old & ~(1n << B(pos)) & M(sg.w)) | ((v & 1n) << B(pos)); }}; }
+    if (s.op === 'part'){ const m = Number(sval(constEval(compileExpr(s.m, sc), line).v, 64)), l = Number(sval(constEval(compileExpr(s.l, sc), line).v, 64)); checkDir(sg, m, l, line); const lo = Math.min(bitPos(sg, m), bitPos(sg, l)), w = Math.abs(m - l) + 1; if (lo < 0 || lo + w > sg.w) throw new VErr(`Part-select [${m}:${l}] is outside '${sg.local}' [${sg.msb}:${sg.lsb}]`, line); const mk = M(w) << B(lo); return {w, mk: v => old => (old & ~mk & M(sg.w)) | ((v & M(w)) << B(lo))}; }
+    if (s.op === 'ipart'){ const st = compileExpr(s.start, sc); const w = Number(constEval(compileExpr(s.width, sc), line).v); return {w, mk: v => { const b0 = Number(sval(st.ev(Math.max(st.w,32), st.s), Math.max(st.w,32))); const idxLo = s.up ? b0 : b0 - w + 1; const lo = sg.msb >= sg.lsb ? idxLo - sg.lsb : sg.lsb - (idxLo + w - 1); return old => { let o = old; for (let k = 0; k < w; k++){ const pos = lo + k; if (pos >= 0 && pos < sg.w) o = (o & ~(1n << B(pos))) | (((v >> B(k)) & 1n) << B(pos)); } return o & M(sg.w); }; }}; }
+    throw new VErr('Invalid select', line);
+  }
+  function checkDir(sg, m, l, line){ if (m !== l && (m > l) !== (sg.msb >= sg.lsb)) throw new VErr(`Part-select [${m}:${l}] goes the wrong way: '${sg.local}' is declared [${sg.msb}:${sg.lsb}], so write [${Math.max(m,l)}:${Math.min(m,l)}]` + (sg.msb < sg.lsb ? '' : ''), line); }
+  function checkDriver(sg, kind, line, internal){
+    if (kind === 'port' && internal) { sg.drivers.push({kind:'portin', line}); return; }
+    if (sg.dir === 'input') throw new VErr(`Can't assign to input '${sg.local}'. Inputs are driven from outside the module${kind === 'seq' ? ' (did you mean to update the register, not the input?)' : ''}.`, line);
+    sg.drivers.push({kind: kind === 'portout' ? 'assign' : kind, line});
+  }
+
+  /* --- expressions: returns {w, s, ev(W, S) -> BigInt masked to W, reads, unsized, isConst, sigId?} */
+  function compileExpr(n, sc){ const r = compileExpr0(n, sc); if (r.vw === undefined) r.vw = r.unsized ? 0 : r.w; return r; }
+  function compileExpr0(n, sc){
+    const L = n.line;
+    switch (n.op){
+      case 'num': return {w: n.w, s: n.s, unsized: n.unsized, isConst: true, hasX: n.hasX, ev: (W, S) => ext(n.v, n.w, W, S && n.s)};
+      case 'id': {
+        const sg = lookup(sc, n.name, L);
+        if (sg.param){ return {w: sg.w, s: sg.s, isConst: true, ev: (W, S) => ext(sg.v, sg.w, W, S && sg.s)}; }
+        if (sg.genvar) throw new VErr(`genvar '${n.name}' can only be used inside its generate loop`, L);
+        if (sg.arr) throw new VErr(`'${n.name}' is a memory; read one element, e.g. ${n.name}[i]`, L);
+        const id = sg.id; return {w: sg.w, s: sg.s, sigId: id, ev: (W, S) => ext(vals[id], sg.w, W, S && sg.s)};
+      }
+      case 'bit': case 'part': case 'ipart': return compileSelect(n, sc);
+      case 'concat': { const ps = n.parts.map(p => compileExpr(p, sc)); if (ps.some(p => p.unsized)) throw new VErr('Unsized numbers (like 1 or 5) aren\'t allowed in a concatenation; give them a size, e.g. 1\'b1', L); const w = ps.reduce((a,p) => a + p.w, 0); return {w, s:false, isConst: ps.every(p => p.isConst), ev: (W) => { let v = 0n; for (const p of ps) v = (v << B(p.w)) | p.ev(p.w, p.s); return ext(v, w, W, false); }}; }
+      case 'repl': { const k = Number(constEval(compileExpr(n.n, sc), L).v); if (k <= 0 || k > 4096) throw new VErr('Replication count must be a positive constant', L); const ps = n.parts.map(p => compileExpr(p, sc)); if (ps.some(p => p.unsized)) throw new VErr('Give numbers a size inside a replication, e.g. {4{1\'b1}}', L); const pw = ps.reduce((a,p)=>a+p.w,0), w = pw * k; return {w, s:false, isConst: ps.every(p=>p.isConst), ev: (W) => { let u = 0n; for (const p of ps) u = (u << B(p.w)) | p.ev(p.w, p.s); let v = 0n; for (let i = 0; i < k; i++) v = (v << B(pw)) | u; return ext(v, w, W, false); }}; }
+      case 'sys': {
+        if (n.name === '$signed' || n.name === '$unsigned'){ const a = compileExpr(n.args[0], sc); const s = n.name === '$signed'; return {w: a.w, vw: a.vw, s, isConst: a.isConst, ev: (W, S) => ext(a.ev(a.w, a.s), a.w, W, S && s)}; }
+        if (n.name === '$clog2'){ const c = constEval(compileExpr(n.args[0], sc), L); let v = c.v, r = 0n; v = v - 1n; while (v > 0n){ r++; v >>= 1n; } return {w:32, s:true, isConst:true, unsized:true, ev:(W,S) => ext(r, 32, W, S)}; }
+        if (n.name === '$bits'){ const a = compileExpr(n.args[0], sc); const r = B(a.w); return {w:32, s:true, isConst:true, unsized:true, ev:(W,S)=>ext(r,32,W,S)}; }
+        throw new VErr(`System function ${n.name} isn't supported (only $signed, $unsigned, $clog2, $bits)`, L);
+      }
+      case '?:': { const c = compileExpr(n.c, sc), a = compileExpr(n.a, sc), b = compileExpr(n.b, sc); const w = Math.max(a.w, b.w), s = a.s && b.s; return {w, vw: Math.max(a.vw, b.vw), s, unsized: a.unsized && b.unsized, isConst: c.isConst && a.isConst && b.isConst, ev: (W, S) => c.ev(c.w, c.s) ? a.ev(W, S) : b.ev(W, S)}; }
+    }
+    if (n.op[0] === 'u'){
+      const op = n.op.slice(1), a = compileExpr(n.a, sc);
+      if (op === '+' || op === '-' || op === '~') return {w: a.w, vw: a.vw, s: a.s, unsized: a.unsized, isConst: a.isConst, ev: (W, S) => { const v = a.ev(W, S); return op === '+' ? v : op === '-' ? (-v) & M(W) : (~v) & M(W); }};
+      const red = () => { const v = a.ev(a.w, a.s); let r;
+        if (op === '!') r = v === 0n ? 1n : 0n;
+        else if (op === '&' || op === '~&') r = v === M(a.w) ? 1n : 0n;
+        else if (op === '|' || op === '~|') r = v !== 0n ? 1n : 0n;
+        else { let c = 0, x = v; while (x){ x &= x - 1n; c++; } r = B(c & 1); }
+        if (op[0] === '~' && op.length === 2) r ^= 1n; return r; };
+      return {w:1, s:false, isConst: a.isConst, ev: (W) => red()};
+    }
+    const op = n.op, a = compileExpr(n.a, sc), b = compileExpr(n.b, sc);
+    const isConst = a.isConst && b.isConst, unsized = a.unsized && b.unsized;
+    if (['+','-','*','/','%','&','|','^','~^','^~'].includes(op)){
+      const w = Math.max(a.w, b.w), s = a.s && b.s;
+      return {w, vw: Math.max(a.vw, b.vw), s, unsized, isConst, ev: (W, S) => { const x = a.ev(W, S), y = b.ev(W, S); const m = M(W);
+        switch (op){
+          case '+': return (x + y) & m; case '-': return (x - y) & m; case '*': return (x * y) & m;
+          case '/': case '%': { if (y === 0n){ warn('Division by zero (gives X in a real simulator; 0 here)', L); return 0n; } if (S){ const xs = sval(x, W), ys = sval(y, W); return (op === '/' ? xs / ys : xs % ys) & m; } return op === '/' ? x / y : x % y; }
+          case '&': return x & y; case '|': return x | y; case '^': return x ^ y; default: return (~(x ^ y)) & m;
+        } }};
+    }
+    if (op === '**'){ return {w: a.w, s: a.s && b.s, unsized: a.unsized, isConst, ev: (W, S) => { const x = a.ev(W, S), y = b.ev(b.w, b.s); let r = 1n; for (let i = 0n; i < y && i < 4096n; i++) r = (r * x) & M(W); return r; }}; }
+    if (['<<','>>','<<<','>>>'].includes(op)){
+      return {w: a.w, vw: a.vw, s: a.s, unsized: a.unsized, isConst, ev: (W, S) => { const x = a.ev(W, S); const sh = b.ev(b.w, false); if (sh >= B(W)) return (op === '>>>' && S && ((x >> B(W-1)) & 1n)) ? M(W) : 0n;
+        if (op === '<<' || op === '<<<') return (x << sh) & M(W);
+        if (op === '>>>' && S) return (sval(x, W) >> sh) & M(W);
+        return x >> sh; }};
+    }
+    if (['==','!=','===','!==','<','<=','>','>='].includes(op)){
+      const cw = Math.max(a.w, b.w), cs = a.s && b.s;
+      return {w:1, s:false, isConst, ev: () => { let x = a.ev(cw, cs), y = b.ev(cw, cs); if (cs){ x = sval(x, cw); y = sval(y, cw); }
+        switch (op){ case '==': case '===': return x === y ? 1n : 0n; case '!=': case '!==': return x !== y ? 1n : 0n; case '<': return x < y ? 1n : 0n; case '<=': return x <= y ? 1n : 0n; case '>': return x > y ? 1n : 0n; default: return x >= y ? 1n : 0n; } }};
+    }
+    if (op === '&&' || op === '||'){ return {w:1, s:false, isConst, ev: () => { const x = a.ev(a.w, a.s) !== 0n; if (op === '&&') return x && b.ev(b.w, b.s) !== 0n ? 1n : 0n; return x || b.ev(b.w, b.s) !== 0n ? 1n : 0n; }}; }
+    throw new VErr(`Operator '${op}' isn't supported`, L);
+  }
+  function compileSelect(n, sc){
+    const L = n.line;
+    let base = n; const chain = []; while (base.base){ chain.unshift(base); base = base.base; }
+    let elem; // {w, msb, lsb, get():BigInt, s}
+    if (base.op === 'id'){
+      const sg = lookup(sc, base.name, L);
+      if (sg.param){ elem = {w: sg.w, msb: sg.w-1, lsb: 0, s: false, get: () => sg.v, isConst: true}; }
+      else if (sg.genvar) throw new VErr(`genvar '${base.name}' can only be used inside its generate loop`, L);
+      else if (sg.arr){
+        const first = chain.shift(); if (!first || first.op !== 'bit') throw new VErr(`'${base.name}' is a memory; read one element, e.g. ${base.name}[i]`, L);
+        const ix = compileExpr(first.i, sc); const id = sg.id;
+        elem = {w: sg.w, msb: sg.msb, lsb: sg.lsb, s: sg.s, get: () => { const i = Number(ix.ev(Math.max(ix.w, 32), false)) - sg.arr.lo; return (i >= 0 && i < sg.arr.n) ? vals[id][i] : 0n; }};
+        if (!chain.length) return {w: elem.w, s: sg.s, ev: (W, S) => ext(elem.get(), elem.w, W, S && sg.s)};
+      } else { const id = sg.id; elem = {w: sg.w, msb: sg.msb, lsb: sg.lsb, s: false, get: () => vals[id], local: sg.local}; }
+    } else { const inner = compileExpr(base, sc); elem = {w: inner.w, msb: inner.w - 1, lsb: 0, get: () => inner.ev(inner.w, inner.s), isConst: inner.isConst}; }
+    let cur = elem;
+    for (const s of chain){
+      const e = cur; const pos = idx => e.msb >= e.lsb ? idx - e.lsb : e.lsb - idx;
+      if (s.op === 'bit'){ const ix = compileExpr(s.i, sc); const IW = Math.max(ix.w, 32);
+        if (ix.isConst){ const k = Number(sval(constEval(ix, L).v, IW)); const pk = pos(k); if (pk < 0 || pk >= e.w) warn(`Bit [${k}] is outside the declared range [${e.msb}:${e.lsb}]${e.local?` of '${e.local}'`:''} (reads 0)`, L); }
+        cur = {w:1, msb:0, lsb:0, isConst: e.isConst && ix.isConst, get: () => { const p = pos(Number(sval(ix.ev(IW, ix.s), IW))); return (p < 0 || p >= e.w) ? 0n : (e.get() >> B(p)) & 1n; }};
+      } else if (s.op === 'part'){ const m = Number(sval(constEval(compileExpr(s.m, sc), L).v, 64)), l = Number(sval(constEval(compileExpr(s.l, sc), L).v, 64));
+        if (m !== l && (m > l) !== (e.msb >= e.lsb)) throw new VErr(`Part-select [${m}:${l}] goes the wrong way: ${e.local?`'${e.local}' is`:'the vector is'} declared [${e.msb}:${e.lsb}], so write [${Math.max(m,l)}:${Math.min(m,l)}]. To reverse bit order, use a concatenation instead.`, L);
+        const w = Math.abs(m - l) + 1, lo = Math.min(pos(m), pos(l)); if (lo < 0 || lo + w > e.w) throw new VErr(`Part-select [${m}:${l}] is outside the declared range [${e.msb}:${e.lsb}]${e.local?` of '${e.local}'`:''}`, L);
+        cur = {w, msb: w-1, lsb: 0, isConst: e.isConst, get: () => (e.get() >> B(lo)) & M(w)};
+      } else { const st = compileExpr(s.start, sc); const w = Number(constEval(compileExpr(s.width, sc), L).v); const IW = Math.max(st.w, 32);
+        cur = {w, msb: w-1, lsb: 0, get: () => { const b0 = Number(sval(st.ev(IW, st.s), IW)); const idxLo = s.up ? b0 : b0 - w + 1; const lo = e.msb >= e.lsb ? idxLo - e.lsb : e.lsb - (idxLo + w - 1); let v = 0n; const src = e.get(); for (let k = 0; k < w; k++){ const p = lo + k; if (p >= 0 && p < e.w) v |= ((src >> B(p)) & 1n) << B(k); } return v; }};
+      }
+    }
+    const fin = cur; return {w: fin.w, s: false, isConst: fin.isConst, ev: (W) => ext(fin.get(), fin.w, W, false)};
+  }
+  function constEval(r, line){ if (!r.isConst) throw new VErr('This must be a constant (a number or a parameter)', line); const w = r.unsized ? Math.max(r.w, 32) : r.w; return {v: r.ev(w, r.s), w, s: r.s, hasX: r.hasX}; }
+}
+
+/* ------------------------------------------------------------------ design runtime */
+function compile(src, top){
+  try {
+    const mods = parse(src);
+    const e = elaborate(mods, top || 'top_module');
+    const {sigs, vals, procs, warnings, S} = e;
+    // driver rules
+    for (const sg of sigs){
+      const kinds = sg.drivers.map(d => d.kind).filter(k => k !== 'portin' && k !== 'init');
+      const procIds = new Set(); procs.forEach((p, i) => { if (p.writes && p.writes.has(sg.id) && p.kind !== 'init') procIds.add(i); });
+      const alw = [...procIds].filter(i => procs[i].kind === 'comb' || procs[i].kind === 'seq');
+      const asg = [...procIds].filter(i => procs[i].kind === 'assign');
+      const ln = alw.length ? procs[alw[0]].line : asg.length ? procs[asg[0]].line : sg.line;
+      if (alw.length && sg.explicitKind === 'wire') throw new VErr(`'${sg.local}' is a wire but is assigned in an always block. Declare it as reg (or logic)${sg.dir ? `: 'output reg ${sg.w>1?`[${sg.msb}:${sg.lsb}] `:''}${sg.local}'` : ''}.`, procs[alw[0]].line);
+      if (alw.length && !sg.explicitKind && sg.dir === 'output') throw new VErr(`Output '${sg.local}' is assigned in an always block, so it must be declared 'output reg ${sg.w>1?`[${sg.msb}:${sg.lsb}] `:''}${sg.local}' (outputs are wires by default).`, procs[alw[0]].line);
+      if (alw.length && !sg.explicitKind && !sg.dir) throw new VErr(`'${sg.local}' is assigned in an always block, so declare it as reg (or logic)`, procs[alw[0]].line);
+      if (asg.length && sg.explicitKind === 'reg' && !sg.arr) throw new VErr(`'${sg.local}' is a reg but is driven by assign / an instance output. Make it a wire (or use logic).`, procs[asg[0]].line);
+      if (alw.length > 1) throw new VErr(`'${sg.local}' is assigned in ${alw.length} different always blocks (lines ${alw.map(i=>procs[i].line).join(', ')}). A signal must be driven from exactly one block.`, procs[alw[1]].line);
+      if (alw.length && asg.length) throw new VErr(`'${sg.local}' is driven both by assign (line ${procs[asg[0]].line}) and by an always block (line ${procs[alw[0]].line})`, ln);
+      if (asg.length > 1 && asg.some(i => !procs[i].partial)) throw new VErr(`'${sg.local}' has more than one assign driving it (lines ${asg.map(i=>procs[i].line).join(', ')})`, procs[asg[1]].line);
+      if (sg.dir === 'output' && !procIds.size && !sg.local.includes('.') && !sg.initVal) warnings.push({msg:`Output '${sg.local}' is never assigned (reads as 0 here, X in a real simulator)`, line: sg.line});
+    }
+    const comb = procs.filter(p => p.kind === 'assign' || p.kind === 'comb'), seq = procs.filter(p => p.kind === 'seq');
+    const combIds = []; comb.forEach(p => p.writes.forEach(id => combIds.push(id)));
+    const edgeSigs = [...new Set(seq.flatMap(p => p.edges.map(e => e.sig)))];
+    const prev = new Map();
+    const snapshot = () => combIds.map(id => vals[id]);
+    function settle(){
+      let before = snapshot();
+      for (let it = 0; it < 200; it++){
+        for (const p of comb) p.run();
+        const after = snapshot(); let same = true; for (let i = 0; i < after.length; i++) if (after[i] !== before[i]){ same = false; break; }
+        if (same) return; before = after;
+      }
+      throw new VErr('Combinational loop: some signal depends on itself without a register in between (e.g. assign a = ~a). Values never settle.', comb[0] ? comb[0].line : 1);
+    }
+    function step(){
+      settle();
+      for (let k = 0; k < 32; k++){
+        const fired = seq.filter(p => p.edges.some(e => { const was = prev.get(e.sig), now = vals[e.sig] & 1n; return was !== undefined && (e.pos ? (was === 0n && now === 1n) : (was === 1n && now === 0n)); }));
+        edgeSigs.forEach(id => prev.set(id, vals[id] & 1n));
+        if (!fired.length) return;
+        S.nba = []; for (const p of fired) p.run(); for (const f of S.nba) f(); S.nba = null;
+        settle();
+      }
+      throw new VErr('Clock edges keep triggering each other (a register is driving a clock)', seq[0].line);
+    }
+    // init
+    for (const p of procs) if (p.kind === 'init') p.run();
+    settle(); edgeSigs.forEach(id => prev.set(id, vals[id] & 1n));
+    const topSc = e.top.sc;
+    const ports = e.top.ports.map(s => ({name: s.local, dir: s.dir, w: s.w, s: s.s, id: s.id, msb: s.msb, lsb: s.lsb}));
+    const internals = sigs.filter(s => !s.dir && !s.name.includes('.') && !s.arr && s.kind !== 'integer').map(s => ({name: s.local, w: s.w, id: s.id}));
+    return {ok: true, warnings, design: {
+      ports, internals,
+      set(name, v){ const p = ports.find(x => x.name === name); if (p) vals[p.id] = BigInt(v) & M(p.w); },
+      get(name){ const p = ports.find(x => x.name === name) || internals.find(x => x.name === name); return p ? vals[p.id] : 0n; },
+      getId(id){ return vals[id]; },
+      step
+    }};
+  } catch (err){
+    if (err instanceof VErr) return {ok: false, errors: [{msg: err.message, line: err.line}], warnings: []};
+    if (err instanceof RangeError) return {ok: false, errors: [{msg: 'Design too large or a value is too wide to simulate', line: 1}], warnings: []};
+    throw err;
+  }
+}
+
+/* ------------------------------------------------------------------ testbench */
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function randBits(r, w){ let v = 0n; for (let i = 0; i < w; i += 30) v = (v << 30n) | B(Math.floor(r() * 2 ** 30)); return v & M(w); }
+
+// spec: {type:'comb', n?} | {type:'seq', clk:'clk', cycles, gen?(i, r, prevIn) -> {name: value}, resetName?, resetCycles?}
+function stimulus(spec, inPorts){
+  const r = rng(spec.seed || 12345); const out = [];
+  if (spec.type === 'comb'){
+    const total = inPorts.reduce((a, p) => a + p.w, 0);
+    if (spec.vectors) return spec.vectors.map(v => ({in: v}));
+    if (total <= (spec.exhaustiveBits || 10)){
+      for (let k = 0n; k < (1n << B(total)); k++){ const v = {}; let sh = 0n; for (const p of [...inPorts].reverse()){ v[p.name] = (k >> sh) & M(p.w); sh += B(p.w); } out.push({in: v}); }
+    } else {
+      const N = spec.n || 120;
+      const corner = [0n, -1n];
+      for (const c of corner){ const v = {}; inPorts.forEach(p => v[p.name] = c === 0n ? 0n : M(p.w)); out.push({in: v}); }
+      for (let i = 0; i < N; i++){ const v = {}; inPorts.forEach(p => v[p.name] = spec.gen ? B(spec.gen(p.name, r, i) ?? randBits(r, p.w)) & M(p.w) : randBits(r, p.w)); out.push({in: v}); }
+    }
+    return out;
+  }
+  const cycles = spec.cycles || 60; let prevIn = {};
+  for (let i = 0; i < cycles; i++){
+    const v = {};
+    for (const p of inPorts){ if (p.name === spec.clk) continue; v[p.name] = randBits(r, p.w); }
+    if (spec.reset){ const {name, active = 1, cycles: rc = 2, prob = 0.06} = spec.reset; if (v[name] !== undefined){ v[name] = (i < rc || (i > rc + 3 && r() < prob)) ? B(active) : B(1 - active); } }
+    if (spec.gen){ const o = spec.gen(i, r, prevIn) || {}; for (const k in o) v[k] = B(o[k]); }
+    out.push({in: v}); prevIn = v;
+  }
+  return out;
+}
+function simulate(design, spec, stim){
+  const ins = design.ports.filter(p => p.dir === 'input' && p.name !== spec.clk), outs = design.ports.filter(p => p.dir === 'output');
+  const rows = [];
+  if (spec.type === 'comb'){
+    for (const s of stim){ for (const p of ins) design.set(p.name, s.in[p.name] ?? 0n); design.step(); const o = {}; outs.forEach(p => o[p.name] = design.get(p.name)); rows.push({in: s.in, out: o}); }
+  } else {
+    const clk = spec.clk;
+    design.set(clk, 0n); design.step();
+    for (const s of stim){
+      design.set(clk, 0n); for (const p of ins) design.set(p.name, s.in[p.name] ?? 0n); design.step();
+      const o = {}; outs.forEach(p => o[p.name] = design.get(p.name)); rows.push({in: s.in, out: o});
+      design.set(clk, 1n); design.step();
+    }
+  }
+  return rows;
+}
+function check(userSrc, refSrc, spec){
+  const top = spec.top || 'top_module';
+  const ref = compile(refSrc, top); if (!ref.ok) return {ok:false, internal:true, errors: ref.errors.map(e => ({...e, msg: 'Reference: ' + e.msg})), warnings: []};
+  const u = compile(userSrc, top); if (!u.ok) return {ok:false, errors: u.errors, warnings: u.warnings || []};
+  const rp = ref.design.ports, up = u.design.ports;
+  for (const p of rp){ const q = up.find(x => x.name === p.name); if (!q) return {ok:false, errors:[{msg:`Your module is missing port '${p.name}' (${p.dir}${p.w>1?` [${p.msb}:${p.lsb}]`:''})`, line:1}], warnings:u.warnings}; if (q.dir !== p.dir) return {ok:false, errors:[{msg:`Port '${p.name}' should be an ${p.dir}`, line:1}], warnings:u.warnings}; if (q.w !== p.w) return {ok:false, errors:[{msg:`Port '${p.name}' should be ${p.w} bit${p.w>1?'s':''} wide${p.w>1?` ([${p.msb}:${p.lsb}])`:''}, yours is ${q.w}`, line:1}], warnings:u.warnings}; }
+  for (const q of up) if (!rp.find(x => x.name === q.name)) return {ok:false, errors:[{msg:`Your module has an extra port '${q.name}' that the problem doesn't ask for`, line:1}], warnings:u.warnings};
+  const inPorts = rp.filter(p => p.dir === 'input');
+  const stim = stimulus(spec, inPorts);
+  let refRows, userRows;
+  try { refRows = simulate(ref.design, spec, stim); } catch (e){ return {ok:false, internal:true, errors:[{msg:'Reference failed: ' + e.message, line:e.line||1}], warnings:[]}; }
+  try { userRows = simulate(u.design, spec, stim); } catch (e){ if (e instanceof VErr) return {ok:false, errors:[{msg:e.message, line:e.line}], warnings:u.warnings}; throw e; }
+  const outs = rp.filter(p => p.dir === 'output');
+  let mism = 0, first = -1; const perOut = {}; outs.forEach(p => perOut[p.name] = 0);
+  const rows = refRows.map((rr, i) => { const ur = userRows[i]; const bad = outs.filter(p => ur.out[p.name] !== rr.out[p.name]).map(p => p.name); if (bad.length){ mism++; if (first < 0) first = i; bad.forEach(b => perOut[b]++); } return {in: rr.in, ref: rr.out, out: ur.out, bad}; });
+  return {ok: mism === 0, total: rows.length, mismatches: mism, first, perOut, rows, ports: rp, seq: spec.type === 'seq', clk: spec.clk, warnings: u.warnings, errors: []};
+}
+function play(src, spec){
+  const u = compile(src, spec.top || 'top_module'); if (!u.ok) return {ok:false, errors:u.errors, warnings:u.warnings||[]};
+  const ports = u.design.ports; const inPorts = ports.filter(p => p.dir === 'input' && p.name !== spec.clk);
+  const sp = {...spec}; if (!sp.type) sp.type = ports.some(p => p.name === 'clk') ? 'seq' : 'comb'; if (sp.type === 'seq' && !sp.clk) sp.clk = 'clk';
+  if (sp.type === 'comb' && !sp.n) sp.n = 24;
+  if (sp.type === 'seq' && !sp.reset){ const rs = inPorts.find(p => /^(a?reset|rst|areset|rst_n)$/.test(p.name)); if (rs) sp.reset = {name: rs.name, active: rs.name.endsWith('_n') ? 0 : 1}; }
+  try { const rows = simulate(u.design, sp, stimulus({...sp, cycles: sp.cycles || 24}, inPorts.concat(sp.type==='seq'?[]:[]))); return {ok:true, rows: rows.map(r => ({in:r.in, out:r.out, bad:[]})), ports, seq: sp.type === 'seq', clk: sp.clk, warnings: u.warnings, errors: []}; }
+  catch (e){ if (e instanceof VErr) return {ok:false, errors:[{msg:e.message, line:e.line}], warnings:u.warnings}; throw e; }
+}
+return {compile, check, play, parse, VErr};
+})();
+if (typeof module !== 'undefined') module.exports = VSim;
+
+/* Course runtime: parses course text and provides stimulus generators. */
+const CourseRT = (() => {
+  function parseCourse(text){
+    const chapters = []; let ch = null, L = null, field = null;
+    const lines = text.split('\n');
+    const push = () => { if (L){ for (const k of ['body','example','task','starter','solution','lib','wrong']) if (L[k] != null) L[k] = L[k].replace(/\s+$/,'') ; ch.lessons.push(L); } L = null; };
+    for (const ln of lines){
+      if (ln.startsWith('@chapter ')){ push(); const [id, title] = ln.slice(9).split('|').map(s => s.trim()); ch = {id, title, lessons: []}; chapters.push(ch); field = null; continue; }
+      if (ln.startsWith('@lesson ')){ push(); const [id, title] = ln.slice(8).split('|').map(s => s.trim()); L = {id, title, hints: [], ch: ch.id}; field = null; continue; }
+      if (ln === '@end'){ push(); field = null; continue; }
+      if (ln.startsWith('@spec ')){ L.spec = JSON.parse(ln.slice(6)); field = null; continue; }
+      if (ln.startsWith('@hint ')){ L.hints.push(ln.slice(6)); field = null; continue; }
+      if (ln.startsWith('@sim ')){ L.sim = ln.slice(5).trim(); field = null; continue; }
+      if (ln.startsWith('@practice ')){ L.practice = ln.slice(10).trim(); field = null; continue; }
+      const m = ln.match(/^@(body|example|task|starter|solution|lib|wrong|sim|practice)$/);
+      if (m){ field = m[1]; L[field] = ''; continue; }
+      if (L && field) L[field] += (L[field] ? '\n' : '') + ln;
+    }
+    push();
+    return chapters;
+  }
+  const GENV = {
+    sel3: () => (name, r) => undefined,
+    scancode: () => (name, r) => name === 'scancode' ? (r() < 0.6 ? [0xe06b, 0xe072, 0xe074, 0xe075][Math.floor(r()*4)] : Math.floor(r()*65536)) : undefined,
+    loadena: () => (i, r) => ({load: r() < 0.15 ? 1 : 0, ena: r() < 0.6 ? 1 : 0}),
+    slowbit: () => (i, r, prev) => ({async_in: prev.async_in === undefined ? 0 : (r() < 0.25 ? 1 - Number(prev.async_in) : Number(prev.async_in))}),
+    fifo: () => (i, r) => { const ph = Math.floor(i / 40) % 3; const pw = [0.85, 0.2, 0.5][ph], pr = [0.15, 0.85, 0.5][ph]; return {wr_en: r() < pw ? 1 : 0, rd_en: r() < pr ? 1 : 0}; },
+    stream: () => { let len = 0, pos = 0; return (i, r) => { if (r() < 0.8){ if (pos >= len){ len = 2 + Math.floor(r()*6); pos = 0; } const o = {valid:1, sop: pos === 0 ? 1 : 0, byte_in: Math.floor(r()*256)}; pos++; return o; } return {valid:0, sop:0, byte_in: Math.floor(r()*256)}; }; },
+    book: () => (i, r) => ({valid: r() < 0.7 ? 1 : 0, side: r() < 0.5 ? 1 : 0, price: 900 + Math.floor(r()*200)}),
+  };
+  function specFor(L){ const s = {...L.spec}; if (s.gen){ const f = GENV[s.gen]; s.gen = f ? f() : undefined; } return s; }
+  function withLib(L, src){ return L.lib ? src + '\n\n' + L.lib : src; }
+  return {parseCourse, specFor, withLib, GENV};
+})();
+if (typeof module !== 'undefined') module.exports = CourseRT;
+
+</script>
 <script>
 (() => {
 /* ================= storage ================= */
@@ -2323,14 +5187,15 @@ function nextMixed(groups){
 let tr = {item:null, n:0, ok:0, streak:0, best:0, wrong:0};
 function renderTrain(){
   const gs = settings.groups;
-  app.innerHTML = `<div class="row"><h1 class="grow">Train</h1><span class="pill">${tr.ok}/${tr.n} · streak ${tr.streak}</span></div>
-    <p class="sub">Endless shuffled mix, generated on your phone.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
+  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
+    <p class="sub">Endless shuffled questions to keep what you've learned sharp.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
     <div class="chips">${Object.entries(GROUPS).map(([k,t])=>`<button class="chip ${gs.includes(k)?'on':''}" data-grp="${k}">${t}</button>`).join('')}<button class="chip ${settings.focus?'on':''}" id="focus">🎯 Weak spots</button></div>
     <div id="itm"></div>`;
   app.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => {
     const k=b.dataset.grp; let g=settings.groups.includes(k) ? settings.groups.filter(x=>x!==k) : [...settings.groups, k];
     if (!g.length) return toast('Keep at least one on'); settings.groups=g; store.set('settings',settings); tr.item=null; renderTrain();
   });
+  $('#gocards').onclick = () => { rv.queue=null; tab('cards'); };
   $('#focus').onclick = () => { settings.focus=!settings.focus; store.set('settings',settings); toast(settings.focus?'Weak spots: your worst topics and past mistakes come up more':'Weak spots off: even mix'); tr.item=null; renderTrain(); };
   const gr=$('#gorev'); if (gr) gr.onclick = e => { e.preventDefault(); rvw.view='session'; tab('review'); };
   if (!tr.item) tr.item = nextMixed(settings.groups);
@@ -2528,11 +5393,12 @@ function buildQueue(){ const now=Date.now(); const pool=CARDS.filter(c=>rv.deck=
 function renderCards(){
   if (!rv.queue) buildQueue();
   const decks=[{id:'all',title:'All'}].concat(DECKS);
-  app.innerHTML = `<h1>Cards</h1><p class="sub">${CARDS.length} flashcards with spaced repetition. Due cards also appear in Train.</p>
+  app.innerHTML = `<div class="row"><h1 class="grow">Flashcards</h1><button class="chip" id="backtr">← Practice</button></div><p class="sub">${CARDS.length} flashcards with spaced repetition. Due cards also appear in Practice.</p>
     <div class="chips">${decks.map(d=>{const k=counts(d.id); return `<button class="chip ${rv.deck===d.id?'on':''}" data-deck="${d.id}">${esc(d.title)}<span class="n">${k.due+k.nw}</span></button>`;}).join('')}</div><div id="itm"></div>`;
   app.querySelectorAll('[data-deck]').forEach(b => b.onclick = () => { rv.deck=b.dataset.deck; store.set('lastDeck',rv.deck); rv.queue=null; renderCards(); });
+  $('#backtr').onclick = () => tab('train');
   const c=rv.queue[0];
-  if (!c){ kp=null; $('#itm').innerHTML = `<div class="card empty"><b style="color:var(--fg)">Done for now.</b><br>Nothing due here. Train never runs out.<button class="big" id="gotr">Go to Train</button></div>`; $('#gotr').onclick=()=>tab('train'); return; }
+  if (!c){ kp=null; $('#itm').innerHTML = `<div class="card empty"><b style="color:var(--fg)">Done for now.</b><br>Nothing due here. Practice never runs out.<button class="big" id="gotr">Go to Practice</button></div>`; $('#gotr').onclick=()=>tab('train'); return; }
   renderItem($('#itm'), {type:'card', card:c, cat:c.cat}, {done: res => { const x=rv.queue.shift(); if (srs[x.id] && srs[x.id].i===0) rv.queue.splice(Math.min(3,rv.queue.length),0,x); renderCards(); }});
 }
 
@@ -2547,7 +5413,8 @@ function renderStatsInner(){
   const total=Object.values(cs).reduce((a,c)=>a+c.n,0);
   const seen=CARDS.filter(c=>srs[c.id]).length, due=CARDS.filter(c=>srs[c.id]&&srs[c.id].d<=Date.now()).length;
   const accRows = Object.entries(CATS).filter(([k])=>cs[k]).sort((a,b)=>(cs[a[0]].ok/cs[a[0]].n)-(cs[b[0]].ok/cs[b[0]].n)).map(([k,v])=>{const c=cs[k]; const p=Math.round(100*c.ok/c.n); return `<div class="list"><div class="li"><span>${v.t}</span><span class="mut">${c.ok}/${c.n} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${p>=80?'var(--good)':p>=60?'var(--warn)':'var(--bad)'}"></i></div></div>`;}).join('');
-  app.innerHTML = `<h1>Progress</h1><p class="sub">Stored in this browser only. Back it up from More.</p>
+  const lp = Object.values(COURSES).map(T => { const a = allLessons(T.id); return `<div class="list"><div class="li"><span>${T.title}</span><span class="mut">${a.filter(L=>isDone(T.id,L)).length}/${a.length} lessons</span></div></div>`; }).join('');
+  app.innerHTML = `<h1>Progress</h1><p class="sub">Stored on this device only. Back it up below.</p><h2>Courses</h2>${lp}
     <div class="stat"><div><b>${streak()}</b><span>day streak</span></div><div><b>${total}</b><span>questions answered</span></div><div><b>${due}</b><span>cards due</span></div></div>
     <h2>Accuracy by topic <span class="mut small">(weakest first)</span></h2>${accRows||'<p class="sub">Answer some questions in Train or Tests.</p>'}
     <h2>80 in 8</h2>${(th.oa80||[]).length?spark(th.oa80.slice(-20).map(x=>x.score),'80 in 8 scores'):'<p class="sub">No runs yet.</p>'}
@@ -2567,23 +5434,285 @@ function renderMore(host){
     <p class="sub" style="margin-top:14px">${CARDS.length} cards · ${MCB.length} multiple-choice · ${GENS.length} problem generators.</p>`;
   $('#addc').onclick = () => { const q=$('#cq').value.trim(), a=$('#ca').value.trim(); if (!q||!a) return toast('Fill in both sides'); const custom=store.get('custom',[]); const c={id:hash('mine'+q+Date.now()), q, a}; custom.push(c); store.set('custom',custom); if (!DECKS.find(d=>d.id==='mine')) DECKS.push({id:'mine',title:'My cards',cat:'mine'}); CARDS.push({...c,deck:'mine',cat:'mine'}); rv.queue=null; $('#cq').value=''; $('#ca').value=''; toast('Card added'); };
   $('#saves').onclick = () => { settings.newPerDay=Math.max(0,+$('#snew').value||0); settings.sprintSecs=+$('#ssec').value; settings.autoNext=$('#sauto').checked; store.set('settings',settings); rv.queue=null; toast('Saved'); };
-  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','cstat','gstat','mistakes','revlog','days','settings','newday']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
+  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
   $('#doimp').onclick = () => { try{ const o=JSON.parse($('#imp').value); if (!o.edge) throw 0; Object.entries(o.data).forEach(([k,v])=>{ if (v!==null) store.set(k,v); }); toast('Restored, reloading'); setTimeout(()=>location.reload(),600); }catch(e){ toast("That doesn't look like a backup"); } };
 }
 
+/* ================= LEARN (interactive courses) ================= */
+const COURSES = {
+  v: {id:'v', title:'Verilog & FPGA', sub:'Write real RTL, simulate it, see the waveform', chapters: CourseRT.parseCourse($('#course_v').textContent)},
+  q: {id:'q', title:'Quant', sub:'Probability, expectation and markets, with live simulations', chapters: CourseRT.parseCourse($('#course_q').textContent)},
+};
+const allLessons = c => COURSES[c].chapters.flatMap(ch => ch.lessons.map(L => ({...L, chTitle: ch.title})));
+let lprog = store.get('lprog', {});
+let lcode = store.get('lcode', {});
+const lkey = (c, L) => c + ':' + L.id;
+const isDone = (c, L) => !!(lprog[lkey(c, L)] && lprog[lkey(c, L)].done);
+function markDone(c, L){ const k = lkey(c, L); lprog[k] = {...(lprog[k]||{}), done: true, t: Date.now()}; store.set('lprog', lprog); markActive(); }
+let ln = {course: store.get('lastCourse', 'v'), lesson: null};
+
+function renderLearn(){
+  kp = null;
+  if (ln.lesson) return renderLesson();
+  const c = ln.course, C = COURSES[c], all = allLessons(c), done = all.filter(L => isDone(c, L)).length;
+  const next = all.find(L => !isDone(c, L));
+  app.innerHTML = `<h1>Learn</h1><p class="sub">Lessons with hands-on challenges. Your code and progress are saved on this device.</p>
+    <div class="tracks">${Object.values(COURSES).map(T => { const a = allLessons(T.id), d = a.filter(L => isDone(T.id, L)).length; return `<button class="track ${T.id===c?'on':''}" data-c="${T.id}"><b>${T.title}</b><span>${d}/${a.length} done</span><div class="bar"><i style="width:${100*d/a.length}%"></i></div></button>`; }).join('')}</div>
+    <p class="sub" style="margin-top:12px">${esc(C.sub)}</p>
+    ${next ? `<button class="big" id="cont">${done ? 'Continue' : 'Start'}: ${esc(next.title)}</button>` : `<div class="card small">Track complete. 🎉 Revisit any lesson, or keep sharp in Practice.</div>`}
+    ${C.chapters.map((ch, ci) => `<h2>${ci+1}. ${esc(ch.title)}</h2><div class="lessons">${ch.lessons.map(L => { const d = isDone(c, L); return `<button class="lrow ${d?'done':''}" data-l="${L.id}"><span class="lchk">${d?'✓':''}</span><span class="grow">${esc(L.title)}</span><span class="mut small">${L.task ? 'challenge' : L.sim ? 'simulation' : L.practice ? 'practice' : ''}</span></button>`; }).join('')}</div>`).join('')}`;
+  app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ln.course = b.dataset.c; store.set('lastCourse', ln.course); renderLearn(); });
+  app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => openLesson(c, b.dataset.l));
+  const ct = $('#cont'); if (ct) ct.onclick = () => openLesson(c, next.id);
+}
+function openLesson(c, id){ ln.course = c; ln.lesson = id; ln.state = {hints: 0, attempts: 0, result: null, playRes: null, prac: {n:0, ok:0, item:null}}; renderLesson(); window.scrollTo(0,0); }
+
+function renderLesson(){
+  const c = ln.course, all = allLessons(c), i = all.findIndex(L => L.id === ln.lesson), L = all[i], st = ln.state;
+  const nextL = all[i+1];
+  app.innerHTML = `<div class="row"><button class="chip" id="lback">← ${esc(COURSES[c].title)}</button><span class="grow"></span><span class="pill">${i+1}/${all.length}</span></div>
+    <p class="sub" style="margin:10px 0 2px">${esc(L.chTitle)}</p><h1 style="margin-top:0">${esc(L.title)}${isDone(c,L)?' <span style="color:var(--good)">✓</span>':''}</h1>
+    <div class="lbody">${mdLong(L.body || '')}</div>
+    ${L.example ? `<h2>Try it</h2><p class="sub">Edit the code and press Run. The simulator drives the inputs and draws the waveform.</p><div id="play"></div>` : ''}
+    ${L.sim ? `<h2>Experiment</h2><div id="sim"></div>` : ''}
+    ${L.task ? `<h2>Challenge</h2><div class="card task">${mdLong(L.task)}</div><div id="chal"></div>` : ''}
+    ${!L.task && L.practice ? `<h2>Practice</h2><p class="sub">Get 4 right to complete the lesson. Explanations follow each answer.</p><div id="prac"></div>` : ''}
+    <div id="lfoot"></div>`;
+  $('#lback').onclick = () => { ln.lesson = null; renderLearn(); window.scrollTo(0,0); };
+  if (L.example) mountEditor($('#play'), {key: 'ex:' + lkey(c, L), initial: L.example, run: src => VSim.play(src, {}), runLabel: 'Run', reset: L.example});
+  if (L.sim) mountSim($('#sim'), L.sim);
+  if (L.task) mountChallenge($('#chal'), c, L);
+  if (!L.task && L.practice) mountPractice($('#prac'), c, L);
+  if (!L.task && !L.practice) { if (!isDone(c, L)) markDone(c, L); }
+  renderFoot();
+  function renderFoot(){
+    const f = $('#lfoot'); if (!f) return;
+    f.innerHTML = `<div class="row" style="gap:8px;margin-top:22px">${i>0?`<button class="big ghost grow" id="lprev" style="margin-top:0">← Previous</button>`:''}${nextL?`<button class="big grow ${isDone(c,L)?'':'ghost'}" id="lnext" style="margin-top:0">Next: ${esc(nextL.title)} →</button>`:''}</div>`;
+    const p = $('#lprev'); if (p) p.onclick = () => openLesson(c, all[i-1].id);
+    const n = $('#lnext'); if (n) n.onclick = () => openLesson(c, nextL.id);
+  }
+  ln.refreshFoot = renderFoot;
+}
+
+/* ---------- code editor ---------- */
+const SYMS = [';','(',')','[',']','{','}','<=','=','&','|','^','~','!','?',':',"'",'@','#',',','_','begin','end'];
+function mountEditor(host, o){
+  const saved = lcode[o.key];
+  host.innerHTML = `<div class="ed"><pre class="gut" aria-hidden="true"></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea></div>
+    <div class="syms">${SYMS.map(s => `<button type="button" data-s="${esc(s)}">${esc(s)}</button>`).join('')}<button type="button" data-s="TAB">⇥</button></div>
+    <div class="row" style="gap:8px;margin-top:8px"><button class="big grow" data-run style="margin-top:0">${o.runLabel}</button>${o.extra||''}<button class="chip" data-reset>Reset</button></div>
+    <div class="out"></div>`;
+  const ta = host.querySelector('textarea'), gut = host.querySelector('.gut'), out = host.querySelector('.out');
+  ta.value = saved != null ? saved : o.initial;
+  let errLines = new Set();
+  const lines = () => { const n = ta.value.split('\n').length; let s = ''; for (let k = 1; k <= n; k++) s += (errLines.has(k) ? `<b>${k}</b>` : k) + '\n'; gut.innerHTML = s; ta.style.height = 'auto'; ta.style.height = Math.max(120, ta.scrollHeight + 4) + 'px'; gut.style.height = ta.style.height; };
+  const save = () => { lcode[o.key] = ta.value; store.set('lcode', lcode); };
+  ta.addEventListener('input', () => { lines(); save(); });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab'){ e.preventDefault(); ins('  '); }
+    else if (e.key === 'Enter'){ e.preventDefault(); const b = ta.value.slice(0, ta.selectionStart); const cur = b.split('\n').pop(); let ind = cur.match(/^\s*/)[0]; if (/\b(begin|case[zx]?\s*\(.*\))\s*$|\(\s*$|module\b.*\($/.test(cur.trim())) ind += '  '; ins('\n' + ind); }
+  });
+  function ins(t){ const s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(t, s, e, 'end'); ta.dispatchEvent(new Event('input')); }
+  host.querySelectorAll('[data-s]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); const s = b.dataset.s; ins(s === 'TAB' ? '  ' : (s === 'begin' ? 'begin\n' : s)); ta.focus({preventScroll:true}); }));
+  host.querySelector('[data-reset]').onclick = () => { if (ta.value !== o.reset && !host._confirmReset){ host._confirmReset = true; toast('Tap Reset again to restore the starting code'); setTimeout(() => host._confirmReset = false, 2500); return; } ta.value = o.reset; save(); lines(); out.innerHTML = ''; errLines = new Set(); };
+  host.querySelector('[data-run]').onclick = () => {
+    const res = o.run(ta.value);
+    errLines = new Set((res.errors || []).map(e => e.line).filter(Boolean)); lines();
+    out.innerHTML = resultHTML(res, o.graded);
+    out.querySelectorAll('[data-line]').forEach(a => a.onclick = ev => { ev.preventDefault(); gotoLine(+a.dataset.line); });
+    if (o.after) o.after(res, out);
+    out.scrollIntoView({behavior:'smooth', block:'nearest'});
+  };
+  function gotoLine(n){ const ls = ta.value.split('\n'); let pos = 0; for (let k = 0; k < n-1 && k < ls.length; k++) pos += ls[k].length + 1; ta.focus(); ta.setSelectionRange(pos, pos + (ls[n-1]||'').length); }
+  lines();
+  return {get: () => ta.value, set: v => { ta.value = v; save(); lines(); }, out};
+}
+function resultHTML(res, graded){
+  const msgs = (arr, cls) => arr.map(e => `<div class="msg ${cls}">${e.line ? `<a href="#" data-line="${e.line}">line ${e.line}</a> ` : ''}${esc(e.msg)}</div>`).join('');
+  let h = '';
+  if (!res.ok && res.errors && res.errors.length){
+    h += `<div class="fb no"><b>${res.internal ? 'Checker problem' : 'Compile error'}</b>${msgs(res.errors, 'err')}</div>`;
+    if (res.warnings && res.warnings.length) h += `<div class="warns">${msgs(res.warnings, 'warn')}</div>`;
+    return h;
+  }
+  if (graded){
+    h += res.ok ? `<div class="fb ok"><b>✓ Pass.</b> All ${res.total} test ${res.seq?'cycles':'vectors'} match the reference.</div>`
+                : `<div class="fb no"><b>✗ ${res.mismatches} of ${res.total} ${res.seq?'cycles':'vectors'} mismatch.</b> ${Object.entries(res.perOut).filter(([,n])=>n).map(([k,n])=>`<code>${esc(k)}</code> wrong ${n}×`).join(', ')}. Red cells on the waveform show where. The <i>expected</i> row is the reference.</div>`;
+  } else h += `<div class="fb ok"><b>Simulated.</b> ${res.rows.length} ${res.seq?'clock cycles':'input combinations'}.</div>`;
+  if (res.warnings && res.warnings.length) h += `<div class="warns">${msgs(res.warnings, 'warn')}</div>`;
+  h += waveHTML(res, graded);
+  return h;
+}
+
+/* ---------- waveform viewer ---------- */
+function waveHTML(res, graded){
+  const rows = res.rows; if (!rows || !rows.length) return '';
+  const N = rows.length, start = graded && res.first > 6 ? res.first - 6 : 0, end = Math.min(N, start + 48);
+  const view = rows.slice(start, end), lw = 96, rh = 26;
+  const maxw = Math.max(1, ...res.ports.map(p => p.w)); const digits = maxw <= 4 ? 2 : Math.min(8, Math.ceil(maxw / 4)); const cw = Math.max(36, digits * 7 + 12);
+  const ins = res.ports.filter(p => p.dir === 'input' && p.name !== res.clk), outs = res.ports.filter(p => p.dir === 'output');
+  const lines = [];
+  if (res.seq) lines.push({label:'clk', clk:true});
+  ins.forEach(p => lines.push({label:p.name, w:p.w, get: r => r.in[p.name]}));
+  outs.forEach(p => { const anyBad = graded && view.some(r => r.bad.includes(p.name)); lines.push({label:p.name, w:p.w, get: r => r.out[p.name], out:true, name:p.name}); if (anyBad) lines.push({label:'expected', sub:p.name, w:p.w, get: r => r.ref[p.name], ref:true}); });
+  const W = lw + view.length * cw, H = lines.length * rh + 22;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="ui-monospace,Menlo,monospace" font-size="11">`;
+  view.forEach((r, k) => { if (r.bad && r.bad.length) s += `<rect x="${lw + k*cw}" y="0" width="${cw}" height="${H-20}" fill="rgba(255,107,107,.08)"/>`; });
+  lines.forEach((ln, li) => {
+    const y = li * rh + 4, mid = y + rh/2 - 2, hi = y + 4, lo = y + rh - 8;
+    s += `<text x="4" y="${mid+4}" fill="${ln.ref?'#9aa1ae':ln.out?'#e7e9ee':'#b9c3d6'}">${esc(ln.ref ? '  exp' : ln.label)}${ln.w>1?`<tspan fill="#6d7585">[${ln.w}]</tspan>`:''}</text>`;
+    if (ln.clk){ let d = ''; view.forEach((r, k) => { const x = lw + k*cw; d += `M${x} ${lo} H${x+cw/2} V${hi} H${x+cw-0.5} V${lo} `; }); s += `<path d="${d}" stroke="#6d7585" fill="none"/>`; return; }
+    view.forEach((r, k) => {
+      const x = lw + k*cw, v = BigInt(ln.get(r) ?? 0), bad = ln.out && graded && r.bad.includes(ln.name);
+      const col = ln.ref ? '#9aa1ae' : bad ? '#ff6b6b' : ln.out ? '#4ec9a0' : '#7aa2ff';
+      if (ln.w === 1){
+        const yv = v ? hi : lo; const pv = k ? (BigInt(ln.get(view[k-1]) ?? 0) ? hi : lo) : yv;
+        s += `<path d="M${x} ${pv} V${yv} H${x+cw}" stroke="${col}" stroke-width="1.6" fill="none"/>`;
+        if (bad) s += `<rect x="${x+1}" y="${hi-2}" width="${cw-2}" height="${lo-hi+4}" fill="none" stroke="#ff6b6b" stroke-dasharray="2 2"/>`;
+      } else {
+        const same = k && BigInt(ln.get(view[k-1]) ?? 0) === v;
+        const txt = ln.w <= 4 ? v.toString() : v.toString(16).toUpperCase();
+        s += `<path d="M${x} ${same?hi:mid} ${same?'':`L${x+3} ${hi} `}H${x+cw} M${x} ${same?lo:mid} ${same?'':`L${x+3} ${lo} `}H${x+cw}" stroke="${col}" stroke-width="1.3" fill="${bad?'rgba(255,107,107,.18)':'none'}"/>`;
+        if (!same || k === 0) s += `<text x="${x+5}" y="${mid+4}" fill="${col}">${txt.length > 8 ? '…' + txt.slice(-7) : txt}</text>`;
+      }
+    });
+  });
+  view.forEach((r, k) => { if (k % 4 === 0) s += `<text x="${lw + k*cw + 2}" y="${H-6}" fill="#6d7585" font-size="9">${start + k}</text>`; });
+  s += `</svg>`;
+  const firstBad = graded && res.first >= 0 ? rows[res.first] : null;
+  const fmtv = (v, w) => { v = BigInt(v ?? 0); return w > 4 ? `${v} (0x${v.toString(16).toUpperCase()})` : String(v); };
+  const table = firstBad ? `<div class="card small mis"><b>First mismatch at ${res.seq?'cycle':'vector'} ${res.first}</b><br>${ins.map(p=>`<code>${esc(p.name)}</code> = ${fmtv(firstBad.in[p.name], p.w)}`).join(', ')}<br>${outs.filter(p=>firstBad.bad.includes(p.name)).map(p=>`<code>${esc(p.name)}</code>: yours ${fmtv(firstBad.out[p.name],p.w)}, expected <b>${fmtv(firstBad.ref[p.name],p.w)}</b>`).join('<br>')}</div>` : '';
+  return `${table}<div class="wave">${s}</div><p class="sub small" style="margin-top:4px">${res.seq ? 'Each column is one clock cycle (inputs change while clk is low; outputs shown just before the rising edge).' : 'Each column is one input combination.'} Multi-bit values in hex${N > view.length ? `; showing ${start}–${end-1} of ${N}` : ''}.</p>`;
+}
+
+/* ---------- challenge ---------- */
+function mountChallenge(host, c, L){
+  const st = ln.state;
+  host.innerHTML = `${L.lib ? `<details class="lib"><summary>Provided module${(L.lib.match(/\bmodule\b/g)||[]).length>1?'s':''} (already in the project; don't copy them)</summary><pre><code>${esc(L.lib)}</code></pre></details>` : ''}<div id="ced"></div><div id="hints"></div>`;
+  const ed = mountEditor($('#ced'), {key: lkey(c, L), initial: L.starter || '', reset: L.starter || '', runLabel: 'Submit', graded: true,
+    extra: `<button class="chip" id="hintb">Hint</button><button class="chip" id="solb">Solution</button>`,
+    run: src => { st.attempts++; const spec = CourseRT.specFor(L); return VSim.check(CourseRT.withLib(L, src), CourseRT.withLib(L, L.solution), spec); },
+    after: (res, out) => {
+      if (res.ok){ const first = !isDone(c, L); markDone(c, L); bumpCat('verilog', true); out.insertAdjacentHTML('afterbegin', first ? `<div class="win">✓ Lesson complete</div>` : ''); ln.refreshFoot && ln.refreshFoot(); }
+      else if (!res.errors || !res.errors.length) bumpCat('verilog', false);
+    }});
+  const hb = $('#hintb'), sb = $('#solb');
+  const showHints = () => { $('#hints').innerHTML = L.hints.slice(0, st.hints).map((h, k) => `<div class="hint"><b>Hint ${k+1}.</b> ${md(h)}</div>`).join(''); hb.textContent = st.hints >= L.hints.length ? 'No more hints' : `Hint (${L.hints.length - st.hints} left)`; };
+  hb.onclick = () => { if (st.hints < L.hints.length){ st.hints++; showHints(); } };
+  if (!L.hints.length) hb.style.display = 'none'; else hb.textContent = `Hint (${L.hints.length})`;
+  sb.onclick = () => {
+    if (st.attempts < 2 && !sb._sure){ sb._sure = true; toast('Try at least twice first. Tap again if you really want it'); setTimeout(() => sb._sure = false, 3000); return; }
+    $('#hints').insertAdjacentHTML('beforeend', `<div class="hint"><b>Reference solution.</b> Read it, then close it and write it yourself from memory.<pre><code>${esc(L.solution)}</code></pre><button class="chip" id="usesol">Load into editor</button></div>`);
+    sb.style.display = 'none';
+    $('#usesol').onclick = () => ed.set(L.solution);
+  };
+}
+
+/* ---------- quant practice inside a lesson ---------- */
+function practicePool(spec){
+  const [cat, concept] = spec.split(':');
+  if (cat === 'quant') return {gens: GENS.filter(g => g.cat === concept), mcs: MCB.filter(m => m.cat === concept)};
+  const gens = GENS.filter(g => { if (g.cat !== cat) return false; for (let k = 0; k < 6; k++){ const it = makeGen(g); if (it && conceptOf(it) === concept) return true; } return false; });
+  const mcs = MCB.filter(m => m.cat === cat && conceptOf(m) === concept);
+  return {gens, mcs, concept};
+}
+function mountPractice(host, c, L){
+  const st = ln.state.prac; const pool = practicePool(L.practice);
+  const next = () => {
+    for (let k = 0; k < 30; k++){
+      if (pool.mcs.length && (!pool.gens.length || Math.random() < 0.25)) return {...pick(pool.mcs)};
+      const it = makeGen(pick(pool.gens)); if (it && (!pool.concept || conceptOf(it) === pool.concept)) return it;
+    }
+    return makeGen(pick(pool.gens));
+  };
+  const draw = () => {
+    const done = isDone(c, L);
+    host.innerHTML = `<div class="row"><span class="pill">${st.ok}/4 correct${done?' · complete ✓':''}</span></div><div id="pitem"></div>`;
+    if (!st.item) st.item = next();
+    const it = st.item;
+    renderItem($('#pitem'), it, {done: res => {
+      bumpCat(it.cat, res.ok); bumpGen(it.gid, res.ok); if (!res.ok) logMistake(it, res.given);
+      st.n++; if (res.ok) st.ok++;
+      if (st.ok >= 4 && !isDone(c, L)){ markDone(c, L); toast('Lesson complete ✓'); ln.refreshFoot && ln.refreshFoot(); }
+      st.item = null; draw();
+    }});
+  };
+  draw();
+}
+
+/* ---------- simulations (interactive trials) ---------- */
+const R6 = () => 1 + Math.floor(Math.random() * 6);
+const Rn = n => 1 + Math.floor(Math.random() * n);
+const SIMS = {
+  die: {title:'Roll an n-sided die', controls:[{k:'n', label:'sides n', min:2, max:20, v:6}], kind:'mean', trial: p => Rn(p.n), theory: p => (p.n+1)/2, tlabel: p => `(n+1)/2 = ${fmt((p.n+1)/2)}`},
+  distinct: {title:'Distinct faces in k rolls', controls:[{k:'n', label:'sides n', min:2, max:12, v:6},{k:'k', label:'rolls k', min:1, max:20, v:6}], kind:'mean', trial: p => { const s = new Set(); for (let i = 0; i < p.k; i++) s.add(Rn(p.n)); return s.size; }, theory: p => p.n * (1 - ((p.n-1)/p.n) ** p.k), tlabel: p => `n·(1 − ((n−1)/n)^k) = ${fmt(p.n * (1 - ((p.n-1)/p.n) ** p.k), 3)}`},
+  waituntil: {title:'Rolls until a value ≥ t', controls:[{k:'n', label:'sides n', min:4, max:20, v:6},{k:'t', label:'target t', min:2, max:20, v:6}], kind:'mean', fix: p => { p.t = Math.min(p.t, p.n); }, trial: p => { let c = 0; for (;;){ c++; if (Rn(p.n) >= p.t) return c; } }, theory: p => p.n / (p.n - p.t + 1), tlabel: p => `1/p = ${p.n}/${p.n-p.t+1} = ${fmt(p.n/(p.n-p.t+1),3)}`},
+  pattern: {title:'Flips until a pattern appears', controls:[{k:'pat', label:'pattern', options:['HT','HH','HTH','HHH']}], kind:'mean', trial: p => { let s = '', c = 0; while (!s.endsWith(p.pat)){ s = (s + (Math.random() < .5 ? 'H' : 'T')).slice(-4); c++; } return c; }, theory: p => ({HT:4, HH:6, HTH:10, HHH:14})[p.pat], tlabel: p => `theory ${({HT:4, HH:6, HTH:10, HHH:14})[p.pat]}`},
+  coupon: {title:'Rolls to see every face', controls:[{k:'n', label:'sides n', min:2, max:12, v:6}], kind:'mean', trial: p => { const s = new Set(); let c = 0; while (s.size < p.n){ s.add(Rn(p.n)); c++; } return c; }, theory: p => { let h = 0; for (let i = 1; i <= p.n; i++) h += 1/i; return p.n * h; }, tlabel: p => { let h = 0; for (let i = 1; i <= p.n; i++) h += 1/i; return `n·Hₙ = ${fmt(p.n*h,3)}`; }},
+  bayes: {title:'Test a random person', controls:[{k:'prev', label:'prevalence %', min:1, max:50, v:1},{k:'sens', label:'sensitivity %', min:50, max:100, v:90},{k:'fpr', label:'false-positive %', min:1, max:30, v:9}], kind:'cond', clabel:'P(sick | positive)', trial: p => { const sick = Math.random() < p.prev/100; const pos = Math.random() < (sick ? p.sens : p.fpr)/100; return pos ? (sick ? 1 : 0) : null; }, theory: p => { const a = p.prev*p.sens, b = (100-p.prev)*p.fpr; return a/(a+b); }, tlabel: p => { const a = p.prev*p.sens, b = (100-p.prev)*p.fpr; return `${fmt(a/100,2)} / (${fmt(a/100,2)} + ${fmt(b/100,2)}) = ${fmt(a/(a+b),3)}`; }},
+  monty: {title:'Monty Hall', controls:[{k:'strat', label:'strategy', options:['switch','stay']}], kind:'prob', clabel:'P(win)', trial: p => { const car = Rn(3), pick = Rn(3); return p.strat === 'stay' ? (pick === car ? 1 : 0) : (pick !== car ? 1 : 0); }, theory: p => p.strat === 'stay' ? 1/3 : 2/3, tlabel: p => p.strat === 'stay' ? '1/3' : '2/3'},
+  birthday: {title:'Shared birthday in a group', controls:[{k:'n', label:'people n', min:2, max:70, v:23}], kind:'prob', clabel:'P(shared birthday)', trial: p => { const s = new Set(); for (let i = 0; i < p.n; i++){ const b = Rn(365); if (s.has(b)) return 1; s.add(b); } return 0; }, theory: p => { let q = 1; for (let i = 0; i < p.n; i++) q *= (365 - i)/365; return 1 - q; }, tlabel: p => { let q = 1; for (let i = 0; i < p.n; i++) q *= (365 - i)/365; return `1 − ∏(365−i)/365 = ${fmt(1-q,3)}`; }},
+  reroll: {title:'Reroll game: keep the first roll if ≥ t', controls:[{k:'t', label:'keep if ≥', min:1, max:7, v:4}], kind:'mean', trial: p => { const a = R6(); return a >= p.t ? a : R6(); }, theory: p => { let e = 0; for (let k = 1; k <= 6; k++) e += k >= p.t ? k/6 : 3.5/6; return e; }, tlabel: p => { let e = 0; for (let k = 1; k <= 6; k++) e += k >= p.t ? k/6 : 3.5/6; return `${fmt(e,4)} (best is 4.25 at t = 4)`; }},
+  ruin: {title:'Fair ±1 walk from k until 0 or N', controls:[{k:'k', label:'start k', min:1, max:19, v:3},{k:'N', label:'target N', min:2, max:20, v:10}], kind:'prob', clabel:'P(reach N)', fix: p => { p.k = Math.min(p.k, p.N - 1); }, trial: p => { let x = p.k; while (x > 0 && x < p.N) x += Math.random() < .5 ? 1 : -1; return x === p.N ? 1 : 0; }, theory: p => p.k / p.N, tlabel: p => `k/N = ${p.k}/${p.N} = ${fmt(p.k/p.N,3)}`},
+  sumdice: {title:'Sum of k dice', controls:[{k:'k', label:'dice k', min:1, max:10, v:2}], kind:'var', trial: p => { let s = 0; for (let i = 0; i < p.k; i++) s += R6(); return s; }, theory: p => 35*p.k/12, tlabel: p => `Var = 35k/12 = ${fmt(35*p.k/12,3)}, mean = ${3.5*p.k}`},
+  mmspread: {title:'Quote 50 ± h; the true value is 50 + (2d6 − 7)', controls:[{k:'h', label:'half-spread h', min:0, max:6, v:2, step:0.5},{k:'inf', label:'informed %', min:0, max:90, v:30}], kind:'mean', clabel:'avg P&L per arrival', hist:false,
+    trial: p => { const V = 50 + R6() + R6() - 7, bid = 50 - p.h, ask = 50 + p.h; if (Math.random() < p.inf/100){ if (V > ask) return ask - V; if (V < bid) return V - bid; return 0; } return Math.random() < .5 ? ask - V : V - bid; },
+    theory: p => { let e = 0; for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++){ const V = 50 + a + b - 7, bid = 50 - p.h, ask = 50 + p.h; const inf = V > ask ? ask - V : V < bid ? V - bid : 0; const noise = 0.5*(ask - V) + 0.5*(V - bid); e += ((p.inf/100)*inf + (1 - p.inf/100)*noise)/36; } return e; },
+    tlabel: p => `exact ${fmt(SIMS.mmspread.theory(p),3)} per arrival`},
+};
+function mountSim(host, id){
+  const S = SIMS[id]; if (!S){ host.innerHTML = ''; return; }
+  const saved = store.get('simp', {})[id] || {};
+  const p = {}; S.controls.forEach(c => p[c.k] = saved[c.k] ?? (c.options ? c.options[0] : c.v));
+  let st;
+  const reset = () => { st = {n:0, sum:0, sq:0, hits:0, cn:0, hist:new Map(), trace:[]}; };
+  reset();
+  host.innerHTML = `<div class="card sim"><b>${esc(S.title)}</b>
+    <div class="ctrls">${S.controls.map(c => c.options ? `<label>${esc(c.label)} <select data-k="${c.k}">${c.options.map(o=>`<option ${o===p[c.k]?'selected':''}>${o}</option>`).join('')}</select></label>` : `<label>${esc(c.label)} <b data-v="${c.k}">${p[c.k]}</b><input type="range" data-k="${c.k}" min="${c.min}" max="${c.max}" step="${c.step||1}" value="${p[c.k]}"></label>`).join('')}</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="chip on" data-run="100">Run 100</button><button class="chip on" data-run="1000">1,000</button><button class="chip on" data-run="10000">10,000</button><button class="chip" data-clear>Reset</button></div>
+    <div class="simstats"></div><div class="simplot"></div></div>`;
+  const statsEl = host.querySelector('.simstats'), plotEl = host.querySelector('.simplot');
+  host.querySelectorAll('[data-k]').forEach(inp => inp.oninput = () => { const c = S.controls.find(x => x.k === inp.dataset.k); p[c.k] = c.options ? inp.value : +inp.value; if (S.fix) S.fix(p); host.querySelectorAll('[data-v]').forEach(b => { b.textContent = p[b.dataset.v]; }); host.querySelectorAll('input[type=range]').forEach(r => { r.value = p[r.dataset.k]; }); const sp = store.get('simp', {}); sp[id] = {...p}; store.set('simp', sp); reset(); draw(); });
+  host.querySelector('[data-clear]').onclick = () => { reset(); draw(); };
+  host.querySelectorAll('[data-run]').forEach(b => b.onclick = () => { const total = +b.dataset.run; let left = total; const chunk = Math.max(20, Math.ceil(total / 25));
+    const tick = () => { const m = Math.min(chunk, left); for (let i = 0; i < m; i++) one(); left -= m; draw(); if (left > 0) requestAnimationFrame(tick); else markActive(); }; tick(); });
+  if (S.fix) S.fix(p);
+  function one(){ const x = S.trial(p); st.n++; if (S.kind === 'cond'){ if (x === null) return; st.cn++; st.hits += x; } else { st.sum += x; st.sq += x*x; if (S.kind === 'prob') st.hits += x; const key = Math.round(x*2)/2; st.hist.set(key, (st.hist.get(key)||0) + 1); } const e = est(); if (e != null && (st.n < 50 || st.n % Math.ceil(st.n/60) === 0)) st.trace.push([st.n, e]); }
+  function est(){ if (S.kind === 'cond') return st.cn ? st.hits/st.cn : null; if (!st.n) return null; const m = st.sum/st.n; if (S.kind === 'var') return st.n > 1 ? (st.sq - st.n*m*m)/(st.n - 1) : null; return m; }
+  function draw(){
+    const th = S.theory(p), e = est();
+    const lab = S.clabel || (S.kind === 'var' ? 'sample variance' : S.kind === 'prob' ? 'estimate' : 'average');
+    statsEl.innerHTML = `<div class="stat" style="margin-top:10px"><div><b>${st.n.toLocaleString()}</b><span>trials${S.kind==='cond'?` (${st.cn} positive)`:''}</span></div><div><b>${e==null?'—':fmt(e,3)}</b><span>${esc(lab)}</span></div><div><b>${fmt(th,3)}</b><span>theory</span></div></div><p class="small mut" style="margin:8px 0 0">Theory: ${esc(S.tlabel(p))}${e!=null&&st.n>=1000?` · off by ${fmt(Math.abs(e-th),3)}`:''}</p>`;
+    let svg = '';
+    if (st.trace.length > 1){
+      const W = 300, H = 90, xs = st.trace.map(t => Math.log10(t[0])), ys = st.trace.map(t => t[1]).concat([th]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs, x0 + 1), y0 = Math.min(...ys), y1 = Math.max(...ys, y0 + 1e-9);
+      const X = v => 4 + (W-8)*(v - x0)/(x1 - x0), Y = v => H - 8 - (H-16)*(v - y0)/(y1 - y0);
+      svg += `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Estimate converging to theory"><line x1="0" x2="${W}" y1="${Y(th)}" y2="${Y(th)}" stroke="#4ec9a0" stroke-dasharray="4 3"/><path d="${st.trace.map((t,k)=>`${k?'L':'M'}${X(Math.log10(t[0])).toFixed(1)} ${Y(t[1]).toFixed(1)}`).join(' ')}" stroke="#7aa2ff" stroke-width="1.6" fill="none"/><text x="${W-4}" y="${Y(th)-4}" text-anchor="end" font-size="9" fill="#4ec9a0">theory</text><text x="4" y="${H-1}" font-size="9" fill="#6d7585">trials (log scale) →</text></svg>`;
+    }
+    if (S.kind !== 'cond' && S.kind !== 'prob' && S.hist !== false && st.hist.size){
+      const ks = [...st.hist.keys()].sort((a,b)=>a-b); const lo = ks[0], hi = Math.min(ks[ks.length-1], lo + 60); const keys = []; for (let k = lo; k <= hi; k += (ks.some(x=>x%1)?0.5:1)) keys.push(k);
+      const mx = Math.max(...keys.map(k => st.hist.get(k)||0)); const W = 300, H = 80, bw = W/keys.length;
+      svg += `<svg viewBox="0 0 ${W} ${H+12}" width="100%" height="${H+12}" role="img" aria-label="Histogram of outcomes">${keys.map((k,i)=>{ const h = (H-4)*((st.hist.get(k)||0)/mx); return `<rect x="${(i*bw+1).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${h.toFixed(1)}" fill="#7aa2ff" opacity=".85"/>`; }).join('')}${keys.length<=24?keys.map((k,i)=>`<text x="${(i*bw+bw/2).toFixed(1)}" y="${H+10}" font-size="8" fill="#6d7585" text-anchor="middle">${k}</text>`).join(''):`<text x="0" y="${H+10}" font-size="8" fill="#6d7585">${lo}</text><text x="${W}" y="${H+10}" font-size="8" fill="#6d7585" text-anchor="end">${hi}</text>`}</svg>`;
+    }
+    plotEl.innerHTML = svg;
+  }
+  draw();
+}
+
 /* ================= tabs ================= */
-let cur='train';
+let cur='learn';
 function tab(t){
   if (ts && t!=='tests'){ if (ts.tick) clearInterval(ts.tick); if (ts.kind==='test' && !ts.over){ /* leaving abandons the test */ clearInterval(window._tt); } ts=null; }
   cur=t; kp=null;
-  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
-  ({train:renderTrain, tests:renderTests, review:renderReview, cards:renderCards, stats:renderStats})[t]();
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===(t==='cards'?'train':t)));
+  ({learn:renderLearn, train:renderTrain, tests:renderTests, review:renderReview, cards:renderCards, stats:renderStats})[t]();
   window.scrollTo(0,0);
 }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; tab(b.dataset.tab); });
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; if (b.dataset.tab==='learn' && cur==='learn') ln.lesson=null; tab(b.dataset.tab); });
 if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost') && !location.hostname.endsWith('claude.ai') && window.top===window){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
-window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS};
-tab('train');
+window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS, COURSES, practicePool, SIMS, allLessons};
+tab('learn');
 })();
 
 </script>
