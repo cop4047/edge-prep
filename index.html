@@ -144,6 +144,24 @@ details.lib{margin-top:6px} details.lib summary{cursor:pointer;color:var(--acc);
 .tbl th{background:var(--panel2);font-weight:600;white-space:nowrap}
 .mh{font-weight:700;font-size:16px;margin:18px 0 6px;color:var(--fg)}
 .iq .iqa{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:15px}
+/* ---- code editor v2 ---- */
+.ed2{display:flex;background:#1e1e1e;border:1px solid #333a45;border-radius:12px;overflow:hidden;margin-top:10px;position:relative}
+.ed2:focus-within{border-color:#3d6fd8;box-shadow:0 0 0 1px #3d6fd8}
+.gut2{width:38px;flex:0 0 38px;overflow:hidden;background:#1e1e1e;border-right:1px solid #2b2f36}
+.gut2 .gin{padding:12px 0;font:13px/20px var(--mono);color:#6e7681;text-align:right;will-change:transform}
+.gut2 .gin div{height:20px;padding-right:8px}
+.gut2 .gin .gerr{color:#ff6b6b;background:rgba(255,107,107,.15);font-weight:700}
+.code2{position:relative;flex:1;min-width:0}
+.code2 .hlp,.code2 textarea{position:absolute;inset:0;margin:0;border:0;border-radius:0;padding:12px 12px;font:13px/20px var(--mono);letter-spacing:0;white-space:pre;tab-size:2;-moz-tab-size:2;word-wrap:normal;overflow-wrap:normal}
+.code2 .hlp{overflow:hidden;pointer-events:none;color:#d4d4d4;background:transparent}
+.code2 .hlp code{font:inherit;background:none;padding:0;color:inherit}
+.code2 textarea{color:transparent;background:transparent;caret-color:#aeafad;resize:none;overflow:auto;-webkit-text-fill-color:transparent;outline:none}
+.code2 textarea::selection{background:rgba(38,79,120,.85);-webkit-text-fill-color:transparent}
+.tk{color:#569cd6} .tq{color:#c586c0} .tt{color:#4ec9b0} .tn{color:#b5cea8} .tc{color:#6a9955;font-style:italic} .ts{color:#ce9178} .tf{color:#dcdcaa} .tp{color:#4fc1ff} .tm{color:#dcdcaa} .to{color:#d4d4d4}
+pre.hlb{background:#1e1e1e;border-color:#333a45;color:#d4d4d4}
+pre.hlb .tk,pre.hlb .tq,pre.hlb .tt{font-weight:600}
+.syms button{color:#c9d1d9}
+.code2 .tc{font-style:normal}
 </style>
 </head>
 <body>
@@ -5961,7 +5979,7 @@ const app = $('#app');
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function md(s){
   return String(s).split('```').map((p,i) => {
-    if (i % 2) return '<pre><code>' + esc(p.replace(/^\n/,'').replace(/\n$/,'')) + '</code></pre>';
+    if (i % 2){ const c = p.replace(/^\n/,'').replace(/\n$/,''); return '<pre class="hlb"><code>' + (typeof HL !== 'undefined' ? HL.hl(c) : esc(c)) + '</code></pre>'; }
     let h = esc(p.trim());
     h = h.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
     return h.replace(/\n/g,'<br>');
@@ -6457,7 +6475,7 @@ const PRIMERS = {};
 (function(){ let cur=null; for (const ln of $('#primers').textContent.split('\n')){ if (ln.startsWith('@p ')){ const [id,title]=ln.slice(3).split('|').map(x=>x.trim()); cur=PRIMERS[id]={id,title,body:''}; } else if (cur) cur.body+=ln+'\n'; } })();
 function mdLong(s){
   return String(s).trim().split('```').map((p,i) => {
-    if (i % 2) return '<pre><code>' + esc(p.replace(/^[a-z]*\n/,'').replace(/\n$/,'')) + '</code></pre>';
+    if (i % 2){ const c = p.replace(/^[a-z]*\n/,'').replace(/\n$/,''); return '<pre class="hlb"><code>' + (typeof HL !== 'undefined' ? HL.hl(c) : esc(c)) + '</code></pre>'; }
     const inl = l => l.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
     const out = []; const lines = esc(p).split('\n');
     for (let j = 0; j < lines.length; j++){
@@ -6865,39 +6883,147 @@ function renderLesson(){
   ln.refreshFoot = renderFoot;
 }
 
-/* ---------- code editor ---------- */
+/* ---------- syntax highlighting (Verilog / SystemVerilog, plus Python and Tcl for lesson snippets) ---------- */
+const HL = (() => {
+  const V_KW = new Set('module endmodule input output inout wire reg logic integer genvar parameter localparam assign always always_ff always_comb always_latch initial begin end generate endgenerate function endfunction automatic signed unsigned int bit posedge negedge or default case casez casex endcase if else for while unique priority typedef struct packed enum'.split(' '));
+  const V_CTRL = new Set('if else for while case casez casex endcase default begin end return'.split(' '));
+  const V_TYPE = new Set('wire reg logic integer genvar int bit signed unsigned parameter localparam input output inout'.split(' '));
+  const PY_KW = new Set('def async await import from as return for in if elif else while with class assert and or not None True False lambda yield try except raise pass range'.split(' '));
+  const TCL_KW = new Set('set source puts expr foreach if else proc return open_checkpoint create_clock opt_design place_design phys_opt_design route_design get_timing_paths get_property get_ports report_timing lassign format'.split(' '));
+  function lang(code){ if (/\b(async def|await |import cocotb|def )/.test(code)) return 'py'; if (/^\s*(set |source |open_checkpoint|create_clock|puts )/m.test(code) && !/\bmodule\b/.test(code)) return 'tcl'; return 'v'; }
+  function hl(code, lg){
+    lg = lg || lang(code);
+    let out = '', i = 0; const n = code.length;
+    const span = (c, t) => `<span class="${c}">${esc(t)}</span>`;
+    while (i < n){
+      const ch = code[i], rest = code.slice(i);
+      let m;
+      if (lg !== 'py' && lg !== 'tcl' && rest.startsWith('//')){ const e = code.indexOf('\n', i); const t = code.slice(i, e < 0 ? n : e); out += span('tc', t); i += t.length; continue; }
+      if (lg === 'v' && rest.startsWith('/*')){ const e = code.indexOf('*/', i + 2); const t = code.slice(i, e < 0 ? n : e + 2); out += span('tc', t); i += t.length; continue; }
+      if ((lg === 'py' || lg === 'tcl') && ch === '#'){ const e = code.indexOf('\n', i); const t = code.slice(i, e < 0 ? n : e); out += span('tc', t); i += t.length; continue; }
+      if (lg === 'tcl' && rest.startsWith(';#')){ const e = code.indexOf('\n', i); const t = code.slice(i, e < 0 ? n : e); out += span('tc', t); i += t.length; continue; }
+      if (ch === '"'){ let j = i + 1; while (j < n && code[j] !== '"' && code[j] !== '\n') j++; const t = code.slice(i, j + 1); out += span('ts', t); i += t.length; continue; }
+      if (lg === 'v' && (m = rest.match(/^(\d+)?'[sS]?[bBoOdDhH][0-9a-fA-FxXzZ_?]+/))){ out += span('tn', m[0]); i += m[0].length; continue; }
+      if (lg === 'v' && (m = rest.match(/^'[01xz]\b/))){ out += span('tn', m[0]); i += m[0].length; continue; }
+      if ((m = rest.match(/^\d[\d_]*(\.\d+)?/)) && !/[A-Za-z_]/.test(code[i-1] || '')){ out += span('tn', m[0]); i += m[0].length; continue; }
+      if (lg === 'v' && (m = rest.match(/^\$[A-Za-z_]\w*/))){ out += span('tf', m[0]); i += m[0].length; continue; }
+      if (lg === 'v' && (m = rest.match(/^`\w+/))){ out += span('tk', m[0]); i += m[0].length; continue; }
+      if ((m = rest.match(/^[A-Za-z_]\w*/))){
+        const w = m[0];
+        if (lg === 'v'){
+          if (V_CTRL.has(w)) out += span('tq', w);
+          else if (V_TYPE.has(w)) out += span('tt', w);
+          else if (V_KW.has(w)) out += span('tk', w);
+          else if (/^[A-Z][A-Z0-9_]+$/.test(w)) out += span('tp', w);
+          else if (/^\s*\(/.test(code.slice(i + w.length)) && /\b(module)\s+$/.test(code.slice(Math.max(0, i - 12), i))) out += span('tm', w);
+          else out += esc(w);
+        } else if (lg === 'py'){ out += PY_KW.has(w) ? span('tq', w) : /^\s*\(/.test(code.slice(i + w.length)) ? span('tf', w) : esc(w); }
+        else { out += TCL_KW.has(w) ? span('tk', w) : esc(w); }
+        i += w.length; continue;
+      }
+      if (lg === 'v' && (m = rest.match(/^(<=|>=|==|!=|&&|\|\||<<<|>>>|<<|>>|[=+\-*\/%&|^~!<>?:])/))){ out += span('to', m[0]); i += m[0].length; continue; }
+      out += esc(ch); i++;
+    }
+    return out;
+  }
+  return {hl, lang};
+})();
+
+/* ---------- code editor (overlay: transparent textarea over a highlighted layer) ---------- */
 const SYMS = [';','(',')','[',']','{','}','<=','=','&','|','^','~','!','?',':',"'",'@','#',',','_','begin','end'];
+const PAIRS = {'(':')','[':']','{':'}'};
+const LINE_H = 20;
 function mountEditor(host, o){
   const saved = lcode[o.key];
-  host.innerHTML = `<div class="ed"><pre class="gut" aria-hidden="true"></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea></div>
-    <div class="syms">${SYMS.map(s => `<button type="button" data-s="${esc(s)}">${esc(s)}</button>`).join('')}<button type="button" data-s="TAB">⇥</button></div>
+  host.innerHTML = `<div class="ed2"><div class="gut2" aria-hidden="true"><div class="gin"></div></div><div class="code2"><pre class="hlp" aria-hidden="true"><code></code></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Code editor"></textarea></div></div>
+    <div class="syms">${SYMS.map(s => `<button type="button" data-s="${esc(s)}">${esc(s)}</button>`).join('')}<button type="button" data-s="TAB">⇥</button><button type="button" data-s="UNTAB">⇤</button></div>
     <div class="row" style="gap:8px;margin-top:8px"><button class="big grow" data-run style="margin-top:0">${o.runLabel}</button>${o.extra||''}<button class="chip" data-reset>Reset</button></div>
     <div class="out"></div>`;
-  const ta = host.querySelector('textarea'), gut = host.querySelector('.gut'), out = host.querySelector('.out');
+  const ta = host.querySelector('textarea'), hlc = host.querySelector('.hlp code'), hlp = host.querySelector('.hlp'), gin = host.querySelector('.gin'), box = host.querySelector('.ed2'), out = host.querySelector('.out');
   ta.value = saved != null ? saved : o.initial;
-  let errLines = new Set();
-  const lines = () => { const n = ta.value.split('\n').length; let s = ''; for (let k = 1; k <= n; k++) s += (errLines.has(k) ? `<b>${k}</b>` : k) + '\n'; gut.innerHTML = s; ta.style.height = 'auto'; ta.style.height = Math.max(120, ta.scrollHeight + 4) + 'px'; gut.style.height = ta.style.height; };
+  let errLines = new Set(), lastLines = -1;
+  function render(){
+    hlc.innerHTML = HL.hl(ta.value, 'v') + '\n ';
+    const nl = ta.value.split('\n').length;
+    if (nl !== lastLines || render.force){
+      let s = ''; for (let k = 1; k <= nl; k++) s += `<div class="${errLines.has(k) ? 'gerr' : ''}">${k}</div>`; gin.innerHTML = s;
+      const h = Math.min(Math.max(nl * LINE_H + 24, 180), Math.round(window.innerHeight * 0.6));
+      box.style.height = h + 'px'; lastLines = nl; render.force = false;
+    }
+    sync();
+  }
+  function sync(){ hlp.scrollTop = ta.scrollTop; hlp.scrollLeft = ta.scrollLeft; gin.style.transform = `translateY(${-ta.scrollTop}px)`; }
   const save = () => { lcode[o.key] = ta.value; store.set('lcode', lcode); };
-  ta.addEventListener('input', () => { lines(); save(); });
-  ta.addEventListener('keydown', e => {
-    if (e.key === 'Tab'){ e.preventDefault(); ins('  '); }
-    else if (e.key === 'Enter'){ e.preventDefault(); const b = ta.value.slice(0, ta.selectionStart); const cur = b.split('\n').pop(); let ind = cur.match(/^\s*/)[0]; if (/\b(begin|case[zx]?\s*\(.*\))\s*$|\(\s*$|module\b.*\($/.test(cur.trim())) ind += '  '; ins('\n' + ind); }
+  ta.addEventListener('scroll', sync);
+  ta.addEventListener('input', () => { autoDedent(); render(); save(); });
+  function ins(t, caretBack = 0){ const s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(t, s, e, 'end'); if (caretBack) ta.selectionStart = ta.selectionEnd = ta.selectionStart - caretBack; render(); save(); }
+  function curLine(){ const b = ta.value.slice(0, ta.selectionStart); return b.slice(b.lastIndexOf('\n') + 1); }
+  function newlineIndent(){
+    const line = curLine(), ind = line.match(/^\s*/)[0], t = line.trim(), after = ta.value.slice(ta.selectionStart).split('\n')[0];
+    let more = /(\bbegin|[\(\[{])\s*(\/\/.*)?$/.test(t) || (/^(always|always_ff|always_comb|if|else|for|initial)\b/.test(t) && !/;\s*(\/\/.*)?$/.test(t) && !/\bbegin\b/.test(t)) || /^(case|casez|casex)\b/.test(t) || /^module\b/.test(t) || /^\);\s*$/.test(t);
+    if (/^\s*[\)\]}]/.test(after) && /[\(\[{]\s*$/.test(t)){ ins('\n' + ind + '  ' + '\n' + ind, ind.length + 1); return; }
+    ins('\n' + ind + (more ? '  ' : ''));
+  }
+  function autoDedent(){
+    const line = curLine(), m = line.match(/^(\s*)(end|endcase|endmodule|endgenerate|else)$/);
+    if (!m) return;
+    if (ta.value.slice(ta.selectionStart).split('\n')[0].trim()) return;
+    const lines = ta.value.slice(0, ta.selectionStart).split('\n'); lines.pop();
+    const w = m[2]; let target = null;
+    if (w === 'endmodule') target = '';
+    else if (w === 'else'){
+      let depth = 0;
+      for (let k = lines.length - 1; k >= 0; k--){ const t = lines[k].trim(); if (!t) continue;
+        const closes = (t.match(/\bend\b/g)||[]).length, opens = (t.match(/\bbegin\b/g)||[]).length;
+        if (depth === 0 && (/^(if|else\s+if)\b/.test(t) || /^end\b/.test(t))){ target = lines[k].match(/^\s*/)[0]; break; }
+        depth += opens - closes; if (depth > 0){ break; } }
+    } else {
+      const op = w === 'endcase' ? /\b(case|casez|casex)\b/g : w === 'endgenerate' ? /\bgenerate\b/g : /\bbegin\b/g;
+      const cl = w === 'endcase' ? /\bendcase\b/g : w === 'endgenerate' ? /\bendgenerate\b/g : /\bend\b/g;
+      let depth = 0;
+      for (let k = lines.length - 1; k >= 0; k--){ const t = lines[k].replace(/\/\/.*$/, ''); depth += (t.match(cl)||[]).length - (t.match(op)||[]).length; if (depth < 0){ target = lines[k].match(/^\s*/)[0]; break; } }
+    }
+    if (target === null || target === m[1]) return;
+    const s = ta.selectionStart; ta.setRangeText(target + w, s - line.length, s, 'end');
+  }
+  ta.addEventListener('beforeinput', e => {
+    if (e.inputType === 'insertLineBreak' || (e.inputType === 'insertText' && e.data === '\n')){ e.preventDefault(); newlineIndent(); return; }
+    if (e.inputType === 'insertText' && e.data && e.data.length === 1 && ta.selectionStart === ta.selectionEnd){
+      const nx = ta.value[ta.selectionStart];
+      if (PAIRS[e.data] && (!nx || /[\s\)\]},;]/.test(nx))){ e.preventDefault(); ins(e.data + PAIRS[e.data], 1); return; }
+      if (/[\)\]}]/.test(e.data) && nx === e.data){ e.preventDefault(); ta.selectionStart = ta.selectionEnd = ta.selectionStart + 1; return; }
+    }
+    if (e.inputType === 'deleteContentBackward' && ta.selectionStart === ta.selectionEnd){
+      const s = ta.selectionStart, pv = ta.value[s-1], nx = ta.value[s];
+      if (PAIRS[pv] && PAIRS[pv] === nx){ e.preventDefault(); ta.setRangeText('', s - 1, s + 1, 'end'); render(); save(); return; }
+      const line = curLine(); if (line.length && /^ +$/.test(line) && line.length % 2 === 0){ e.preventDefault(); ta.setRangeText('', s - 2, s, 'end'); render(); save(); }
+    }
   });
-  function ins(t){ const s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(t, s, e, 'end'); ta.dispatchEvent(new Event('input')); }
-  host.querySelectorAll('[data-s]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); const s = b.dataset.s; ins(s === 'TAB' ? '  ' : (s === 'begin' ? 'begin\n' : s)); ta.focus({preventScroll:true}); }));
-  host.querySelector('[data-reset]').onclick = () => { if (ta.value !== o.reset && !host._confirmReset){ host._confirmReset = true; toast('Tap Reset again to restore the starting code'); setTimeout(() => host._confirmReset = false, 2500); return; } ta.value = o.reset; save(); lines(); out.innerHTML = ''; errLines = new Set(); };
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab'){ e.preventDefault(); if (e.shiftKey) unindent(); else ins('  '); }
+  });
+  function unindent(){ const s = ta.selectionStart, ls = ta.value.lastIndexOf('\n', s - 1) + 1; const sp = ta.value.slice(ls).match(/^ {1,2}/); if (sp){ ta.setRangeText('', ls, ls + sp[0].length, 'preserve'); ta.selectionStart = ta.selectionEnd = Math.max(ls, s - sp[0].length); render(); save(); } }
+  host.querySelectorAll('[data-s]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); const s = b.dataset.s;
+    if (s === 'TAB') ins('  '); else if (s === 'UNTAB') unindent();
+    else if (s === 'begin'){ const ind = curLine().match(/^\s*/)[0]; ins('begin\n' + ind + '  \n' + ind + 'end', ind.length + 4); }
+    else if (s === 'end'){ ins('end'); ta.dispatchEvent(new Event('input')); }
+    else if (PAIRS[s]) ins(s + PAIRS[s], 1);
+    else ins(s);
+    ta.focus({preventScroll:true}); }));
+  host.querySelector('[data-reset]').onclick = () => { if (ta.value !== o.reset && !host._confirmReset){ host._confirmReset = true; toast('Tap Reset again to restore the starting code'); setTimeout(() => host._confirmReset = false, 2500); return; } ta.value = o.reset; save(); errLines = new Set(); render.force = true; render(); out.innerHTML = ''; };
   host.querySelector('[data-run]').onclick = () => {
     const res = o.run(ta.value);
-    errLines = new Set((res.errors || []).map(e => e.line).filter(Boolean)); lines();
+    errLines = new Set((res.errors || []).map(e => e.line).filter(Boolean)); render.force = true; render();
     out.innerHTML = resultHTML(res, o.graded);
     out.querySelectorAll('[data-line]').forEach(a => a.onclick = ev => { ev.preventDefault(); gotoLine(+a.dataset.line); });
     if (o.after) o.after(res, out);
-    out.scrollIntoView({behavior:'smooth', block:'nearest'});
+    const r = out.getBoundingClientRect(); if (r.top > window.innerHeight * 0.8) window.scrollBy({top: r.top - window.innerHeight * 0.35, behavior: 'smooth'});
   };
-  function gotoLine(n){ const ls = ta.value.split('\n'); let pos = 0; for (let k = 0; k < n-1 && k < ls.length; k++) pos += ls[k].length + 1; ta.focus(); ta.setSelectionRange(pos, pos + (ls[n-1]||'').length); }
-  lines();
-  return {get: () => ta.value, set: v => { ta.value = v; save(); lines(); }, out};
+  function gotoLine(n){ const ls = ta.value.split('\n'); let pos = 0; for (let k = 0; k < n-1 && k < ls.length; k++) pos += ls[k].length + 1; ta.focus({preventScroll:true}); ta.setSelectionRange(pos, pos + (ls[n-1]||'').length); ta.scrollTop = Math.max(0, (n - 3) * LINE_H); sync(); box.scrollIntoView({behavior:'smooth', block:'center'}); }
+  render();
+  return {get: () => ta.value, set: v => { ta.value = v; save(); render.force = true; render(); }, out};
 }
+
 function resultHTML(res, graded){
   const msgs = (arr, cls) => arr.map(e => `<div class="msg ${cls}">${e.line ? `<a href="#" data-line="${e.line}">line ${e.line}</a> ` : ''}${esc(e.msg)}</div>`).join('');
   let h = '';
@@ -6959,7 +7085,7 @@ function waveHTML(res, graded){
 /* ---------- challenge ---------- */
 function mountChallenge(host, c, L){
   const st = ln.state;
-  host.innerHTML = `${L.lib ? `<details class="lib"><summary>Provided module${(L.lib.match(/\bmodule\b/g)||[]).length>1?'s':''} (already in the project; don't copy them)</summary><pre><code>${esc(L.lib)}</code></pre></details>` : ''}<div id="ced"></div><div id="hints"></div>`;
+  host.innerHTML = `${L.lib ? `<details class="lib"><summary>Provided module${(L.lib.match(/\bmodule\b/g)||[]).length>1?'s':''} (already in the project; don't copy them)</summary><pre class="hlb"><code>${HL.hl(L.lib, 'v')}</code></pre></details>` : ''}<div id="ced"></div><div id="hints"></div>`;
   const ed = mountEditor($('#ced'), {key: lkey(c, L), initial: L.starter || '', reset: L.starter || '', runLabel: 'Submit', graded: true,
     extra: `<button class="chip" id="hintb">Hint</button><button class="chip" id="solb">Solution</button>`,
     run: src => { st.attempts++; const spec = CourseRT.specFor(L); return VSim.check(CourseRT.withLib(L, src), CourseRT.withLib(L, L.solution), spec); },
@@ -6973,7 +7099,7 @@ function mountChallenge(host, c, L){
   if (!L.hints.length) hb.style.display = 'none'; else hb.textContent = `Hint (${L.hints.length})`;
   sb.onclick = () => {
     if (st.attempts < 2 && !sb._sure){ sb._sure = true; toast('Try at least twice first. Tap again if you really want it'); setTimeout(() => sb._sure = false, 3000); return; }
-    $('#hints').insertAdjacentHTML('beforeend', `<div class="hint"><b>Reference solution.</b> Read it, then close it and write it yourself from memory.<pre><code>${esc(L.solution)}</code></pre><button class="chip" id="usesol">Load into editor</button></div>`);
+    $('#hints').insertAdjacentHTML('beforeend', `<div class="hint"><b>Reference solution.</b> Read it, then close it and write it yourself from memory.<pre class="hlb"><code>${HL.hl(L.solution, 'v')}</code></pre><button class="chip" id="usesol">Load into editor</button></div>`);
     sb.style.display = 'none';
     $('#usesol').onclick = () => ed.set(L.solution);
   };
