@@ -136,6 +136,14 @@ details.lib{margin-top:6px} details.lib summary{cursor:pointer;color:var(--acc);
 .sim label b{color:var(--fg);margin-left:6px} .sim input[type=range]{padding:0;margin-top:4px;background:none;border:0;accent-color:var(--acc)}
 .sim select{margin-top:4px;padding:8px}
 .simplot svg{margin-top:10px;background:#0b0d11;border-radius:8px}
+.tracks{grid-template-columns:repeat(3,1fr)} .track b{font-size:14px}
+.k-list{grid-template-columns:repeat(4,1fr)} .k-list .kok{grid-column:span 3}
+.tbl{overflow-x:auto;margin:10px 0;border:1px solid var(--line);border-radius:10px}
+.tbl table{border-collapse:collapse;font-size:13px;min-width:100%}
+.tbl th,.tbl td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tbl th{background:var(--panel2);font-weight:600;white-space:nowrap}
+.mh{font-weight:700;font-size:16px;margin:18px 0 6px;color:var(--fg)}
+.iq .iqa{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:15px}
 </style>
 </head>
 <body>
@@ -1543,6 +1551,305 @@ Q: Expected fixed points of a random permutation of 100 items?
 - 10
 - 1/e
 W: Linearity: 100 × 1/100.
+
+@mc mdp L3
+Q: Which storage does Vivado infer for this?
+```
+logic [7:0] mem [0:63];
+assign rd_data = mem[addr];
+always_ff @(posedge clk) if (we) mem[waddr] <= wdata;
+```
++ Distributed RAM (LUTRAM): the read is asynchronous
+- Block RAM
+- Flip-flops only
+- A DSP48
+W: Block RAM has a registered read. A combinational read can only be LUTRAM (or flops).
+
+Q: Which storage is the best candidate for this?
+```
+(* ram_style = "block" *) logic [95:0] ord_mem [0:1023];
+always_ff @(posedge clk) begin
+  ord_q <= ord_mem[raddr];
+  if (we) ord_mem[waddr] <= wdata;
+end
+```
++ Block RAM: registered read, one write port
+- LUTRAM
+- Flip-flops
+- SRL shift registers
+W: That's the shape of the primitive. Write RTL that looks like the block and the tool infers it.
+
+Q: In run 02, adding `(* ram_style = "block" *)` produced 0 BRAMs. What was the underlying problem?
++ The memory had two write processes (init sweep + normal write); block RAM wasn't inferred until there was one
+- Vivado ignores ram_style in out-of-context runs
+- The memory was too small for block RAM
+- Block RAM can't be read and written in the same cycle
+W: Fixed by muxing init and normal writes into one port. (Run 02 was also invalid for another reason: ASYNC_CORE=1 had been left set.)
+
+Q: Run 03 shrank the book from 7,308 to 1,701 LUTs. Fmax?
++ Didn't improve: the limiting path moved to BRAM clock-to-out → 32-bit add → mask
+- Improved by about 4×
+- Got worse because block RAM is slower
+- Can't be measured out of context
+W: Lower area doesn't imply higher Fmax: the next-worst path was already close.
+
+Q: The book issues the order-table read in the cycle BEFORE it needs the data. Why?
++ Block RAM read data appears one clock after the address
+- To avoid a write collision
+- Because the table is write-first
+- To save power
+W: A one-cycle read latency changes the FSM schedule: D1 uses ord_q from the read issued at accept.
+
+Q: A utilisation report shows "LUT as Memory: 4,448" and "Block RAM Tile: 0" for a design with a 1024-entry table. Conclusion?
++ The table was inferred as LUTRAM, not block RAM
+- The table is in block RAM
+- The table was optimised away
+- Synthesis failed
+W: Always check RAMB36/RAMB18 counts; don't assume the attribute worked.
+
+@mc mdp L5
+Q: A 4-bit binary write pointer is passed through a 2-flop synchroniser. What can go wrong?
++ Bits resolve on different edges, e.g. 0111 → 1000 can be read as 1111
+- Nothing: two flops make any bus safe
+- Only the MSB can be wrong
+- The pointer arrives one cycle late, which is harmless
+W: Only 1-bit signals or Gray-coded values may cross through synchronisers.
+
+Q: An async FIFO resets only its write side. Result?
++ Pointers disagree; flags and data are corrupted
+- Nothing, the read side resynchronises
+- Only the empty flag is wrong for one cycle
+- The FIFO becomes write-first
+W: Both resets must be asserted together (documented in mdp_async_fifo's header).
+
+Q: What does `(* ASYNC_REG = "TRUE" *)` do?
++ Places the synchroniser flops adjacent and tags them for CDC analysis; it doesn't make a bad crossing safe
+- Makes any crossing safe automatically
+- Adds a third flop
+- Converts the bus to Gray code
+W: It's a placement and analysis hint.
+
+Q: Why does mdp_sync2 have a simulation model (MDP_CDC_SIM) that randomises bits changing near the edge?
++ Plain RTL simulation never goes metastable, so a binary-pointer bug would pass otherwise
+- To model MTBF exactly
+- To speed up simulation
+- Vivado requires it
+W: The model checks the logic of the crossing, not physical MTBF; test_cdc_model_exercised asserts it was actually hit.
+
+Q: In the Gray async FIFO, why compare the NEXT Gray pointer for wfull?
++ So the registered flag is correct on the cycle the write happens
+- Because Gray codes can't be compared directly
+- To make the FIFO deeper
+- It saves a flop
+W: wfull <= (wgray_n == {~rgray_w[AW:AW-1], rgray_w[AW-2:0]}).
+
+Q: Full condition for Gray pointers with one extra bit?
++ Equal except the top TWO bits are inverted
+- Equal except the top bit inverted
+- All bits equal
+- Pointers differ by exactly one bit
+W: That's how the binary "top bit differs, rest equal" rule looks after Gray encoding.
+
+Q: Reset synchroniser `mdp_rst_sync`: how does reset behave?
++ Asserts immediately (async), releases on a clock edge two cycles after the input falls
+- Asserts and releases on clock edges
+- Asserts on the clock, releases immediately
+- Ignores the clock entirely
+W: q <= 2'b11 on arst; else q <= {q[0], 1'b0}; rst_o = q[1].
+
+@mc mdp L8
+Q: Worst path: RAMB36 clock-to-out 1.8 ns → 8 × CARRY4 → LUT → 128-load enable. Best fix?
++ Remove the carry chain from the path (equality compare instead of add-then-test-zero) or register after the RAM
+- Increase the clock frequency
+- Add ram_style = "block"
+- Make the adder wider
+W: Run 03 → 04: the zero test became an equality compare and this path left the report.
+
+Q: Worst path is mostly ROUTING, with one net of fanout 144. Fix?
++ Register or duplicate the high-fanout driver
+- Simplify the LUT logic
+- Use a wider bus
+- Lower the routing priority
+W: When routing dominates, simplifying logic doesn't help; split the load.
+
+Q: Worst path: register → 1024:1 LUT mux (read of an asynchronous memory) → register. Fix?
++ Move the memory to block RAM with a registered read
+- Add more LUTs
+- Make the memory asynchronous
+- Use a latch
+W: Run 01's limiter: 144-load read address into a 1024:1 mux.
+
+Q: At a relaxed target (156.25 MHz) run 04 shows +0.241 ns vs run 03's +0.753. Conclusion?
++ Not comparable: at relaxed targets the tool has no reason to optimise the path
+- Run 04 is worse
+- Run 03 is the better design
+- The clock was wrong
+W: Compare WNS at failing targets and look at path structure.
+
+Q: You optimise the second-worst path. Fmax?
++ Unchanged, because the worst path still limits it
+- Improves proportionally
+- Always improves a little
+- Gets worse
+W: Fmax is set by the worst path only.
+
+Q: What does WNS = −0.249 ns at 250 MHz mean?
++ The worst path needs about 4.249 ns; it fails 4.0 ns by 0.249 ns
+- 249 paths fail
+- Hold fails by 0.249 ns
+- The design runs at 249 MHz
+W: Slack = required − arrival.
+
+Q: Why was "222 MHz met by +0.024 ns" written as "about 222 MHz"?
++ The margin is inside placement noise (≈ ±0.5 ns), so one run doesn't prove it
+- Vivado rounds to the nearest MHz
+- Because OOC builds can't meet timing
+- The clock was 222.5 MHz
+W: Honest reporting: a single run inside the noise band is weak evidence.
+
+@mc mdp L9
+Q: The repo's tick-to-trade (7–8 cycles) is measured from…?
++ The clock edge where the triggering message's last byte is on s_axis, to the first order beat on m_axis
+- The packet entering the PHY to the order leaving the PHY
+- The first byte of the frame to the last byte of the order
+- The book's accept to the trigger
+W: It excludes MAC, PCS and PHY, and it's simulated. Always state that.
+
+Q: Why does latency vary between 7 and 8 cycles?
++ It depends on which byte lane the message starts in
+- Clock jitter
+- Random backoff in the MAC
+- Book collisions
+W: test_latency places the Add in all 8 start lanes: (62 + 2 + padlen) % 8.
+
+Q: Why keep time as 32.32 fixed point rather than an integer ns counter?
++ Clock periods are non-integer ns; fractional bits avoid cumulative error and allow rate trimming
+- It's smaller
+- PTP requires 32.32
+- Integers can't be subtracted modulo 2^32
+W: 6.4 ns per clock can't be represented in whole nanoseconds.
+
+Q: What is the on-chip latency measurement blind to?
++ Anything outside the stamped region, e.g. MAC/PCS/PHY unless stamped at the MAC boundary
+- Clock-domain crossings
+- The order book
+- The FIFO
+W: The stamp is taken at the core's input stream.
+
+@mc mdp L10
+Q: The Python golden model is used to check the RTL. Why must it be written independently?
++ If it shares code or logic with the DUT, the same bug appears in both and the comparison passes
+- Python is faster
+- cocotb requires it
+- So it can run on the FPGA
+W: The repo also cross-checks the model with a bit-exact C++ port.
+
+Q: What is an equivalent mutant?
++ A change that can't alter any output, so no test can ever kill it
+- A mutant that's caught by every test
+- Two mutants that produce the same failure
+- A mutant in the testbench
+W: Document it rather than "fix" it; finding one can reveal dead logic (like w_last in ITCH-lite).
+
+Q: A random test passes, but the monitor saw zero orders. What's wrong?
++ It passed vacuously; assert that counts are non-zero and that coverage goals were hit
+- Nothing: no errors means success
+- The seed was bad
+- The DUT is too fast
+W: The repo asserts all eight drop reasons were seen: set(env.drops) == set(range(1, 9)).
+
+Q: Why cocotb + Python model instead of UVM here?
++ Easy to stay bit-exact with a Python model, and UVM needs a commercial simulator
+- UVM can't test FPGAs
+- cocotb is faster than all simulators
+- UVM doesn't support SystemVerilog
+W: Many low-latency FPGA teams use Python/cocotb or in-house SystemVerilog benches.
+
+Q: The first ITCH-lite mutation run left 2 survivors. What do survivors tell you?
++ Behaviour your tests don't check; add directed tests that kill them
+- That the mutation tool is broken
+- That the RTL is correct
+- Nothing useful
+W: They were closed by test_threshold_edges and test_order_storm.
+
+Q: How did the X on the last order beat show up?
++ int(dut.sig.value) raised on X: the frame register was 480 bits but beat 7 read bits 448–511
+- Vivado reported it
+- The checksum failed
+- A timing violation
+W: Widened to 512 bits: frame_q <= {32'd0, f_le}.
+
+@mc mdp L11
+Q: Which tool gives the real resource and timing numbers for your design?
++ Vivado (synthesis, place, route)
+- Yosys synth_xilinx
+- Verilator -Wall
+- Icarus Verilog
+W: Yosys is an estimate and disagreed with Vivado; never quote it as the result.
+
+Q: `get_parts` returns nothing in Vivado. Likely cause?
++ The wrong licence (Alveo block) is selected; use a Basic licence
+- The part doesn't exist
+- The Tcl script has a typo
+- Out of disk space
+W: Help → Manage License.
+
+Q: Run 02 was invalid. Why?
++ ASYNC_CORE=1 was left set in the Tcl console, so a different design was built
+- The licence expired
+- The sweep reused a stale checkpoint
+- Vivado crashed
+W: Set parameters explicitly every run; info.txt now records the commit and settings.
+
+Q: You edited RTL after build.tcl and then ran the sweep. Problem?
++ The sweep reopens the old synthesised checkpoint, so the numbers are stale
+- None
+- The sweep rebuilds automatically
+- The edit is applied at routing
+W: Rebuild before sweeping.
+
+Q: What is Verilator used for in this repo?
++ Lint (-Wall), not simulation
+- Simulation with cocotb
+- Synthesis
+- Timing
+W: cocotb 2.1 needs Verilator ≥ 5.036, so Icarus runs the simulation.
+
+@mc mdp L12
+Q: What is speculative (cut-through) transmit?
++ Start sending the static header before the decision, patch fields late, and abort/poison the frame if the order doesn't fire
+- Sending orders twice for redundancy
+- Transmitting before receiving the full frame from the exchange
+- Compressing the order frame
+W: It hides the decision time behind header transmission.
+
+Q: What is the main hazard when pipelining the book to one message per cycle?
++ Read-after-write: message n+1 reads a level or order that message n hasn't written yet
+- Clock skew
+- Metastability
+- Running out of BRAM
+W: Needs forwarding of in-flight writes (or stalls).
+
+Q: Which invariant is a natural formal (SymbiYosys) property for this book?
++ mask[i] == (level_total[i] != 0)
+- The clock is 156.25 MHz
+- Orders always fire
+- Prices are positive
+W: Plus FIFO properties: no overflow beyond depth, no read when empty, Gray pointers change one bit.
+
+Q: 10G datapath: 64 bits at 156.25 MHz. A common 25G datapath?
++ 64 bits at 390.625 MHz
+- 32 bits at 781.25 MHz
+- 128 bits at 100 MHz
+- 64 bits at 250 MHz
+W: 64 × 390.625 MHz = 25 Gb/s.
+
+Q: Why do real feed handlers use A/B feeds?
++ Redundant multicast lines: a gap on one is filled from the other
+- To double the bandwidth
+- One is for bids, one for asks
+- For encryption
+W: This repo detects gaps but doesn't recover them.
 
 </script>
 <script type="text/plain" id="primers">
@@ -3939,6 +4246,918 @@ Write the differences under the sequence straight away. Most questions fall to s
 @end
 
 </script>
+<script type="text/plain" id="course_m">
+@chapter m1 | Level 1: SystemVerilog the way the repo uses it
+@lesson m1learn | Reading the repo's SystemVerilog
+@body
+Hardware is a network of gates and flops that all exist at once. A module isn't a function call; it's a block of circuit. Statements describe **wiring**, not steps in time.
+
+### Parameters and ports (`rtl/mdp_fifo.sv`)
+```
+module mdp_fifo #(
+    parameter int W  = 128,
+    parameter int AW = 5
+) (
+    input  logic          clk,
+    input  logic          wr_en,
+    input  logic [W-1:0]  wr_data,
+    output logic [W-1:0]  rd_data,
+    output logic          empty,
+    output logic [AW:0]   count
+);
+```
+`parameter` is fixed at elaboration. `[W-1:0]` makes widths follow the parameter. Depth is `1 << AW`, and `count` is AW+1 bits so "full" (count = depth) differs from "empty".
+
+### Slicing, and a byte reversal made of wires (`mdp_order_tx.sv`)
+- `x[hi:lo]` a fixed slice; `x[base +: w]` w bits **up** from base; `x[base -: w]` w bits **down**.
+```
+for (int i = 0; i < 60; i++) f_le[8*i +: 8] = f_be[479 - 8*i -: 8];
+```
+Byte i of the little-endian frame is byte i of the big-endian frame counted from the top: **zero logic**, just wiring.
+
+### Concatenation, casts, reductions
+- `{cfg_dst_mac, cfg_src_mac, 16'h0800}` builds an Ethernet header in network order (first byte in the top bits).
+- `(AW+1)'(1 << AW)` resizes to AW+1 bits; `64'(win >> 8)` truncates/extends; `$signed(x)` reinterprets.
+- `|px_hit` OR of all bits; `&x` AND; `^x` parity.
+
+### Loops in always_comb are copy-paste, not time (`mdp_itch_book.sv`)
+```
+for (int i = 0; i < N_LVL; i++) begin
+    if (mask[{w_sym, 1'b0}][i]) begin   // highest set bit wins
+        bid_vld_c = 1'b1;
+        bid_lvl_c = LVL_W'(i);
+    end
+end
+```
+Later iterations overwrite earlier ones, so the **highest** set i wins: a priority encoder for the best bid. Loop downwards and the **lowest** wins (best ask).
+
+### Generate, elaboration checks, functions, attributes
+- `if (ASYNC_CORE != 0) begin : g_mq … end else …` chooses between two circuits at build time.
+- `if (AW < 2) begin : g_chk $error("…"); end` stops a bad parameter before synthesis.
+- `function automatic logic [AW:0] b2g(input logic [AW:0] b); b2g = (b >> 1) ^ b; endfunction`: binary to Gray, one XOR per bit.
+- `(* ram_style = "block" *)`, `(* ASYNC_REG = "TRUE" *)` are hints to Vivado, not logic.
+
+### Pitfalls
+- `<=` in `always_ff`, `=` in `always_comb`.
+- An incomplete `always_comb` makes a latch. Give every output a default first.
+- `a + b` assigned to N bits drops the carry. `count = wp - rp` works **because** it wraps modulo 2^(AW+1).
+- Mixing signed and unsigned silently makes everything unsigned.
+@practice mdp:L1
+@iq Why does the book use for loops in always_comb, and what hardware does that become? || The loop is unrolled at elaboration into parallel logic: a compare chain / priority tree. Later iterations overriding earlier ones builds a priority encoder (highest set bit for the bid, lowest for the ask) with constant latency, no scan.
+@iq logic vs wire in SystemVerilog? || logic is a 4-state variable that can be driven by one procedural block or one continuous assign; use it everywhere. wire is for nets with multiple drivers (e.g. tri-state).
+@iq Why is count = wp − rp correct even after the pointers wrap? || Both pointers are AW+1 bits and the subtraction is modulo 2^(AW+1), so the difference is the occupancy as long as it never exceeds the depth.
+@end
+
+@lesson m1build | Build: best bid / best ask encoder
+@body
+The book finds the best prices without scanning RAM: an **occupancy mask** has one bit per price level, and a priority encoder picks the right bit in constant time.
+
+- Best **bid** = the **highest** occupied bid level.
+- Best **ask** = the **lowest** occupied ask level.
+- If a mask is all zero, that side is empty: `vld = 0`.
+@task
+Inputs `bid_mask[15:0]` and `ask_mask[15:0]` (bit i = level i occupied). Outputs: `bid_vld`, `bid_lvl[3:0]` (highest set bit of bid_mask), `ask_vld`, `ask_lvl[3:0]` (lowest set bit of ask_mask). When a mask is 0, its `vld` is 0 and its level is 0.
+@starter
+module top_module(
+  input [15:0] bid_mask, ask_mask,
+  output reg bid_vld, output reg [3:0] bid_lvl,
+  output reg ask_vld, output reg [3:0] ask_lvl
+);
+
+endmodule
+@solution
+module top_module(
+  input [15:0] bid_mask, ask_mask,
+  output reg bid_vld, output reg [3:0] bid_lvl,
+  output reg ask_vld, output reg [3:0] ask_lvl
+);
+  integer i;
+  always @(*) begin
+    bid_vld = 1'b0; bid_lvl = 4'd0;
+    ask_vld = 1'b0; ask_lvl = 4'd0;
+    for (i = 0; i < 16; i = i + 1)
+      if (bid_mask[i]) begin bid_vld = 1'b1; bid_lvl = i[3:0]; end
+    for (i = 15; i >= 0; i = i - 1)
+      if (ask_mask[i]) begin ask_vld = 1'b1; ask_lvl = i[3:0]; end
+  end
+endmodule
+@wrong
+module top_module(
+  input [15:0] bid_mask, ask_mask,
+  output reg bid_vld, output reg [3:0] bid_lvl,
+  output reg ask_vld, output reg [3:0] ask_lvl
+);
+  integer i;
+  always @(*) begin
+    bid_vld = 1'b0; bid_lvl = 4'd0;
+    ask_vld = 1'b0; ask_lvl = 4'd0;
+    for (i = 0; i < 16; i = i + 1) begin
+      if (bid_mask[i]) begin bid_vld = 1'b1; bid_lvl = i; end
+      if (ask_mask[i]) begin ask_vld = 1'b1; ask_lvl = i; end
+    end
+  end
+endmodule
+@spec {"type":"comb","n":250,"gen":"sparse16"}
+@hint Two loops. Upwards for the bid (last match = highest), downwards for the ask (last match = lowest).
+@hint Defaults first, so an empty mask gives vld = 0 and no latch.
+@end
+
+@chapter m2 | Level 2: Flops, pulses, FSMs
+@lesson m2learn | Sequential logic in the repo
+@body
+A flop copies its input on the clock edge. Everything between two flops must settle within one period: 6.4 ns at 156.25 MHz. The repo uses **synchronous resets** in the datapath, generated by an async-assert / sync-release synchroniser (level 5).
+
+### Pulses: default low, set for one cycle (`mdp_fifo.sv`)
+```
+always_ff @(posedge clk) begin
+    ovf <= 1'b0;                       // default: pulse is low
+    if (rst) begin
+        wp <= '0;  rp <= '0;
+    end else begin
+        if (wr_en) begin
+            if (full) ovf <= 1'b1;     // overrides the default for one cycle
+            else begin
+                mem[wp[AW-1:0]] <= wr_data;
+                wp <= wp + 1'b1;
+            end
+        end
+        if (rd_en && !empty) rp <= rp + 1'b1;
+    end
+end
+```
+All `<=` take effect together at the edge using pre-edge values. Two assignments to one signal: **the last one wins**. `'0` = all zeros at the right width.
+
+### Accumulators (`mdp_lat_stats.sv`)
+```
+end else if (valid) begin
+    o_valid <= 1'b1;  o_lat <= lat;  s_last <= lat;
+    if (lat < s_min) s_min <= lat;
+    if (lat > s_max) s_max <= lat;
+    s_sum   <= s_sum + 64'(lat);
+    s_cnt   <= s_cnt + 32'd1;
+end
+```
+`s_min` resets to all ones (`'1`) so the first sample always wins. `64'(lat)` widens so the sum doesn't wrap. This 40-bit subtract → 40-bit compare is the path that limited Fmax at 250 MHz in run 04.
+
+### The book's FSM (`mdp_itch_book.sv`)
+| State | Work (one clock each) |
+|---|---|
+| IDLE/BT | accept the message, issue the order-table read |
+| D1 | normalise: type, length, side, watchlist, price offset, tag compare |
+| D2 | price → level, delta maths; unknown types / bad lengths leave here |
+| RD | final accept/drop decision; issue the level-RAM read |
+| WR | update level RAM, occupancy mask, order table |
+| BT | best bid/ask + trigger (overlaps the next accept) |
+
+A replace runs RD/WR twice. Back-to-back Adds are accepted every 5 cycles. Why so many states? Each state's logic must fit in one clock: the **latency vs frequency trade-off**.
+
+### Edge-armed trigger
+```
+if (cond_c && !fired[w_sym]) begin ord_valid <= 1'b1; fired[w_sym] <= 1'b1; end
+else if (!cond_c)            fired[w_sym] <= 1'b0;
+```
+Fires once when the condition becomes true; re-arms only when it goes false. Without `fired`, every book update while the condition holds would send another order.
+
+### Pitfalls
+- Reading a value you wrote in the same cycle gives the **old** value.
+- A pulse with no default stays high forever.
+- An FSM with no reset or no `default`.
+- Counters wrap silently.
+@practice mdp:L2
+@iq Why synchronous reset in the datapath? || It maps onto the flops' synchronous set/reset or the logic in front of them, and avoids async reset recovery/removal timing analysis. Async assert / sync release is used only where reset is generated.
+@iq Why does a wide clock enable hurt timing? || It's a high-fanout net: one signal driving every flop's CE. In run 04 at 4.5 ns a 52-load control signal into the framer's wleft enables was on the worst path.
+@iq Why is the book split into six states instead of fewer? || Each state's logic has to fit in one clock period. Merging D1/D2/RD would save cycles but lengthen paths and lower Fmax; it's the latency vs frequency trade-off, and changing it needs Vivado evidence.
+@end
+
+@lesson m2build | Build: the edge-armed trigger
+@body
+The trigger sends **one** order when a symbol's condition becomes true, then waits for the condition to go false before it can fire again: one `fired` bit per symbol.
+@task
+Inputs: `upd` (a book update happens this cycle), `sym[1:0]`, `cond` (the trigger condition for that symbol, valid when `upd` = 1). On each clock edge with `upd` = 1: if `cond` and `!fired[sym]`, pulse `ord` (for one cycle) and set `fired[sym]`; else if `!cond`, clear `fired[sym]`. `ord` is 0 on every other cycle. Synchronous `rst` clears `ord` and all four `fired` bits. Also output `ord_sym[1:0]`, the symbol of the last order (registered when `ord` fires).
+@starter
+module top_module(
+  input clk, input rst,
+  input upd, input [1:0] sym, input cond,
+  output reg ord, output reg [1:0] ord_sym
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input rst,
+  input upd, input [1:0] sym, input cond,
+  output reg ord, output reg [1:0] ord_sym
+);
+  reg [3:0] fired;
+  always @(posedge clk) begin
+    ord <= 1'b0;
+    if (rst) begin
+      fired <= 4'd0;
+      ord_sym <= 2'd0;
+    end else if (upd) begin
+      if (cond && !fired[sym]) begin
+        ord <= 1'b1;
+        ord_sym <= sym;
+        fired[sym] <= 1'b1;
+      end else if (!cond) begin
+        fired[sym] <= 1'b0;
+      end
+    end
+  end
+endmodule
+@wrong
+module top_module(
+  input clk, input rst,
+  input upd, input [1:0] sym, input cond,
+  output reg ord, output reg [1:0] ord_sym
+);
+  reg fired;
+  always @(posedge clk) begin
+    ord <= 1'b0;
+    if (rst) begin
+      fired <= 1'b0;
+      ord_sym <= 2'd0;
+    end else if (upd) begin
+      if (cond && !fired) begin
+        ord <= 1'b1;
+        ord_sym <= sym;
+        fired <= 1'b1;
+      end else if (!cond) fired <= 1'b0;
+    end
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":250,"reset":{"name":"rst","prob":0.01},"gen":"symtrig"}
+@hint `reg [3:0] fired;` and index it with `sym`.
+@hint `ord <= 1'b0;` as the first line makes it a one-cycle pulse.
+@end
+
+@chapter m3 | Level 3: Memories and inference
+@lesson m3learn | LUTRAM, block RAM and the single-write-port lesson
+@body
+Xilinx 7-series has three places to keep arrays:
+- **Flops**: fast, any number of ports, expensive. The 128-bit occupancy mask lives here.
+- **Distributed RAM (LUTRAM)**: built from LUTs, **asynchronous read**. Cheap when small; a big one becomes a wide LUT mux tree.
+- **Block RAM**: dedicated, **registered read** (data one clock after the address), large clock-to-out (~1.8 ns here), at most two ports.
+
+You don't instantiate them: you write code **shaped like** one and the tool infers it.
+
+- `assign rd_data = mem[rp[AW-1:0]];` combinational read → LUTRAM. The FIFO does this on purpose: first-word-fall-through needs the data in the same cycle.
+- Registered read + one write port → block RAM candidate:
+```
+(* ram_style = "block" *) logic [OW-1:0] ord_mem [0:(1<<ORD_AW)-1];
+```
+Entry = `{valid, tag(64−ORD_AW), sym, side, level, remaining(32)}` = 1 + 54 + 2 + 1 + 6 + 32 = **96 bits × 1024**.
+
+### The story the repo tells
+| Run | Change | Result |
+|---|---|---|
+| 01 | async-read memories | book 7,308 LUTs; table as LUTRAM; read address fanned out to 144 loads → 1024:1 mux; WNS −0.545 ns at 250 MHz |
+| 02 | added ram_style = "block" | ignored: 0 BRAMs, 4,448 LUTRAMs (and invalid: ASYNC_CORE=1 left set) |
+| 03 | one write port per memory | BRAM used; book 7,308 → 1,701 LUTs; **no Fmax gain** |
+
+Observed: the attribute was ignored while the memory had **two write processes** (init sweep + normal write); block RAM appeared once there was one. The fix was architectural:
+```
+wire              ord_wr_en   = init_busy | ord_we;
+wire [ORD_AW-1:0] ord_wr_addr = init_busy ? init_cnt : ord_waddr;
+wire [OW-1:0]     ord_wr_data = init_busy ? '0       : ord_wdata;
+always_ff @(posedge clk) begin
+    ord_q <= ord_mem[ord_raddr];                        // registered read
+    if (ord_wr_en) ord_mem[ord_wr_addr] <= ord_wr_data; // the ONLY write
+end
+```
+Lessons: **write RTL in the shape of the primitive**, and **lower area doesn't imply higher Fmax**.
+
+The table is **read-first** (a same-cycle write returns old data); the testbench relies on it, and a pipelined book would need forwarding.
+
+### Pitfalls
+- Assuming `ram_style` always wins. Read RAMB36/RAMB18 vs LUTRAM counts.
+- Async read in the datapath puts a LUTRAM mux on the critical path.
+- A one-cycle read latency reshapes the FSM: the book issues the read the cycle **before** it needs the data.
+- Initial contents: the book clears both RAMs with an `init_cnt` sweep after reset (`ready` goes high at the end).
+@practice mdp:L3
+@iq Why did adding ram_style = "block" do nothing in run 02? || The memory had two write processes (the init clear and the normal write); block RAM wasn't inferred until both were merged into one port. Run 02 was also invalid because ASYNC_CORE=1 had been left set, so it built a different design.
+@iq Why can area shrink 4× without Fmax improving? || Fmax is set by the worst path. Removing the LUTRAM mux exposed the next path (BRAM clock-to-out → 32-bit add → mask), which was already almost as slow.
+@iq Why is the FIFO deliberately LUTRAM? || It's first-word-fall-through: rd_data must show the head in the same cycle, which needs an asynchronous read.
+@end
+
+@lesson m3build | Build: one write port with an init sweep
+@body
+Block RAM can't be cleared by reset. The book clears its RAMs with a counter that sweeps every address after reset, **through the same write port** as normal writes, so the tool can still infer block RAM.
+@task
+A 16 × 8 memory with a registered (read-first) read port.
+- Reset `rst` (synchronous) sets `busy` and `icnt = 0`.
+- While `busy`: each clock writes 0 to address `icnt`, increments `icnt`, and clears `busy` on the edge that writes address 15. Normal writes (`we`) are ignored while busy.
+- Otherwise: if `we`, write `wdata` to `waddr`.
+- Every clock: `rdata <= mem[raddr]` (old data if the same address is written that cycle).
+- `ready = !busy`.
+
+Use **one** write statement (select address/data/enable with `busy`).
+@starter
+module top_module(
+  input clk, input rst,
+  input we, input [3:0] waddr, input [7:0] wdata,
+  input [3:0] raddr,
+  output reg [7:0] rdata,
+  output ready
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input rst,
+  input we, input [3:0] waddr, input [7:0] wdata,
+  input [3:0] raddr,
+  output reg [7:0] rdata,
+  output ready
+);
+  reg [7:0] mem [0:15];
+  reg [3:0] icnt;
+  reg busy;
+  wire       wr_en = busy | we;
+  wire [3:0] wa    = busy ? icnt : waddr;
+  wire [7:0] wd    = busy ? 8'd0 : wdata;
+  always @(posedge clk) begin
+    if (rst) begin
+      busy <= 1'b1;
+      icnt <= 4'd0;
+    end else if (busy) begin
+      icnt <= icnt + 1'b1;
+      if (icnt == 4'd15) busy <= 1'b0;
+    end
+  end
+  always @(posedge clk) begin
+    rdata <= mem[raddr];
+    if (wr_en) mem[wa] <= wd;
+  end
+  assign ready = !busy;
+endmodule
+@wrong
+module top_module(
+  input clk, input rst,
+  input we, input [3:0] waddr, input [7:0] wdata,
+  input [3:0] raddr,
+  output reg [7:0] rdata,
+  output ready
+);
+  reg [7:0] mem [0:15];
+  reg [3:0] icnt;
+  reg busy;
+  always @(posedge clk) begin
+    if (rst) begin
+      busy <= 1'b1;
+      icnt <= 4'd0;
+    end else if (busy) begin
+      icnt <= icnt + 1'b1;
+      if (icnt == 4'd15) busy <= 1'b0;
+    end
+  end
+  always @(posedge clk) begin
+    rdata <= mem[raddr];
+    if (busy) mem[icnt] <= 8'd0;
+    else if (we) mem[waddr] <= wdata;
+    if (we) mem[waddr] <= wdata;
+  end
+  assign ready = !busy;
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":300,"reset":{"name":"rst","prob":0.006},"gen":"ramsweep"}
+@hint Compute `wr_en`, `wa` and `wd` with `busy ? … : …`, then a single `if (wr_en) mem[wa] <= wd;`
+@hint The busy/icnt logic goes in its own clocked block (or the same one); reset only touches busy and icnt.
+@end
+
+@chapter m4 | Level 4: AXI-Stream and realignment
+@lesson m4learn | Byte lanes, endianness and the 128-bit window
+@body
+- AXI-Stream here: `tdata[63:0]`, `tkeep[7:0]` (valid lanes), `tvalid`, `tlast`. **No `tready`**: the exchange can't be paused, so overflow is counted, not prevented.
+- 64 bits × 156.25 MHz = **10 Gb/s exactly**: one beat per clock at line rate.
+- **Lane order**: frame byte 0 is `tdata[7:0]` (little-endian lanes). **Network order** is big-endian within fields. The repo stores a message with byte 0 at the **top** of its vector.
+- Frames aren't multiples of 8: the 60-byte order frame is 7.5 beats, so the last `tkeep = 8'h0F`.
+
+### Building the order frame (`mdp_order_tx.sv`)
+```
+wire [479:0] f_be = {cfg_dst_mac, cfg_src_mac, 16'h0800, 8'h45, 8'h00, 16'h002C, ...,
+                     8'h4F, 8'h42, o_sym, cid, o_px, o_qty, 16'h0000};
+for (int i = 0; i < 60; i++) f_le[8*i +: 8] = f_be[479 - 8*i -: 8];
+```
+Beats are shifted out with `frame_q[{beat, 6'd0} +: 64]` (`{beat, 6'd0}` = beat × 64). **Real bug:** the frame register was 480 bits but beat 7 read bits 448–511 → X on the last beat. Widened to 512.
+
+### Realigning messages (`mdp_itch_unit.sv`)
+Eth 14 + IPv4 20 + UDP 8 + MoldUDP64 20 = **62**, so the first block starts at lane 6 of beat 7. Blocks are `[2-byte length][body]` with **no padding**, so a body can start on any lane and straddle two beats.
+```
+wire [127:0] win  = {cur, prv};
+wire [63:0]  sh   = 64'(win >> {r, 3'b000});          // rotate right by r lanes
+wire [63:0]  word = {sh[7:0], sh[15:8], sh[23:16], sh[31:24],
+                     sh[39:32], sh[47:40], sh[55:48], sh[63:56]};  // byte-reverse
+```
+One aligned big-endian word per beat, no extra latency. Words go to fixed positions (`msg[319-64k -: 64]`) so message byte 0 is always `msg[319:312]`. The tracker `nb_q` in `mdp_itch_frame` holds a signed distance to the end of the newest block and raises `end_ev` in the beat holding its last byte. **Two units alternate** because a short block can end in the same beat the next starts.
+
+### Pitfalls
+- Off-by-one lane maths: byte i is beat i/8, lane i%8.
+- Mixing little-endian lanes with big-endian fields (that's what the `word` reversal fixes).
+- Declaring a block complete before its last byte truly arrived.
+- Treating lanes with `tkeep = 0` as valid.
+@practice mdp:L4
+@iq Why a 128-bit window instead of shifting a 64-bit register? || A block can straddle two beats; you need both the previous and current beat to produce one aligned word per clock without adding latency.
+@iq What costs more, the byte-reverse or the rotate? || The byte-reverse is pure wiring (free). The variable rotate is a barrel shifter: a mux tree in LUTs.
+@iq Why do two realignment units alternate? || A short block can end in the same beat the next one starts, so one unit finishes the old block while the other loads the new one.
+@end
+
+@lesson m4build | Build: the lane aligner
+@body
+This is the heart of the framer: take the previous and current beats, rotate by the start lane `r`, and byte-reverse so message byte 0 lands in the most significant byte.
+@task
+Inputs `prv[63:0]`, `cur[63:0]` (beats, lane 0 = bits [7:0]) and `r[2:0]`. Output `word[63:0]`: the 8 bytes starting at lane `r` of `prv` (continuing into `cur`), in **wire order with the first byte as the MSB**. That is: `win = {cur, prv}`, `sh = low 64 bits of (win >> 8r)`, `word` = byte-reverse of `sh`.
+@starter
+module top_module(input [63:0] prv, input [63:0] cur, input [2:0] r, output [63:0] word);
+
+endmodule
+@solution
+module top_module(input [63:0] prv, input [63:0] cur, input [2:0] r, output [63:0] word);
+  wire [127:0] win = {cur, prv};
+  wire [127:0] shw = win >> {r, 3'b000};
+  wire [63:0]  sh  = shw[63:0];
+  assign word = {sh[7:0], sh[15:8], sh[23:16], sh[31:24], sh[39:32], sh[47:40], sh[55:48], sh[63:56]};
+endmodule
+@wrong
+module top_module(input [63:0] prv, input [63:0] cur, input [2:0] r, output [63:0] word);
+  wire [127:0] win = {cur, prv};
+  wire [127:0] shw = win >> {r, 3'b000};
+  assign word = shw[63:0];
+endmodule
+@spec {"type":"comb","n":200}
+@hint `{r, 3'b000}` is r × 8: the shift in bits.
+@hint Shift into a 128-bit wire, then take `[63:0]`, then reverse the 8 bytes with a concatenation.
+@end
+
+@chapter m5 | Level 5: FIFOs, CDC, reset
+@lesson m5learn | FIFOs, crossings and the Gray async FIFO
+@body
+- **Occupancy** = wp − rp, with pointers one bit wider than the address so full differs from empty.
+- **First-word-fall-through**: `rd_data` already shows the head when `!empty`; `rd_en` consumes it.
+- **No back-pressure**: when full, a write is dropped and `ovf` pulses; a counter keeps the total. Data may be lost, but **never silently**.
+- **Bypass**: when the FIFO is empty and the consumer is ready, skip it. An ITCH-lite bypass bug was a mutation survivor, closed by `test_order_storm`.
+
+### Why CDC is hard
+Two unrelated clocks: a flop sampling a changing signal can go **metastable**. You can't prevent it, only make escape negligible with a second flop (MTBF grows exponentially with settling time). Rules:
+1. Only 1-bit signals or **Gray-coded** buses go through synchronisers. A binary bus can arrive half-updated: 0111 → 1000 read as 1111.
+2. Gray changes one bit per increment, so a sample is the old or new pointer, never garbage.
+
+### Gray async FIFO (`mdp_async_fifo.sv`, Cummings style)
+```
+wire [AW:0] wbin_n  = wbin + (AW+1)'(do_wr);
+wire [AW:0] wgray_n = b2g(wbin_n);
+mdp_sync2 #(.W(AW+1)) u_r2w (.clk(wclk), .d(rgray_r), .q(rgray_w));
+wfull  <= (wgray_n == {~rgray_w[AW:AW-1], rgray_w[AW-2:0]});   // top two bits inverted
+rempty <= (rgray_n == wgray_r);
+```
+- Each side compares its **next** pointer with the synchronised other pointer and registers the flag, so flags are **conservative**: they may clear late but never report space or data that isn't there.
+- Data bits aren't synchronised: a word is read only after its pointer has crossed.
+- `wrst`/`rrst` must be asserted together.
+
+### Synchroniser and its simulation model (`mdp_sync2.sv`)
+Synthesis: `(* ASYNC_REG = "TRUE" *) logic [W-1:0] s1, s2;`. Simulation never goes metastable, so with `MDP_CDC_SIM` any bit that changed within 1 ns of the edge resolves randomly: Gray pointers survive, binary ones fail. `test_cdc_model_exercised` asserts the model was actually hit. It models the **logic** of the crossing, not physical MTBF.
+
+### Reset synchroniser (`mdp_rst_sync.sv`)
+```
+(* ASYNC_REG = "TRUE" *) logic [1:0] q;
+always_ff @(posedge clk or posedge arst) begin
+    if (arst) q <= 2'b11;
+    else      q <= {q[0], 1'b0};
+end
+assign rst_o = q[1];
+```
+Asserts instantly; releases on that domain's clock, two cycles after the input falls. One copy per domain.
+
+### Pitfalls
+- Synchronising a multi-bit binary value; resetting one side only.
+- CDC tests where both clocks are identical (the repo sweeps 4000/5000/6400/6401/7000/9000/3333 ps).
+- A core clock slower than the network clock: messages queue; the test checks `ign + ovf == msgs`.
+- Quasi-static config is not synchronised bit by bit: change it only while traffic is quiet (an explicit, documented trade-off).
+@practice mdp:L5
+@iq Why must wfull be computed from the NEXT Gray pointer? || So the flag, which is registered, is correct on the cycle the write happens; using the current pointer would make it one write late and allow an overflow.
+@iq What does ASYNC_REG do and not do? || It places the synchroniser flops together and tags them for CDC analysis. It does not make a bad crossing (e.g. a binary bus) safe.
+@iq Why dual-clock FIFOs in a trading design at all, and what do they cost? || The MAC receive clock comes from the transceiver and the core may run at a different (faster) clock. Every crossing costs latency: here about 20–25 ns across two crossings, simulated.
+@end
+
+@lesson m5build | Build: the reset synchroniser
+@body
+Every clock domain needs its own reset that **asserts immediately** but **releases synchronously**, so no flop sees reset released right at its clock edge.
+@task
+Input `arst` (asynchronous, active high). Output `rst_o`. Two flops: on `arst` both go to 1 immediately; otherwise on each rising edge shift in a 0 (`q <= {q[0], 1'b0}`). `rst_o = q[1]`.
+@starter
+module top_module(input clk, input arst, output rst_o);
+
+endmodule
+@solution
+module top_module(input clk, input arst, output rst_o);
+  reg [1:0] q;
+  always @(posedge clk or posedge arst) begin
+    if (arst) q <= 2'b11;
+    else q <= {q[0], 1'b0};
+  end
+  assign rst_o = q[1];
+endmodule
+@wrong
+module top_module(input clk, input arst, output rst_o);
+  reg [1:0] q;
+  always @(posedge clk) begin
+    if (arst) q <= 2'b11;
+    else q <= {q[0], 1'b0};
+  end
+  assign rst_o = q[1];
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":150,"reset":{"name":"arst","prob":0.08}}
+@hint `always @(posedge clk or posedge arst)` and `if (arst)` first.
+@end
+
+@chapter m6 | Level 6: Ethernet, MoldUDP64, ITCH 5.0
+@lesson m6learn | Protocols on the wire
+@body
+```
+Ethernet 14 | IPv4 20 | UDP 8 | MoldUDP64 header 20 | [len(2) | ITCH message] × count
+ 0..13        14..33    34..41   42..61                 first block at byte 62
+```
+- **Ethernet**: dst MAC 6, src MAC 6, ethertype 2 (`0x0800` = IPv4). The FCS is handled by the MAC.
+- **IPv4** (IHL 5): first byte `0x45`, protocol at byte 23 (17 = UDP). The order frame's static header checksum is supplied as `cfg_ip_csum` (one's-complement sum of 16-bit words).
+- **UDP**: destination port at bytes 36–37; checksum 0 is legal for IPv4.
+- **MoldUDP64**: session (10 B, offset 42), **sequence** of the first message (8 B, offset 52), **count** (2 B, offset 60). Count 0 = heartbeat; 0xFFFF = end of session.
+
+### Sequence rules (`mdp_itch_frame`, `model/itch50.py`, C++ baseline)
+- First packet sets `expected = seq`.
+- `seq > expected`: **gap**, counted; resync. Detected, **not recovered** (that needs a retransmission channel).
+- Message i has sequence `seq + i`; below `expected` → **duplicate**, skipped.
+- Block length < 12 or running past the frame → **truncation**; the rest of the frame is abandoned.
+```
+if (seq + i < expected_) { k.dups++; continue; }
+expected_ = seq + i + 1;
+k.msgs++;
+```
+The hardware splits the 64-bit sequence compare over **two pipeline stages** so it's not one long path.
+
+### ITCH 5.0 messages used (big-endian, byte offsets)
+| Type | Message | Len | Fields |
+|---|---|---|---|
+| A | Add | 36 | ref 11..18, side 19, shares 20..23, stock 24..31, price 32..35 |
+| F | Add + MPID | 40 | as A |
+| E | Executed | 31 | ref 11..18, shares 19..22 |
+| C | Executed w/ price | 36 | ref 11..18, shares 19..22 |
+| X | Cancel | 23 | ref 11..18, shares 19..22 |
+| D | Delete | 19 | ref 11..18 |
+| U | Replace | 35 | old ref 11..18, new ref 19..26, shares 27..30, price 31..34 |
+
+Price has 4 implied decimals; `TICK = 100` = $0.01. A wrong length for a known type is `BAD_LEN`; an unknown type is ignored (counted).
+
+### Drop reasons, in precedence order
+`BAD_LEN, BAD_SIDE, NOT_WATCHED, BAD_PRICE, BAD_QTY, COLLISION / DUP_REF, UNK_REF`. A message with two faults reports the first. Stock names are 8 bytes, space-padded; duplicate watchlist entries: lowest index wins. BAD_PRICE: below base, off-tick, or ≥ 64 ticks above base, and `px − base` must not be allowed to **wrap** (`test_base_near_top_of_range`).
+@practice mdp:L6
+@iq How does a feed handler recover from a gap? || A retransmission request or snapshot channel. This design only detects and counts gaps; recovery needs a request path to the exchange's rerequest server.
+@iq Why do real systems arbitrate A/B feeds? || Exchanges publish the same data on two redundant multicast lines; a packet lost on one is usually present on the other, so arbitrating fills gaps without a retransmission round trip. Not implemented here.
+@iq What happens to a retransmitted duplicate, and why does it matter? || Its sequence is below expected, so it's skipped and counted. Treating it as new would double-count shares in the book.
+@end
+
+@lesson m6build | Build: the type and length checker
+@body
+Before a message reaches the book, its type and length are checked. Known types must have exactly the right length; unknown types are ignored (not errors).
+@task
+Inputs `typ[7:0]` (ASCII) and `len[15:0]`. Outputs: `known` = the type is one of A, F, E, C, X, D, U; `len_ok` = known **and** the length matches (A 36, F 40, E 31, C 36, X 23, D 19, U 35); `ign` = not known.
+@starter
+module top_module(input [7:0] typ, input [15:0] len, output known, output len_ok, output ign);
+
+endmodule
+@solution
+module top_module(input [7:0] typ, input [15:0] len, output known, output len_ok, output ign);
+  wire is_a = (typ == 8'h41), is_f = (typ == 8'h46), is_e = (typ == 8'h45), is_c = (typ == 8'h43);
+  wire is_x = (typ == 8'h58), is_d = (typ == 8'h44), is_u = (typ == 8'h55);
+  assign known  = is_a | is_f | is_e | is_c | is_x | is_d | is_u;
+  assign len_ok = (is_a && len == 16'd36) || (is_f && len == 16'd40) || (is_e && len == 16'd31) ||
+                  (is_c && len == 16'd36) || (is_x && len == 16'd23) || (is_d && len == 16'd19) ||
+                  (is_u && len == 16'd35);
+  assign ign = !known;
+endmodule
+@wrong
+module top_module(input [7:0] typ, input [15:0] len, output known, output len_ok, output ign);
+  wire is_a = (typ == 8'h41), is_f = (typ == 8'h46), is_e = (typ == 8'h45), is_c = (typ == 8'h43);
+  wire is_x = (typ == 8'h58), is_d = (typ == 8'h44), is_u = (typ == 8'h55);
+  assign known  = is_a | is_f | is_e | is_c | is_x | is_d | is_u;
+  assign len_ok = ((is_a | is_f | is_c) && len == 16'd36) || (is_e && len == 16'd31) ||
+                  (is_x && len == 16'd23) || (is_d && len == 16'd19) || (is_u && len == 16'd35);
+  assign ign = !known;
+endmodule
+@spec {"type":"comb","n":300,"gen":"itchtype"}
+@hint ASCII: A = 8'h41, C = 8'h43, D = 8'h44, E = 8'h45, F = 8'h46, U = 8'h55, X = 8'h58.
+@hint F (Add with MPID) is 40 bytes, not 36.
+@end
+
+@chapter m7 | Level 7: The order book and trigger
+@lesson m7learn | Order table, levels, mask and trigger
+@body
+The book keeps, per symbol and side, **aggregate shares per price level**, plus a table to find an order from its reference (Delete/Execute/Cancel carry only the ref).
+
+| Structure | Organisation | Why |
+|---|---|---|
+| ord_mem | direct-mapped, 1024 entries by ref[9:0]; {valid, tag = ref[63:10], sym, side, level, remaining} | O(1) lookup, exact because the 54-bit tag is compared; BRAM |
+| lvl_mem | 32-bit total per {sym, side, level} (2^9 entries) | BRAM (RAMB18) |
+| mask | 1 bit per level per {sym, side} (flops) | best bid/ask by priority encode, constant latency |
+| fired | 1 bit per symbol | edge-armed trigger |
+
+Window: 64 levels of TICK = 100 from `cfg_base_px`; four symbols. Alternatives considered: sorted list (O(n) insert), CAM (expensive), tree (variable latency). Cost of the choice: a **bounded window** and **collisions dropped**, not chained.
+
+### Price → level without a divider
+```
+for (int k = 0; k < N_LVL; k++)
+    px_hit[k] = n_ge && (n_d[31:DW] == '0) && (n_d[DW-1:0] == DW'(k * TICK));
+px_ok_c = |px_hit;
+for (int k = 0; k < N_LVL; k++) if (px_hit[k]) lvl_c |= LVL_W'(k);
+```
+64 parallel constant compares → one-hot → OR the indices. Not a multiple of TICK, or outside the window → `px_ok_c = 0`.
+
+### Updating the mask without the carry chain (run 04)
+```
+wire [31:0] lvl_zero_cmp = w_sub ? w_delta : (32'd0 - w_delta);
+wire        lvl_nz       = (lvl_rd != lvl_zero_cmp);
+mask[{w_sym, w_side}][w_lvl] <= lvl_nz;
+```
+After a subtract the level is zero **iff** old == delta; after an add, iff old == −delta (mod 2^32). An equality compare replaces add-then-test-zero. The invariant to protect: **mask bit = (level total ≠ 0)**.
+
+### Update rules
+- **Add (A/F)**: validate; slot must be free else DUP_REF (same ref) / COLLISION (different ref, same slot); write entry; add to level; set mask.
+- **Execute/Cancel (E/C/X)**: reduce by `min(shares, remaining)`; free the entry at 0.
+- **Delete (D)**: reduce by all remaining.
+- **Replace (U)**: remove old, add new at the new price/ref (RD/WR twice).
+
+### Why one message in flight
+Message n+1 may read a level or entry message n hasn't written yet. Processing one at a time avoids the hazard at the cost of throughput: ~1 Add per 5 cycles, close to line rate for 38-byte messages, but bursts of tiny messages overflow the FIFO (counted).
+@practice mdp:L7
+@iq Why direct-mapped, and what would production do? || O(1) constant-latency lookup in one BRAM read. Production would use a hash with collision handling, a CAM, or a chained table. A full tag compare is mandatory either way, or two refs sharing a slot get confused.
+@iq How would you get one message per cycle? || Pipeline the book and add forwarding for read-after-write hazards on the same level or order (and handle structural hazards on single-port RAMs), or stall/replay on a conflict.
+@iq How do you know the mask and level RAM never disagree? || Scoreboard against the Python model, mutation testing that targets the mask update, and ideally a formal invariant mask[i] == (level[i] != 0). The formal check is on the roadmap, not done.
+@end
+
+@lesson m7build | Build: price to level
+@body
+Convert an incoming price into a level index in the 64-level window, rejecting anything outside it. Watch out for **wraparound**: if `base` is near the top of the 32-bit range, `px − base` can wrap to a small number and sneak into the window.
+@task
+Inputs `px[31:0]`, `base[31:0]`. TICK = 100, 64 levels. `ok` = 1 when `px >= base`, `px − base` is a multiple of 100, and `(px − base)/100 < 64`. `lvl[5:0]` = that level when ok, else 0. (You may use `/` and `%` here; the repo uses 64 parallel compares to avoid a divider. Try both!)
+@starter
+module top_module(input [31:0] px, input [31:0] base, output ok, output [5:0] lvl);
+
+endmodule
+@solution
+module top_module(input [31:0] px, input [31:0] base, output ok, output [5:0] lvl);
+  wire [31:0] d = px - base;
+  wire [31:0] q = d / 32'd100;
+  assign ok  = (px >= base) && (d % 32'd100 == 0) && (q < 32'd64);
+  assign lvl = ok ? q[5:0] : 6'd0;
+endmodule
+@wrong
+module top_module(input [31:0] px, input [31:0] base, output ok, output [5:0] lvl);
+  wire [31:0] d = px - base;
+  assign ok  = (d % 32'd100 == 0) && (d / 32'd100 < 32'd64);
+  assign lvl = ok ? d / 32'd100 : 6'd0;
+endmodule
+@spec {"type":"comb","n":300,"gen":"pxwin"}
+@hint `px >= base` must be checked separately: the subtraction alone wraps.
+@end
+
+@chapter m8 | Level 8: Timing closure
+@lesson m8learn | Reading Vivado reports like an engineer
+@body
+- Every flop → logic → flop path must satisfy clk-to-Q + logic + routing + setup ≤ T (+ skew). **Slack = T − path delay**; **WNS** is the worst path. 156.25 MHz = 6.4 ns; 200 = 5.0; 222 = 4.5; 250 = 4.0.
+- **Out-of-context**: design alone, no I/O constraints, no `HD.CLK_SRC`, so no skew estimate. Not a board result.
+- Delay components: LUT levels (~0.1–0.4 ns each), **routing (often 50–75%)**, carry chains (CARRY4 = 4 bits; a 32-bit add = 8), BRAM clock-to-out (~1.8 ns), **fanout**.
+- **Placement noise**: the same two-clock design gave worst core slack −0.145, −0.215, −0.335, −0.362, −0.691 ns across runs, so differences under ~±0.5 ns at failing targets aren't evidence.
+
+### Reading a worst path
+1. Start and end points: what logic is this?
+2. Logic levels and cell types: CARRY4 = adder/compare; RAMB36E1 = RAM clock-to-out; LUT6 chains = mux trees.
+3. Fanout of the slowest nets.
+4. Route share: if routing dominates, register or duplicate; don't simplify logic.
+
+### The four runs
+| Run | Change | 200 | 222 | 250 | 286 MHz | Limiting path |
+|---|---|---|---|---|---|---|
+| 01 | baseline, LUTRAM | +0.111 | −0.279 | −0.545 | −0.808 | 144-load read address → 1024:1 LUT mux |
+| 02 | invalid (ASYNC_CORE=1 left set) | | | | | different design |
+| 03 | single write port, BRAM | +0.196 | −0.406 | −0.919 | −1.336 | BRAM 1.8 ns → 32-bit add → != 0 → 128-load mask enable |
+| 04 | zero test by equality | +0.215 | +0.024 | −0.249 | −0.799 | framer byte-count → 52-load wleft (4.5 ns); lat_stats 40-bit sub → compare (4.0 ns) |
+
+Honest reading (the repo's own): vs run 03, run 04 gains 0.43–0.67 ns at failing targets, but vs run 01 only ~0.3 ns, inside the noise. **The evidence is structural**: the level RAM → carry → mask path left the report. And 222 MHz is met by only 0.024 ns: call it "**about** 222 MHz". At relaxed targets the tool doesn't try, so WNS there isn't comparable.
+
+### Techniques (with repo evidence)
+1. Reformulate compare/subtract chains (equality zero test, run 04).
+2. Register the intermediate (`now − stamp` in lat_stats: proposed run 05).
+3. Cut fanout: duplicate or pipeline 50+-load controls.
+4. Dedicated RAM with registered read; pipeline after the 1.8 ns clock-to-out.
+5. Pipeline decisions over stages (the book's D1/D2/RD).
+6. `phys_opt_design`, sweeping targets, never trusting one run.
+7. Parallel formulations (64 compares instead of a divider).
+
+**Utilisation (run 04 at 156.25 MHz, OOC):** 4,036 LUTs (3,608 logic + 428 LUTRAM, 9.8% of the device), 3,376 FF, 3 RAMB36 + 1 RAMB18, 0 DSP. Book: 1,755 LUTs. Note: the sweep CSVs' `tns` column is always 0.0 (it reads a property that doesn't exist); only WNS is meaningful.
+@practice mdp:L8
+@iq Walk me through one timing-closure iteration. || Run 03 → 04: the worst path was BRAM clock-to-out → 32-bit add → != 0 → the 128-load mask enable. I replaced add-then-test-zero with an equality compare (old == delta or old == −delta). The worst-path report no longer contains that path; the limit moved to the framer's byte-count control and the lat_stats compare. WNS change vs run 01 is inside noise, so I rely on the structural change as evidence.
+@iq Why did area dropping 4× not raise Fmax? || Fmax is set by the single worst path. Moving the table into BRAM removed the LUTRAM mux, but exposed BRAM clock-to-out plus a carry chain that was nearly as slow.
+@iq How do you know a WNS difference is real? || It must exceed the placement noise band (≈ ±0.5 ns here), be repeated across runs or seeds, and ideally show up as a structural change in the worst-path report.
+@end
+
+@chapter m9 | Level 9: Time and latency
+@lesson m9learn | Hardware time and honest latency numbers
+@body
+**Tick-to-trade** here: from the clock edge where the triggering message's **last byte** is on `s_axis` to the launch of the **first beat** of the order on `m_axis`. It **excludes MAC, PCS and PHY**, so it's never wire-to-wire. Always say "simulated".
+- 7–8 cycles = 44.8–51.2 ns at 156.25 MHz (35–40 ns at 200 MHz), depending on the start lane. Two-clock build (core 250 MHz): 10–12 cycles = 64–77 ns; the two crossings cost ~20–25 ns. ITCH-lite: 10 → 5 cycles.
+- The lane matters because the framer completes a message only after the beat holding its last byte; `test_latency` places the Add in all 8 lanes: `(62 + 2 + padlen) % 8`.
+
+### The RTC: 32.32 fixed-point ns (`mdp_ptp_rtc.sv`)
+```
+inc_q  <= cfg_inc + INC_W'(cfg_trim);                  // cfg_trim signed, sign-extended
+time_q <= set_en ? set_time : time_q + TIME_W'(inc_q);
+```
+- 156.25 MHz → 6.4 ns → `cfg_inc = round(6.4 × 2^32) = 0x6_6666_6666` (8.32, 40 bits).
+- `cfg_trim`: signed rate trim in 2^-32 ns per clock (~0.036 ppb per LSB); `set_en/set_time` steps phase. These are the two controls a PTP servo uses.
+- The integer part wraps every 2^32 ns ≈ 4.29 s; **modular subtraction** still gives correct differences across a wrap. PTP's 48-bit seconds aren't implemented.
+
+### Stamping and measuring
+- `ts_now = ptp_time[63 -: 40]`: the top 40 bits = 32.8 format, LSB = 1/256 ns.
+- Each message is stamped when its last byte arrives; the stamp **travels with the message** through FIFO and book into the order request.
+- At the transmitter `lat = ts_now − stamp` → `mdp_lat_stats` (last/min/max/sum/count).
+- Testbench: for every order, hardware latency equals the simulator's timeline, in both clock configs.
+- Scope: the stamp is inside the core; with a real MAC you'd need stamps at the MAC boundary.
+
+### Pitfalls
+Reporting latency without its definition and start lane; mixing cycles and ns across clocks; fixed-point shift errors (32.32 vs 8.32 vs the 40-bit slice); treating simulated time as hardware time.
+@practice mdp:L9
+@iq How is latency measured on the FPGA itself, and what is it blind to? || Stamp each message with a hardware clock at ingress, carry the stamp with it, subtract at egress. It's blind to anything outside the stamped region (MAC/PCS/PHY, cables, switch) unless stamped at the MAC boundary.
+@iq Why fixed-point time instead of a nanosecond counter? || Clock periods aren't whole nanoseconds (6.4 ns). Fractional bits avoid cumulative rounding error and allow a fine rate trim for PTP-style servoing.
+@iq What does your 7–8 cycle number include and exclude? || Includes framer completion, FIFO, book, trigger and transmit start inside the core. Excludes MAC, PCS, PHY. It's from RTL simulation; there's no board measurement yet.
+@end
+
+@lesson m9build | Build: the RTC accumulator
+@body
+A free-running time register that adds a fixed-point increment every clock, with a signed trim and a phase set: the core of `mdp_ptp_rtc`. The trap is **sign extension**: a negative trim must be sign-extended before it's added.
+@task
+Inputs: `cfg_inc[39:0]` (8.32 fixed point), `cfg_trim[7:0]` (signed), `set_en`, `set_time[63:0]`. Synchronous `rst` clears both registers. Each clock:
+- `inc_q <= cfg_inc + sign-extended cfg_trim` (40 bits)
+- `time_q <= set_en ? set_time : time_q + inc_q` (inc_q zero-extended to 64)
+
+Outputs `time_q[63:0]` and `inc_q[39:0]`.
+@starter
+module top_module(
+  input clk, input rst,
+  input [39:0] cfg_inc, input [7:0] cfg_trim,
+  input set_en, input [63:0] set_time,
+  output reg [63:0] time_q, output reg [39:0] inc_q
+);
+
+endmodule
+@solution
+module top_module(
+  input clk, input rst,
+  input [39:0] cfg_inc, input [7:0] cfg_trim,
+  input set_en, input [63:0] set_time,
+  output reg [63:0] time_q, output reg [39:0] inc_q
+);
+  always @(posedge clk) begin
+    if (rst) begin
+      inc_q <= 40'd0;
+      time_q <= 64'd0;
+    end else begin
+      inc_q <= cfg_inc + {{32{cfg_trim[7]}}, cfg_trim};
+      time_q <= set_en ? set_time : time_q + {24'd0, inc_q};
+    end
+  end
+endmodule
+@wrong
+module top_module(
+  input clk, input rst,
+  input [39:0] cfg_inc, input [7:0] cfg_trim,
+  input set_en, input [63:0] set_time,
+  output reg [63:0] time_q, output reg [39:0] inc_q
+);
+  always @(posedge clk) begin
+    if (rst) begin
+      inc_q <= 40'd0;
+      time_q <= 64'd0;
+    end else begin
+      inc_q <= cfg_inc + cfg_trim;
+      time_q <= set_en ? set_time : time_q + inc_q;
+    end
+  end
+endmodule
+@spec {"type":"seq","clk":"clk","cycles":120,"reset":{"name":"rst","prob":0.01},"gen":"rtc"}
+@hint `{{32{cfg_trim[7]}}, cfg_trim}` sign-extends 8 bits to 40.
+@end
+
+@chapter m10 | Level 10: Verification
+@lesson m10learn | Golden models, scoreboards and mutation testing
+@body
+Verification answers "does the RTL equal the specification?". The repo's stack:
+1. **Golden model** in Python (`model/itch50.py`), written **separately** from the RTL, so agreement is evidence.
+2. **Testbench** in cocotb (Python coroutines driving Icarus; Verilator is lint-only because cocotb 2.1 needs Verilator ≥ 5.036).
+3. **Scoreboards** comparing DUT outputs with the model, event by event.
+4. **Stimulus**: directed tests per rule + constrained-random traffic with coverage asserts.
+5. **Mutation testing**: inject bugs, confirm the tests fail.
+
+Why cocotb, not UVM: easy to keep bit-exact with a Python model, and UVM needs a commercial simulator.
+
+### cocotb in five lines
+```
+@cocotb.test()
+async def test_x(dut):
+    cocotb.start_soon(Clock(dut.clk, 6400, unit="ps").start())   # 156.25 MHz
+    dut.rst.value = 1
+    for _ in range(4): await RisingEdge(dut.clk)
+    dut.rst.value = 0
+```
+`await RisingEdge` suspends until the edge; `dut.sig.value = x` drives; `int(dut.sig.value)` reads (an X raises, which is how the last-beat X bug surfaced). Bytes → bus: `int.from_bytes(b + bytes(8 - n), "little")`, `tkeep = (1 << n) - 1`.
+
+### Directed tests worth knowing
+- `test_directed_replace`: same level, same slot, onto occupied slot, old ref gone, partial fills first.
+- `test_directed_edges`: one-byte-different stock names; window edges (63 ok, 64 BAD_PRICE); prices that alias in low bits; share counts that wrap; 64-bit refs differing only in high bits.
+- `test_base_near_top_of_range`, `test_threshold_edges`, `test_burst_and_overflow` (`ign + ovf == msgs`), `test_duplicate_watch_entries`, `test_cdc_clock_sweep`.
+- Random traffic must hit **all eight drop reasons**: `set(env.drops) == set(range(1, 9))`, so it can't pass by never reaching a path.
+
+### Mutation testing
+A list of (file, original, replacement, why); apply one, run the suite, expect failure. Results (repo README): framer 16/16 non-equivalent caught (17 injected); book 49/49 (50); timestamp/clock/CDC 43/43 (45). An **equivalent mutant** can't change any output; document it. Survivors show what you didn't test: the first ITCH-lite run left 2, closed by `test_threshold_edges` and `test_order_storm`.
+
+### What it does NOT show
+Only simulation against a model written for this project: no real Nasdaq capture replay, no formal proofs, no gate-level sims, and CDC bugs are invisible in RTL simulation.
+@practice mdp:L10
+@iq How do you know your model is right? || It's written independently from the spec, cross-checked by a bit-exact C++ port, and the checkers themselves are tested by mutation testing. The honest gap: it hasn't been validated against real Nasdaq captures.
+@iq What is an equivalent mutant? Give one from your project. || A mutation that can't change any output, so no test can kill it, e.g. altering a condition that's already implied by an earlier check, or touching dead logic (mutation testing found the unused w_last signal in ITCH-lite, which was then removed).
+@iq A random test passes. How do you know it tested anything? || Coverage assertions: the repo asserts every drop reason was observed and that monitors saw non-zero counts, so a test can't pass vacuously.
+@end
+
+@chapter m11 | Level 11: Toolchain
+@lesson m11learn | The flow behind the numbers
+@body
+| Tool | Role | Entry point |
+|---|---|---|
+| Icarus + cocotb 2.x | simulation | make itch-pipe / itch-sim / ptp-sim |
+| Verilator -Wall | lint only | make itch-lint |
+| Yosys synth_xilinx | resource **estimate** | make itch-yosys |
+| Vivado 2026.1 (BASIC licence) | real synth, place, route, timing | syn/build.tcl, sweep_one.tcl, run_sweep_par.bat |
+| g++ | C++ baseline, bit-exact vs model | baseline: make itch-check / itch-bench |
+| git | history; each run's info.txt records the commit | tags v1, v2, v2.1 |
+
+**Yosys predicted 4 BRAM18 for the earlier design; Vivado used distributed RAM.** Never quote Yosys as the result.
+
+### Vivado flow
+```
+set ASYNC_CORE 0                 ;# 0 = one clock, 1 = separate core clock
+set RUN 05-short-name            ;# output in syn/runs/05-short-name
+source build.tcl                 ;# synth + place + route + reports
+```
+Then `syn\run_sweep_par.bat 05-short-name` runs four Vivado batches (5.0, 4.5, 4.0, 3.5 ns). `sweep_one.tcl` reopens the **synthesised checkpoint**, re-creates the clock, runs opt/place/phys_opt/route, and records WNS. **Rebuild before sweeping or the numbers are stale.**
+
+### Things that went wrong (worth knowing)
+- `get_parts` empty: the Alveo licence block was selected; use a Basic-only licence.
+- Stale Tcl variable `ASYNC_CORE=1` invalidated run 02: set parameters explicitly every run.
+- Four near-identical sweep logs are normal (one per target).
+- `tns` is always 0.0 (wrong property).
+
+### Tcl in one breath
+`set x 5`, `$x`, `[cmd args]` substitution, `puts`, `expr {a + b}`, `foreach`, `source file`. Vivado objects: `get_ports`, `get_cells`, `get_timing_paths`, `report_timing -file …`.
+
+### Hygiene
+`docs/TIMING_LOG.md` is the lab notebook: one row per RTL change (change, commit, WNS per target, limiting path). Don't edit RTL between build and sweep; don't commit generated files; run mutation tests on a clean tree (they patch files in place).
+@practice mdp:L11
+@iq How do you make sure a timing number you quote is the right one? || Each run folder has info.txt with the git commit, top module and settings; the sweep reuses the checkpoint from build.tcl, so I rebuild first; and I log one row per change in TIMING_LOG with the limiting path, not just WNS.
+@end
+
+@chapter m12 | Level 12: Beyond the project
+@lesson m12learn | Towards the state of the art (honestly)
+@body
+This is the boundary. Left: what the repo has. Right: what production low-latency designs add, as described in **public** talks, papers and vendor material. None of it describes any specific firm's internal design.
+
+| Topic | This repo | Direction |
+|---|---|---|
+| Latency | 7–8 cycles, simulated, core only | wire-to-wire including MAC/PCS/PHY |
+| Book | one message in flight, 64-level window, direct-mapped | pipelined book with forwarding; hashed/CAM lookup; full-depth books with a moving window |
+| Protocol | ITCH subset, gaps detected | gap recovery, A/B arbitration, snapshots, OUCH/BOE/SBE/FAST |
+| Transmit | order built after the decision | **speculative cut-through**: send the header early, patch late, abort/poison if no fire |
+| Risk | none | pre-trade checks in the datapath (price bands, size, rate limits, kill switch) |
+| Clocking | 156.25 MHz | 25G at 390.625 MHz; 100G with wider buses; PTP/White Rabbit time |
+| MAC | none | verilog-ethernet or vendor MACs; timestamps at the MAC boundary |
+| Verification | cocotb + model + mutation | **formal** (SymbiYosys), capture replay, hardware-in-the-loop |
+| CDC | Gray FIFO, 2-flop sync, sim model | report_cdc sign-off, MTBF analysis |
+| Timing | WNS at 200–222 MHz OOC | floorplanning, SLR crossing, duplication/retiming, seed sweeps |
+| Tooling | SV + Python + Tcl | **Hardcaml** (OCaml) and other generators: SpinalHDL, Chisel, Amaranth |
+
+### Topics to study next, in order
+1. **Pipelining a book**: read-after-write hazards on a level/order, forwarding, structural hazards on one-port RAMs, stall vs replay.
+2. **Speculative transmit**: start the frame, fix the checksum and fields late, cancel by poisoning the FCS.
+3. **Formal verification**: FIFO never overflows / never reads empty, Gray pointers change one bit, `mask[i] == (level[i] != 0)`, induction depth.
+4. **MAC/PCS/transceivers**: 64b/66b, XGMII, GT clocking, why Artix-7 GTP can't do 10G.
+5. **Measurement**: stamps at both ends, histograms, tail latency vs mean.
+6. **Determinism**: avoid data-dependent latency (variable decode, FIFOs in the fast path, CDC waits).
+
+### Roadmap items that make good next projects
+Register `now − stamp` in lat_stats (run 05); two-clock Vivado build + `report_cdc`; an SFP+ board (1G first); latency measured on hardware; a pipelined book; formal checks; replay real Nasdaq sample data. Contribution workflow from the repo: **model → C++ → RTL → scoreboard → mutation**.
+@practice mdp:L12
+@iq What limits your latency? || The cycle count through the framer's completion/flush and the book's states, measured in RTL simulation and excluding MAC/PCS/PHY.
+@iq How would you cut it? || Merge book states where timing allows (needs Vivado evidence; the log shows other paths limit first), speculative cut-through transmit, and a pipelined book.
+@iq What's wrong with your design? || One message in flight, a fixed 64-level window, a direct-mapped table that drops collisions, no gap recovery, no risk checks, and it's simulated only: no board, no real captures.
+@end
+
+</script>
 <script>
 /* VSim: a small, teaching-oriented Verilog / SystemVerilog-subset simulator.
    Two-state (0/1), BigInt values, width/sign rules per IEEE 1364 for the synthesizable subset.
@@ -4695,6 +5914,7 @@ const CourseRT = (() => {
       if (ln === '@end'){ push(); field = null; continue; }
       if (ln.startsWith('@spec ')){ L.spec = JSON.parse(ln.slice(6)); field = null; continue; }
       if (ln.startsWith('@hint ')){ L.hints.push(ln.slice(6)); field = null; continue; }
+      if (ln.startsWith('@iq ')){ const [q, a] = ln.slice(4).split('||').map(x => x.trim()); (L.iq = L.iq || []).push({q, a}); field = null; continue; }
       if (ln.startsWith('@sim ')){ L.sim = ln.slice(5).trim(); field = null; continue; }
       if (ln.startsWith('@practice ')){ L.practice = ln.slice(10).trim(); field = null; continue; }
       const m = ln.match(/^@(body|example|task|starter|solution|lib|wrong|sim|practice)$/);
@@ -4711,6 +5931,12 @@ const CourseRT = (() => {
     slowbit: () => (i, r, prev) => ({async_in: prev.async_in === undefined ? 0 : (r() < 0.25 ? 1 - Number(prev.async_in) : Number(prev.async_in))}),
     fifo: () => (i, r) => { const ph = Math.floor(i / 40) % 3; const pw = [0.85, 0.2, 0.5][ph], pr = [0.15, 0.85, 0.5][ph]; return {wr_en: r() < pw ? 1 : 0, rd_en: r() < pr ? 1 : 0}; },
     stream: () => { let len = 0, pos = 0; return (i, r) => { if (r() < 0.8){ if (pos >= len){ len = 2 + Math.floor(r()*6); pos = 0; } const o = {valid:1, sop: pos === 0 ? 1 : 0, byte_in: Math.floor(r()*256)}; pos++; return o; } return {valid:0, sop:0, byte_in: Math.floor(r()*256)}; }; },
+    sparse16: () => (name, r) => { if (r() < 0.1) return 0; let v = 0; const k = 1 + Math.floor(r()*3); for (let i = 0; i < k; i++) v |= 1 << Math.floor(r()*16); return v; },
+    symtrig: () => { const c = [0,0,0,0]; return (i, r) => { const sym = Math.floor(r()*4); if (r() < 0.35) c[sym] ^= 1; return {upd: r() < 0.75 ? 1 : 0, sym, cond: c[sym]}; }; },
+    ramsweep: () => (i, r) => ({we: r() < 0.45 ? 1 : 0, waddr: Math.floor(r()*16), wdata: Math.floor(r()*256), raddr: Math.floor(r()*16)}),
+    itchtype: () => (name, r) => { const T = [0x41,0x46,0x45,0x43,0x58,0x44,0x55], Ls = [36,40,31,36,23,19,35]; if (name === 'typ') return r() < 0.75 ? T[Math.floor(r()*7)] : Math.floor(r()*256); if (name === 'len') return r() < 0.6 ? Ls[Math.floor(r()*7)] : Math.floor(r()*64); },
+    pxwin: () => { let base = 0; return (name, r) => { if (name === 'px'){ const top = r() < 0.3; base = top ? 4294967296 - 100 * (1 + Math.floor(r()*60)) : 100 + Math.floor(r()*1000000); if (top) return 100 * Math.floor(r()*64); const k = Math.floor(r()*70) - 3; return r() < 0.75 ? base + 100 * k : base + Math.floor(r()*7000) - 200; } if (name === 'base') return base; }; },
+    rtc: () => (i, r) => ({cfg_inc: 0x666666666, cfg_trim: Math.floor(r()*256), set_en: r() < 0.05 ? 1 : 0, set_time: BigInt(Math.floor(r()*2**32)) << 20n}),
     book: () => (i, r) => ({valid: r() < 0.7 ? 1 : 0, side: r() < 0.5 ? 1 : 0, price: 900 + Math.floor(r()*200)}),
   };
   function specFor(L){ const s = {...L.spec}; if (s.gen){ const f = GENV[s.gen]; s.gen = f ? f() : undefined; } return s; }
@@ -4758,7 +5984,7 @@ const fadd = (a,b) => F(a.n*b.d + b.n*a.d, a.d*b.d);
 const fmul = (a,b) => F(a.n*b.n, a.d*b.d);
 const fval = f => f.n / f.d;
 const Fd = (v, scale=10000) => F(Math.round(v*scale), scale);   // decimal → fraction
-function fstr(f){ const v = fval(f); if (f.d === 1) return String(f.n); if ([2,4,5,8,10,16,20,25,40,50,100,1000,10000].includes(f.d)) return fmt(v); return `${f.n}/${f.d} ≈ ${+v.toPrecision(4)}`; }
+function fstr(f){ const v = fval(f); if (f.d === 1) return String(f.n); if ([2,4,5,8,10,16,20,25,40,50,100,1000,10000].includes(f.d) || 10000 % f.d === 0) return fmt(v); return `${f.n}/${f.d} ≈ ${+v.toPrecision(4)}`; }
 const C = (n,k) => { if (k<0||k>n) return 0; let r=1; for (let i=1;i<=k;i++) r = r*(n-k+i)/i; return Math.round(r); };
 const fact = n => n<=1 ? 1 : n*fact(n-1);
 
@@ -4766,7 +5992,7 @@ const fact = n => n<=1 ? 1 : n*fact(n-1);
 const CATS = {
   arith:{t:'Arithmetic', g:'quant'}, prob:{t:'Probability & EV', g:'quant'}, seq:{t:'Sequences', g:'quant'}, mm:{t:'Market making', g:'quant'},
   verilog:{t:'Verilog', g:'fpga'}, logic:{t:'Boolean logic', g:'fpga'}, timing:{t:'Timing & CDC', g:'fpga'}, arch:{t:'FPGA architecture', g:'fpga'},
-  bits:{t:'Bits & hex', g:'fpga'}, net:{t:'Networking', g:'fpga'}, cs:{t:'C/C++ & CS', g:'cs'}, mine:{t:'My cards', g:'mine'}
+  bits:{t:'Bits & hex', g:'fpga'}, net:{t:'Networking', g:'fpga'}, cs:{t:'C/C++ & CS', g:'cs'}, mdp:{t:'ITCH pipeline', g:'fpga'}, mine:{t:'My cards', g:'mine'}
 };
 const GROUPS = {quant:'Quant', fpga:'FPGA', cs:'C/C++ & CS'};
 
@@ -4950,13 +6176,138 @@ gen('cs', () => { const v=rnd(0,0xFFFFFFFF)>>>0, k=rnd(0,3); const b=(v>>>(8*k))
 gen('cs', () => { const v=rnd(1,128); return N(`<code>int8_t x = -${v}; uint8_t y = x;</code> y = ?`, F(256-v), `Converted modulo 256.`); });
 gen('cs', () => { const n=pick([8,16,32,64,1000,1024,1e6]); return N(`Worst-case comparisons for binary search over ${n} sorted items (⌈log₂(n+1)⌉)?`, F(Math.ceil(Math.log2(n+1))), `Each step halves the range.`); });
 
+/* ---- mdpipe course generators (cat 'mdp', tagged by level) ---- */
+const genT = (tag, make) => GENS.push({cat:'mdp', tag, make, gid: hash('mdp' + tag + make.toString())});
+const L = (q, list, why) => ({type:'str', q, accept:[list.join(',')], show: list.join(', '), why, kp:'list'});
+const H = (q, v, w, why) => { const s = v.toString(16).toUpperCase().padStart(w, '0'); return {type:'str', q, accept:[s], show:'0x' + s, why, kp:'hex'}; };
+const bytesHex = arr => arr.map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+const rb = () => rnd(0, 255);
+const u32 = () => (Math.floor(Math.random() * 2**32)) >>> 0;
+const popc = x => { let c = 0; while (x){ x &= x - 1; c++; } return c; };
+
+/* L1 basics */
+genT('L1', () => { const x = u32(), i = rnd(0,3); const b = (x >>> (8*i)) & 255; return H(`<code>x = 32'h${hex(x,8)}</code>. Value of <code>x[8*${i} +: 8]</code> in hex?`, b, 2, `+: counts up from bit ${8*i}: bits ${8*i+7}..${8*i}.`); });
+genT('L1', () => { const x = u32(), hi = pick([31,23,15,7,27,19,11]); const v = (x >>> (hi - 7)) & 255; return H(`<code>x = 32'h${hex(x,8)}</code>. Value of <code>x[${hi} -: 8]</code> in hex?`, v, 2, `-: counts down from bit ${hi}: bits ${hi}..${hi-7}.`); });
+genT('L1', () => { const m = Math.random() < 0.1 ? 0 : rnd(1, 65535); const hiw = Math.random() < .5; const v = m === 0 ? -1 : hiw ? 31 - Math.clz32(m) : 31 - Math.clz32(m & -m); return N(`16-bit mask <code>16'b${bin(m,16)}</code>. Index of the ${hiw?'highest':'lowest'} set bit? (−1 if none)`, F(v), hiw ? `The loop that lets later iterations overwrite earlier ones finds the highest set bit (best bid).` : `Looping from the top down, the last match is the lowest set bit (best ask).`); });
+genT('L1', () => { const n = pick([8,16]), a = rnd(0, 2**n - 1), b = rnd(0, 2**n - 1), sub = Math.random() < .5; const v = sub ? ((a - b) % 2**n + 2**n) % 2**n : (a + b) % 2**n; return N(`<code>logic [${n-1}:0] y = ${n}'d${a} ${sub?'-':'+'} ${n}'d${b};</code> y = ? (decimal)`, F(v), sub ? `Wraps modulo 2^${n}: the same reason count = wp − rp works for FIFO pointers.` : `Assigned into ${n} bits, the carry vanishes: (${a}+${b}) mod ${2**n}.`); });
+genT('L1', () => { const n = rnd(0, 254); const t = n ^ (n+1), g = (n ^ (n>>1)) ^ ((n+1) ^ ((n+1)>>1)); const askGray = Math.random() < .5; return N(`How many bits change between ${askGray ? `Gray(${n}) and Gray(${n+1})` : `binary ${n} and ${n+1}`}?`, F(askGray ? popc(g) : popc(t)), askGray ? `Gray code: always exactly 1.` : `Binary: ${bin(n,8)} → ${bin(n+1,8)}, ${popc(t)} bits flip. That's why binary pointers can't cross clock domains.`); });
+genT('L1', () => { const ORD_AW = rnd(8, 12), SYM_W = rnd(1, 3), LVL_W = rnd(5, 7); const OW = 1 + (64 - ORD_AW) + SYM_W + 1 + LVL_W + 32; return N(`Order-table entry width <code>OW = 1 + TAG_W + SYM_W + 1 + LVL_W + 32</code> with <code>TAG_W = 64 − ORD_AW</code>. ORD_AW=${ORD_AW}, SYM_W=${SYM_W}, LVL_W=${LVL_W}. OW = ?`, F(OW), `{valid, tag ${64-ORD_AW}, sym ${SYM_W}, side 1, level ${LVL_W}, remaining 32}.`); });
+genT('L1', () => { const nb = pick([8,16,60,64]), i = rnd(0, nb - 1); const hiB = 8*nb - 1 - 8*i; return N(`<code>f_le[8*i +: 8] = f_be[${8*nb-1} - 8*i -: 8]</code> reverses a ${nb}-byte frame. For i = ${i}, what's the top bit index of the f_be slice?`, F(hiB), `${8*nb-1} − 8·${i} = ${hiB}: byte ${i} counted from the top. Pure wiring, zero logic.`); });
+genT('L1', () => { const AW = rnd(2, 7); const ask = pick(['depth','count']); return N(ask === 'depth' ? `<code>mdp_fifo</code> with AW = ${AW}. Depth (entries)?` : `<code>mdp_fifo</code> with AW = ${AW}. How many bits is <code>count</code> (declared [AW:0])?`, F(ask === 'depth' ? 2**AW : AW + 1), ask === 'depth' ? `1 << AW.` : `AW+1 bits so a full FIFO (count = depth) is distinguishable from empty.`); });
+
+/* L2 sequential */
+genT('L2', () => { let q = rnd(0, 15); const q0 = q, cyc = []; const out = []; for (let i = 0; i < 6; i++){ const r = Math.random() < .15 ? 1 : 0, e = rnd(0,1), d = rnd(0,15); cyc.push(`(${r},${e},${d})`); if (r) q = 0; else if (e) q = d; out.push(q); } return L(`<code>always_ff @(posedge clk) if (rst) q <= 0; else if (en) q <= d;</code> q starts at ${q0}. Inputs (rst,en,d) for 6 clock edges: ${cyc.join(' ')}. Enter q after each edge, comma-separated.`, out, `Reset wins; otherwise q only loads when en = 1.`); });
+genT('L2', () => { const N_ = pick([4,6,8,10]), s = rnd(0, 2**N_ - 1), k = rnd(5, 300); return N(`A ${N_}-bit counter starts at ${s} and increments every clock. Value after ${k} clocks?`, F((s + k) % 2**N_), `(${s} + ${k}) mod ${2**N_}.`); });
+genT('L2', () => { const cond = Array.from({length:10}, () => Math.random() < .5 ? 1 : 0); if (!cond.includes(1)) cond[rnd(0,9)] = 1; const noArm = Math.random() < .3; let fired = 0; const fires = []; cond.forEach((c, i) => { if (noArm){ if (c) fires.push(i); return; } if (c && !fired){ fires.push(i); fired = 1; } else if (!c) fired = 0; }); return noArm ? N(`Without the <code>fired</code> flag, an order goes out on every update where cond = 1. cond per update: ${cond.join(' ')}. How many orders?`, F(fires.length), `Every 1 fires: that's why the edge-armed flag exists.`) : L(`Edge-armed trigger: fire when cond = 1 and not already fired; re-arm when cond = 0. cond per update (index 0..9): ${cond.join(' ')}. Indices that fire, comma-separated?`, fires, `Fires on 0→1 transitions (and update 0 if cond starts at 1).`); });
+genT('L2', () => { const lat = Array.from({length: rnd(4,7)}, () => rnd(38, 60)); const ask = pick(['min','max','sum','count']); const v = ask === 'min' ? Math.min(...lat) : ask === 'max' ? Math.max(...lat) : ask === 'sum' ? lat.reduce((a,b)=>a+b,0) : lat.length; return N(`<code>mdp_lat_stats</code> after clear, latency samples (cycles): ${lat.join(', ')}. Final <code>s_${ask}</code>?`, F(v), ask === 'min' ? `s_min resets to all ones so the first sample always becomes the minimum.` : `Running ${ask}.`); });
+genT('L2', () => { const ty = pick(['Add','Delete','Replace','unknown type','Add with a bad length','Add that gets dropped (bad price)']); const seqs = {'Add':'D1 D2 RD WR BT','Delete':'D1 D2 RD WR BT','Replace':'D1 D2 RD WR RD WR BT','unknown type':'D1 D2 IDLE','Add with a bad length':'D1 D2 IDLE','Add that gets dropped (bad price)':'D1 D2 RD IDLE'}; const all = Object.values(seqs).concat(['D1 RD WR BT','D1 D2 WR BT','D1 D2 RD WR WR BT']); return M(`<code>mdp_itch_book</code>: after accept, which states does a <b>${ty}</b> go through?`, seqs[ty], shuffle(all.filter(x => x !== seqs[ty])), `Unknown types and wrong lengths leave at D2; drop decisions are made in RD; a replace runs RD/WR twice (remove old, add new).`); });
+genT('L2', () => { const withDef = Math.random() < .5; const wr = Array.from({length:6}, () => rnd(0,1)); const full = [0,0,1,1,0,1].map(() => rnd(0,1)); const out = []; let o = 0; for (let i = 0; i < 6; i++){ if (withDef) o = 0; if (wr[i] && full[i]) o = 1; out.push(o); } return L(`${withDef ? '<code>ovf <= 0;</code> is the first line of the always_ff (a default).' : 'There is <b>no</b> default line for ovf.'} Each edge: <code>if (wr_en && full) ovf <= 1;</code> wr_en: ${wr.join(' ')}; full: ${full.join(' ')}. ovf after each edge (comma-separated, starts 0)?`, out, withDef ? `With the default, ovf is a one-cycle pulse.` : `Without a default, once set it stays 1 forever: the classic stuck pulse.`); });
+
+/* L3 memories */
+genT('L3', () => { const mem = Array.from({length:4}, () => rnd(10, 99)); const addr = Array.from({length:5}, () => rnd(0,3)); const sync = Math.random() < .5; const k = rnd(1,4); const v = sync ? mem[addr[k-1]] : mem[addr[k]]; return N(`mem = [${mem.join(', ')}] (addresses 0..3). Read address per cycle: ${addr.join(', ')}. With a <b>${sync ? 'registered (block RAM)' : 'combinational (LUTRAM)'}</b> read, what does rd_data show in cycle ${k}?`, F(v), sync ? `Registered read: data for the address presented in cycle ${k-1} appears in cycle ${k}.` : `Asynchronous read: same cycle.`); });
+genT('L3', () => { const o = rnd(10,99), n = rnd(100,199); const rf = Math.random() < .5; return N(`Address 5 holds ${o}. In one cycle the same port writes ${n} to address 5 and reads address 5. In <b>${rf?'read-first':'write-first'}</b> mode, what does the read return?`, F(rf ? o : n), rf ? `Read-first returns the old contents. mdp_itch_book relies on this.` : `Write-first passes the new data through.`); });
+genT('L3', () => { const depth = pick([512,1024,2048,4096]), width = pick([18,32,36,64,72,96,128]); const bits = depth * width; const ask = Math.random() < .5; return N(ask ? `A ${depth} × ${width}-bit memory: total bits?` : `A ${depth} × ${width}-bit memory. Lower bound on RAMB36 blocks (36,864 bits each, perfect packing)?`, F(ask ? bits : Math.ceil(bits / 36864)), ask ? `${depth} × ${width}.` : `${bits} / 36,864 rounded up. Real tiling depends on aspect ratio; the order table (96 × 1024 = 98,304 bits) used 3 RAMB36.`); });
+
+/* L4 AXI-Stream / realignment */
+genT('L4', () => { const i = rnd(0, 120); const ask = Math.random() < .5; return N(`64-bit AXI-Stream, byte 0 in tdata[7:0]. Frame byte ${i} is in which ${ask?'beat':'lane'}?`, F(ask ? Math.floor(i/8) : i % 8), `beat = byte / 8 = ${Math.floor(i/8)}, lane = byte mod 8 = ${i%8}.`); });
+genT('L4', () => { const prv = Array.from({length:8}, rb), cur = Array.from({length:8}, rb), r = rnd(0,7); const win = prv.concat(cur); const word = win.slice(r, r+8); return {type:'str', q:`Lanes listed lane 0 first.<br>prv = ${bytesHex(prv)}<br>cur = ${bytesHex(cur)}<br><code>win = {cur, prv}; sh = win >> (8·r); word = byte-reverse(sh)</code> with r = ${r}. Enter <code>word</code> as 16 hex digits, most significant byte first.`, accept:[word.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('')], show: bytesHex(word), why:`Rotating by ${r} lanes starts at prv lane ${r}; the byte-reverse makes the first message byte the MSB, so the answer is simply 8 bytes in wire order from lane ${r} of prv.`, kp:'hex'}; });
+genT('L4', () => { const b = Array.from({length:4}, rb); const val = ((b[0] << 24) >>> 0) + (b[1] << 16) + (b[2] << 8) + b[3]; const ask = Math.random() < .5; if (ask) return N(`A big-endian u32 price arrives as bytes ${bytesHex(b)} (first byte first). Value in decimal?`, F(val), `Network order: the first byte is the most significant.`); const t = ((b[3] << 24) >>> 0) + (b[2] << 16) + (b[1] << 8) + b[0]; return H(`Those 4 price bytes ${bytesHex(b)} (first byte first) sit in lanes 4..7 of a beat (first byte in lane 4). What is <code>tdata[63:32]</code> in hex?`, t, 8, `Lanes are little-endian: lane 4 is tdata[39:32], so the first byte ends up as the least significant byte of tdata[63:32].`); });
+genT('L4', () => { const Ln = rnd(20, 200); const beats = Math.ceil(Ln/8), last = Ln % 8 || 8; const ask = Math.random() < .5; return ask ? N(`A ${Ln}-byte frame on a 64-bit bus: how many beats?`, F(beats), `⌈${Ln}/8⌉.`) : H(`A ${Ln}-byte frame: <code>tkeep</code> on the last beat (hex)?`, (1 << last) - 1, 2, `${last} valid lane${last>1?'s':''} on the last beat → ${last} ones.`); });
+genT('L4', () => { const lens = Array.from({length:3}, () => rnd(12, 40)); const k = rnd(0, 2); let start = 62; for (let i = 0; i < k; i++) start += 2 + lens[i]; const body = start + 2; const ask = pick(['beat','lane']); return N(`MoldUDP64 blocks start at frame byte 62, each is [2-byte length][body], no padding. Body lengths: ${lens.join(', ')}. Block ${k}'s <b>body</b> starts in which ${ask}?`, F(ask === 'beat' ? Math.floor(body/8) : body % 8), `Block ${k} starts at byte ${start}; its body at ${body} → beat ${Math.floor(body/8)}, lane ${body%8}.`); });
+
+/* L5 FIFOs / CDC */
+genT('L5', () => { const AW = pick([2,3]), D = 2**AW; let cnt = 0, ovf = 0, ovfN = 0; const ev = []; for (let i = 0; i < 10; i++){ const w = Math.random() < .65 ? 1 : 0, r = Math.random() < .35 ? 1 : 0; ev.push(`${w}${r}`); const full = cnt === D, empty = cnt === 0; if (w){ if (full) ovfN++; } if (w && !full) cnt++; if (r && !empty) cnt--; } const ask = pick(['count','ovf']); return N(`Depth-${D} FIFO, no back-pressure (a write when full is dropped and pulses ovf). Per cycle (wr_en rd_en): ${ev.join(' ')}. Starting empty, ${ask === 'count' ? 'final count' : 'how many ovf pulses'}?`, F(ask === 'count' ? cnt : ovfN), `Full/empty are decided from the pointers at the start of each cycle; a read and a write in the same cycle both happen if allowed.`); });
+genT('L5', () => { const AW = pick([2,3,4]), m = 2**(AW+1); let wp = rnd(0, m-1), rp; const kind = pick(['full','empty','neither']); if (kind === 'empty') rp = wp; else if (kind === 'full') rp = (wp + 2**AW) % m; else rp = (wp - rnd(1, 2**AW - 1) + m) % m; return M(`AW = ${AW} (depth ${2**AW}), pointers are ${AW+1} bits. wp = ${bin(wp,AW+1)}, rp = ${bin(rp,AW+1)}. The FIFO is?`, kind === 'full' ? 'Full' : kind === 'empty' ? 'Empty' : `Neither (count ${(wp - rp + m) % m})`, ['Full','Empty',`Neither (count ${(wp - rp + m) % m})`, 'Neither (count 1)'], `count = (wp − rp) mod ${m} = ${(wp - rp + m) % m}. Full when the low ${AW} bits match and the top bit differs.`); });
+genT('L5', () => { const AW = 3; const n = rnd(0, 15); const g = n ^ (n >> 1); const nx = (n + 1) % 16, gn = nx ^ (nx >> 1); const ask = Math.random() < .5; return ask ? {type:'str', q:`4-bit Gray pointer for ${n}?`, accept:[bin(g,4)], show:bin(g,4), why:'b2g(b) = (b >> 1) ^ b.', kp:'bin'} : {type:'str', q:`Write Gray pointer is ${bin(g,4)}. After one more write, it becomes?`, accept:[bin(gn,4)], show:bin(gn,4), why:`Decode (${n}), add 1, encode: exactly one bit changes.`, kp:'bin'}; });
+
+/* L6 protocols */
+const OFFS = [['IPv4 header (first byte 0x45)',14],['IPv4 protocol field',23],['UDP destination port',36],['MoldUDP64 session',42],['MoldUDP64 sequence number',52],['MoldUDP64 message count',60],['first message length prefix',62],['first message body (type byte)',64],['Ethertype',12]];
+genT('L6', () => { const [nm, o] = pick(OFFS); return N(`Ethernet/IPv4/UDP/MoldUDP64 frame, no VLAN, no IP options. Byte offset of the ${nm}?`, F(o), `Ethernet 0..13, IPv4 14..33, UDP 34..41, MoldUDP64 42..61 (session 42, seq 52, count 60), first block 62.`); });
+genT('L6', () => {
+  const ref = rnd(1, 2**20), side = pick(['B','S']), sh = rnd(1, 5000), px = rnd(100, 2000) * 100, stock = pick(['AAPL    ','MSFT    ','NVDA    ','TSLA    ']);
+  const m = new Array(36).fill(0); m[0] = 0x41; m[1] = 0; m[2] = rnd(1,9); m[3] = 0; m[4] = rnd(0,255); for (let i = 5; i < 11; i++) m[i] = rb();
+  for (let i = 0; i < 8; i++) m[18 - i] = Math.floor(ref / 2**(8*i)) & 255; m[19] = side.charCodeAt(0);
+  for (let i = 0; i < 4; i++) m[23 - i] = (sh >>> (8*i)) & 255; for (let i = 0; i < 8; i++) m[24 + i] = stock.charCodeAt(i); for (let i = 0; i < 4; i++) m[35 - i] = (px >>> (8*i)) & 255;
+  const rows = []; for (let r = 0; r < 36; r += 8) rows.push(`${String(r).padStart(2,' ')}: ${bytesHex(m.slice(r, r+8))}`);
+  const ask = pick(['shares','price','ref','side']);
+  const q = `ITCH 5.0 Add (36 bytes, offsets on the left):<pre><code>${rows.join('\n')}</code></pre>`;
+  if (ask === 'side') return M(q + `Side?`, side === 'B' ? 'Buy (B)' : 'Sell (S)', [side === 'B' ? 'Sell (S)' : 'Buy (B)'], `Byte 19: 0x${hex(side.charCodeAt(0))} = '${side}'.`);
+  if (ask === 'price') return N(q + `Price in dollars? (4 implied decimals)`, Fd(px / 10000, 10000), `Bytes 32..35 = ${px} → $${(px/10000).toFixed(2)}.`);
+  return N(q + `${ask === 'ref' ? 'Order reference (bytes 11..18)' : 'Shares (bytes 20..23)'} in decimal?`, F(ask === 'ref' ? ref : sh), `Big-endian: first byte most significant.`);
+});
+genT('L6', () => {
+  let exp = null, gaps = 0, dups = 0, msgs = 0; const pk = []; let s = rnd(1, 50);
+  for (let i = 0; i < 5; i++){
+    const kind = Math.random(); let seq = s, cnt = rnd(1, 4);
+    if (i && kind < 0.2) seq = s + rnd(1, 3); else if (i && kind < 0.4) seq = Math.max(1, s - rnd(1, 3)); else if (i && kind < 0.5) cnt = 0;
+    pk.push(`(${seq}, ${cnt})`);
+    if (exp === null) exp = seq; else if (seq > exp){ gaps++; exp = seq; }
+    for (let k = 0; k < cnt; k++){ if (seq + k < exp) dups++; else { exp = seq + k + 1; msgs++; } }
+    s = Math.max(exp, seq + cnt);
+  }
+  const ask = pick(['gaps','dups','msgs']);
+  return N(`MoldUDP64 packets as (sequence, count), in arrival order: ${pk.join(' ')}. Count 0 is a heartbeat. Total ${ask === 'msgs' ? 'messages delivered' : ask}?`, F(ask === 'gaps' ? gaps : ask === 'dups' ? dups : msgs), `First packet sets expected. seq > expected → gap, resync. Message i has seq+i; below expected → duplicate, else deliver and expected = seq+i+1.`);
+});
+genT('L6', () => {
+  const base = rnd(50, 150) * 10000; const watch = ['AAPL','MSFT','NVDA','AMZN'];
+  const f = {side: 'B', stock: pick(watch), px: base + rnd(0, 63) * 100, sh: rnd(1, 999)};
+  const faults = shuffle(['side','stock','px','sh']).slice(0, rnd(0, 2));
+  for (const x of faults){ if (x === 'side') f.side = pick(['X','b','Q']); if (x === 'stock') f.stock = pick(['GOOG','META','AAPX','MSF']); if (x === 'px') f.px = pick([base - 100, base + 64*100, base + 150, base + 6450]); if (x === 'sh') f.sh = 0; }
+  const reason = f.side !== 'B' && f.side !== 'S' ? 'BAD_SIDE' : !watch.includes(f.stock) ? 'NOT_WATCHED' : (f.px < base || (f.px - base) % 100 || (f.px - base) / 100 >= 64) ? 'BAD_PRICE' : f.sh === 0 ? 'BAD_QTY' : 'Accepted';
+  return M(`Add (correct length) into an empty table. Watchlist ${watch.join(', ')}; base price ${base}; TICK 100; 64 levels. Message: side '${f.side}', stock ${f.stock}, price ${f.px}, shares ${f.sh}. Result?`, reason, ['BAD_SIDE','NOT_WATCHED','BAD_PRICE','BAD_QTY','Accepted'].filter(x => x !== reason), `Precedence: BAD_LEN, BAD_SIDE, NOT_WATCHED, BAD_PRICE, BAD_QTY, COLLISION/DUP_REF. Price must be ≥ base, a multiple of TICK above it, and < 64 ticks above.`);
+});
+genT('L6', () => { const d = rnd(1, 999) + rnd(0, 99) / 100; const v = Math.round(d * 10000); return H(`Price $${d.toFixed(2)} as a 4-byte ITCH price field (4 implied decimals), hex?`, v, 8, `$${d.toFixed(2)} × 10,000 = ${v}.`); });
+genT('L6', () => {
+  const w = [0x4500, 0x002C, rnd(0, 65535), 0x4000, 0x4011, 0x0000, (192<<8)|168, rnd(0,255)<<8 | rnd(1,254), (10<<8)|0, rnd(0,255)<<8 | rnd(1,254)];
+  let s = w.reduce((a, b) => a + b, 0); while (s > 0xFFFF) s = (s & 0xFFFF) + (s >>> 16); const cs = (~s) & 0xFFFF;
+  return H(`IPv4 header as 16-bit words, checksum field = 0: ${w.map(x => hex(x,4)).join(' ')}. Header checksum (hex)?`, cs, 4, `Sum the words, fold carries back in (one's complement), invert: ~${hex(s,4)} = ${hex(cs,4)}.`);
+});
+genT('L6', () => { const len = rnd(14, 60); const ask = Math.random() < .5; return ask ? N(`A message block of ${len} bytes (2-byte length included) on a 64-bit bus: how many beats does it occupy on average?`, Fd(len/8, 1000), `${len}/8.`) : N(`At 10 Gb/s, back-to-back blocks of ${len} bytes: millions of messages per second? (ignore headers)`, Fd(1250/len, 1000), `10e9/8 = 1.25e9 bytes/s → 1250/${len} M msg/s.`); });
+
+/* L7 book */
+genT('L7', () => {
+  const ord = new Map(), lvl = new Map(); const key = (s, l) => s + ':' + l; const steps = []; let nref = 1;
+  const add = (ref, s, l, q) => { ord.set(ref, {s, l, q}); lvl.set(key(s, l), (lvl.get(key(s, l)) || 0) + q); };
+  const red = (ref, q) => { const o = ord.get(ref); const d = Math.min(q, o.q); o.q -= d; lvl.set(key(o.s, o.l), lvl.get(key(o.s, o.l)) - d); if (!o.q) ord.delete(ref); };
+  for (let i = 0; i < 6; i++){
+    const live = [...ord.keys()]; const t = live.length && Math.random() < .45 ? pick(['E','X','D','U']) : 'A';
+    if (t === 'A'){ const s = pick(['B','S']); const l = s === 'B' ? rnd(10, 20) : rnd(21, 30); const q = rnd(1, 9) * 100; add(nref, s, l, q); steps.push(`A ref${nref} ${s} L${l} ${q}`); nref++; }
+    else { const ref = pick(live); if (t === 'D'){ red(ref, 1e9); steps.push(`D ref${ref}`); } else if (t === 'U'){ const o = ord.get(ref); const nl = o.s === 'B' ? rnd(10, 20) : rnd(21, 30), q = rnd(1, 9) * 100; red(ref, 1e9); add(nref, o.s, nl, q); steps.push(`U ref${ref}→ref${nref} L${nl} ${q}`); nref++; } else { const q = rnd(1, 12) * 100; red(ref, q); steps.push(`${t} ref${ref} ${q}`); } }
+  }
+  const bids = [...lvl].filter(([k, v]) => k[0] === 'B' && v > 0).map(([k]) => +k.split(':')[1]), asks = [...lvl].filter(([k, v]) => k[0] === 'S' && v > 0).map(([k]) => +k.split(':')[1]);
+  const ask = pick(['bid','ask','total']);
+  if (ask === 'total'){ const ks = [...lvl.keys()]; const k = pick(ks); const [s, l] = k.split(':'); return N(`Messages: ${steps.join('; ')}. Total shares now at ${s === 'B' ? 'bid' : 'ask'} level L${l}?`, F(lvl.get(k)), `E/X reduce by min(shares, remaining); D removes all remaining; U removes the old order and adds a new one.`); }
+  return N(`Messages: ${steps.join('; ')}. Best ${ask} level now? (−1 if that side is empty)`, F(ask === 'bid' ? (bids.length ? Math.max(...bids) : -1) : (asks.length ? Math.min(...asks) : -1)), `Best bid = highest occupied bid level; best ask = lowest occupied ask level (mask bit = level total ≠ 0).`);
+});
+genT('L7', () => { const ORD_AW = pick([8, 10]); const a = rnd(1, 2**16); const kind = pick(['same','coll','ok']); const b = kind === 'same' ? a : kind === 'coll' ? a + 2**ORD_AW * rnd(1, 7) : a + rnd(1, 2**ORD_AW - 1); return M(`ORD_AW = ${ORD_AW}. Order ref ${a} is live in the table. A new Add arrives with ref ${b}. Result?`, kind === 'same' ? 'DUP_REF' : kind === 'coll' ? 'COLLISION' : 'Accepted (different slot)', ['DUP_REF','COLLISION','Accepted (different slot)'], `Slot = ref mod ${2**ORD_AW}: ${a % 2**ORD_AW} vs ${b % 2**ORD_AW}. Same slot + same full ref (tag equal) → DUP_REF; same slot, different tag → COLLISION.`); });
+genT('L7', () => { const w = 8, m = 256; const sub = Math.random() < .5; let old = rnd(0, 255), d = rnd(1, 255); if (Math.random() < .4){ if (sub) old = d; else old = (m - d) % m; } const nz = sub ? (old !== d) : (old !== (m - d) % m); return N(`8-bit level total ${old}, ${sub ? 'subtract' : 'add'} ${d}. <code>lvl_nz = (lvl_rd != ${sub ? 'w_delta' : '(0 − w_delta)'})</code> = ?`, F(nz ? 1 : 0), `${sub ? `${old} − ${d}` : `${old} + ${d}`} mod 256 = ${sub ? ((old - d) % m + m) % m : (old + d) % m}; it's zero exactly when the compare says equal, with no carry chain.`); });
+genT('L7', () => { const base = rnd(100, 300) * 100; const kind = pick(['ok','below','offtick','above','edge']); const px = kind === 'ok' ? base + rnd(0, 62) * 100 : kind === 'below' ? base - rnd(1, 5) * 100 : kind === 'offtick' ? base + rnd(0, 60) * 100 + pick([50, 1, 99]) : kind === 'above' ? base + rnd(64, 80) * 100 : base + 63 * 100; const okk = px >= base && (px - base) % 100 === 0 && (px - base) / 100 < 64; return N(`Base ${base}, TICK 100, 64 levels. Price ${px} → level? (−1 for BAD_PRICE)`, F(okk ? (px - base) / 100 : -1), okk ? `(${px} − ${base}) / 100.` : `Rejected: must be ≥ base, a whole number of ticks, and < 64 ticks above.`); });
+genT('L7', () => { const c = pick([3,4,5,6]); const f = 156.25; return N(`The book accepts one message every ${c} cycles at ${f} MHz. Millions of messages per second?`, Fd(f / c, 1000), `${f} / ${c}. Compare with line rate for 38-byte blocks: 1250/38 ≈ 32.9 M/s.`); });
+
+/* L8 timing */
+genT('L8', () => { const w = pick([8,16,24,32,40,48,64]); return N(`How many CARRY4 elements in a ${w}-bit adder or compare?`, F(Math.ceil(w/4)), `4 bits per CARRY4: ⌈${w}/4⌉.`); });
+genT('L8', () => { const a = +(Math.random() * 1.2 - 0.6).toFixed(3), b = +(Math.random() * 1.2 - 0.6).toFixed(3); const noise = 0.5; const real = Math.abs(a - b) > noise; return M(`Two runs at the same target: WNS ${a} ns and ${b} ns. Placement noise is about ±${noise} ns. Is the difference meaningful?`, real ? 'Yes: larger than the noise band' : 'No: inside the noise band', [real ? 'No: inside the noise band' : 'Yes: larger than the noise band'], `|Δ| = ${Math.abs(a-b).toFixed(3)} ns. Within noise, look for a structural change in the path report instead.`); });
+genT('L8', () => { const f = pick([156.25,200,222.22,250,285.71,322.27]); const c = rnd(5, 12); return N(`${c} cycles at ${f} MHz = ? ns`, Fd(c * 1000 / f, 100), `${c} × ${(1000/f).toFixed(3)} ns.`); });
+
+/* L9 time */
+genT('L9', () => { const f = pick([100, 125, 156.25, 200, 250, 312.5, 400]); const inc = (1000n * (1n << 32n) * 100n + BigInt(Math.round(f*100)) / 2n) / BigInt(Math.round(f * 100)); return H(`RTC in 32.32 fixed-point ns. Clock ${f} MHz → <code>cfg_inc</code> (8.32 format) in hex?`, inc, 9, `Period ${1000/f} ns × 2^32, rounded.`); });
+genT('L9', () => { const a = rnd(0, 2**31), d = rnd(10, 5000); const b = (a + d) % 2**32; const wrap = Math.random() < .5; const A = wrap ? 2**32 - rnd(1, 3000) : a; const Bv = (A + d) % 2**32; return N(`32-bit ns timestamps (they wrap every 2^32 ns). Ingress stamp ${A}, egress stamp ${Bv}. Latency in ns?`, F(d), `(egress − ingress) mod 2^32 = ${d}: modular subtraction survives the wrap.`); });
+genT('L9', () => { const v = rnd(5000, 60000); return N(`<code>ts_now</code> is the top 40 bits of the 32.32 time: 32.8 format. A latency of ${v} in those units is how many ns?`, Fd(v / 256, 10000), `8 fractional bits: divide by 256.`); });
+genT('L9', () => { const c1 = rnd(3, 8), c2 = rnd(3, 8); return N(`${c1} cycles at 156.25 MHz, then ${c2} cycles in a 250 MHz core. Total ns (ignore crossing waits)?`, Fd(c1 * 6.4 + c2 * 4, 100), `${c1} × 6.4 + ${c2} × 4.`); });
+genT('L9', () => { const ppb = pick([1, 2, 5, 10, 20, 50]); const per = 6.4; const lsbPpb = 1e9 * 2**-32 / per; return N(`At 156.25 MHz one trim LSB is 2^-32 ns per clock ≈ ${lsbPpb.toFixed(4)} ppb. Nearest number of LSBs to correct a ${ppb} ppb rate error?`, F(Math.round(ppb / lsbPpb)), `${ppb} / ${lsbPpb.toFixed(4)}.`); });
+
+/* L10 verification */
+genT('L10', () => { const ops = [['>', '>='], ['<', '<='], ['==', '!=']]; const [o, mu] = pick(ops); const tests = Array.from({length: 4}, () => [rnd(0, 6), rnd(0, 6)]); const f = (x, y, op) => op === '>' ? x > y : op === '>=' ? x >= y : op === '<' ? x < y : op === '<=' ? x <= y : op === '==' ? x === y : x !== y; const caught = tests.some(([x, y]) => f(x, y, o) !== f(x, y, mu)); return M(`Original: <code>hit = (a ${o} b)</code>. Mutant: <code>hit = (a ${mu} b)</code>. Test vectors (a,b): ${tests.map(t => `(${t[0]},${t[1]})`).join(' ')}. Is the mutant caught?`, caught ? 'Caught' : 'Survives', [caught ? 'Survives' : 'Caught'], caught ? `At least one vector gives a different output.` : `No vector distinguishes them: add the boundary case ${o === '==' ? 'a ≠ b' : 'a = b'}.`); });
+genT('L10', () => { const base = rnd(100, 300) * 100; const ask = pick(['hi','lo','first_bad']); return N(`Price-window rule: accept base ≤ px, multiple of TICK=100 above base, fewer than 64 ticks. Base ${base}. ${ask === 'hi' ? 'Highest accepted price (a boundary test vector)?' : ask === 'lo' ? 'Lowest accepted price?' : 'Lowest price above base that must be rejected as out of window?'}`, F(ask === 'hi' ? base + 6300 : ask === 'lo' ? base : base + 6400), `Boundary vectors: level 0, level 63 (ok), level 64 (BAD_PRICE).`); });
+
 /* ================= MC bank & cards ================= */
 const MCB = [];
 (function(){
   const lines = $('#mcbank').textContent.split('\n'); let cat=null, cur=null, mode=null;
-  const flush = () => { if (cur && cur.right!=null){ MCB.push({cat, type:'mc', q:cur.q.trim(), opts:[cur.right, ...cur.wrong], why:cur.why.trim()}); } cur=null; };
+  let tag = null;
+  const flush = () => { if (cur && cur.right!=null){ MCB.push({cat, tag, type:'mc', q:cur.q.trim(), opts:[cur.right, ...cur.wrong], why:cur.why.trim()}); } cur=null; };
   for (const ln of lines){
-    if (ln.startsWith('@mc ')){ flush(); cat=ln.slice(4).trim(); continue; }
+    if (ln.startsWith('@mc ')){ flush(); [cat, tag] = ln.slice(4).trim().split(/\s+/); tag = tag || null; continue; }
     if (ln.startsWith('Q:')){ flush(); cur={q:ln.slice(2), right:null, wrong:[], why:''}; mode='q'; continue; }
     if (!cur) continue;
     if (ln.startsWith('+ ')){ cur.right=ln.slice(2).trim(); mode=null; continue; }
@@ -5022,6 +6373,7 @@ const KEYS = {
   num: ['7','8','9','⌫','4','5','6','/','1','2','3','.','-','0','%','✓'],
   hex: ['7','8','9','A','⌫','4','5','6','B','C','1','2','3','D','E','0','F','✓'],
   bin: ['0','1','⌫','✓'],
+  list: ['7','8','9','⌫','4','5','6',',','1','2','3','-','0','✓'],
 };
 let kp = null;   // {get,set,submit}
 function keypadHTML(mode){ return `<div class="kp k-${mode}">${KEYS[mode].map(k=>`<button type="button" data-k="${k}" class="${k==='✓'?'kok':k==='⌫'?'kdel':''}">${k==='-'?'−':k}</button>`).join('')}</div>`; }
@@ -5032,7 +6384,7 @@ document.addEventListener('keydown', e => {
   const k=e.key;
   if (k==='Enter'){ e.preventDefault(); kpPress('✓'); }
   else if (k==='Backspace'){ e.preventDefault(); kpPress('⌫'); }
-  else if (/^[0-9.\/%\-]$/.test(k) || /^[a-fA-F]$/.test(k)) kpPress(k.toUpperCase());
+  else if (/^[0-9.\/%\-,]$/.test(k) || /^[a-fA-F]$/.test(k)) kpPress(k.toUpperCase());
 });
 
 /* ================= item renderer ================= */
@@ -5106,12 +6458,27 @@ const PRIMERS = {};
 function mdLong(s){
   return String(s).trim().split('```').map((p,i) => {
     if (i % 2) return '<pre><code>' + esc(p.replace(/^[a-z]*\n/,'').replace(/\n$/,'')) + '</code></pre>';
-    return esc(p).split('\n').map(l => {
-      let h = l.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    const inl = l => l.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    const out = []; const lines = esc(p).split('\n');
+    for (let j = 0; j < lines.length; j++){
+      const l = lines[j];
+      if (/^\s*\|/.test(l)){
+        const rows = []; while (j < lines.length && /^\s*\|/.test(lines[j])){ rows.push(lines[j]); j++; } j--;
+        const cells = r => r.trim().replace(/^\||\|$/g,'').split('|').map(c => inl(c.trim()));
+        const body = rows.filter(r => !/^\s*\|[\s\-:|]+\|\s*$/.test(r));
+        out.push(`<div class="tbl"><table><thead><tr>${cells(body[0]).map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${body.slice(1).map(r=>`<tr>${cells(r).map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+        continue;
+      }
+      out.push(line(l));
+    }
+    return out.join('');
+    function line(l){
+      let h = inl(l);
+      if (/^#{1,4}\s/.test(l)) return `<div class="mh">${h.replace(/^#{1,4}\s/,'')}</div>`;
       if (/^\s*[-*]\s/.test(l)) return `<div class="li2">• ${h.replace(/^\s*[-*]\s/,'')}</div>`;
       if (/^\s*\d+\.\s/.test(l)) return `<div class="li2">${h}</div>`;
       return h.trim() ? `<p>${h}</p>` : '';
-    }).join('');
+    }
   }).join('');
 }
 const primerHTML = pr => `<div class="deep"><div class="dh">${esc(pr.title)}</div>${mdLong(pr.body)}</div>`;
@@ -5162,7 +6529,7 @@ function bumpGen(gid, ok){ if (!gid) return; const s=store.get('gstat',{}); cons
 
 /* ================= item pools ================= */
 const groupOf = cat => CATS[cat] ? CATS[cat].g : 'mine';
-function makeGen(g){ for (let i=0;i<5;i++){ try { const it=g.make(); if (it && (it.type!=='num' || (it.f && isFinite(fval(it.f))))) return {...it, cat:g.cat, gid:g.gid}; } catch(e){} } return null; }
+function makeGen(g){ for (let i=0;i<5;i++){ try { const it=g.make(); if (it && (it.type!=='num' || (it.f && isFinite(fval(it.f))))) return {...it, cat:g.cat, gid:g.gid, tag:g.tag}; } catch(e){} } return null; }
 function cardPool(cats){ const now=Date.now(); return CARDS.filter(c => cats.has(c.cat) && (!srs[c.id] || srs[c.id].d<=now)); }
 function weight(stat, base=1){ if (!settings.focus || !stat || stat.n<3) return base; return base * (0.15 + 3*(1 - stat.ok/stat.n)) + 0.1; }
 function wpick(arr, wf){ const ws=arr.map(wf); let t=ws.reduce((a,b)=>a+b,0)*Math.random(); for (let i=0;i<arr.length;i++){ t-=ws[i]; if (t<=0) return arr[i]; } return arr[arr.length-1]; }
@@ -5441,8 +6808,10 @@ function renderMore(host){
 /* ================= LEARN (interactive courses) ================= */
 const COURSES = {
   v: {id:'v', title:'Verilog & FPGA', sub:'Write real RTL, simulate it, see the waveform', chapters: CourseRT.parseCourse($('#course_v').textContent)},
+  m: {id:'m', title:'ITCH pipeline', sub:'Your mdpipe repo, level by level: from SystemVerilog to timing closure, latency and beyond', chapters: CourseRT.parseCourse($('#course_m').textContent)},
   q: {id:'q', title:'Quant', sub:'Probability, expectation and markets, with live simulations', chapters: CourseRT.parseCourse($('#course_q').textContent)},
 };
+(function(){ const iqs = Object.values(COURSES).flatMap(C => C.chapters.flatMap(ch => ch.lessons.flatMap(L => (L.iq||[]).map(x => ({...x, ch: ch.title}))))); if (iqs.length){ DECKS.push({id:'mdpiq', title:'ITCH pipeline interview', cat:'mdp'}); iqs.forEach(x => CARDS.push({id: hash('mdpiq' + x.q), deck:'mdpiq', cat:'mdp', q: x.q, a: x.a})); } })();
 const allLessons = c => COURSES[c].chapters.flatMap(ch => ch.lessons.map(L => ({...L, chTitle: ch.title})));
 let lprog = store.get('lprog', {});
 let lcode = store.get('lcode', {});
@@ -5460,7 +6829,7 @@ function renderLearn(){
     <div class="tracks">${Object.values(COURSES).map(T => { const a = allLessons(T.id), d = a.filter(L => isDone(T.id, L)).length; return `<button class="track ${T.id===c?'on':''}" data-c="${T.id}"><b>${T.title}</b><span>${d}/${a.length} done</span><div class="bar"><i style="width:${100*d/a.length}%"></i></div></button>`; }).join('')}</div>
     <p class="sub" style="margin-top:12px">${esc(C.sub)}</p>
     ${next ? `<button class="big" id="cont">${done ? 'Continue' : 'Start'}: ${esc(next.title)}</button>` : `<div class="card small">Track complete. 🎉 Revisit any lesson, or keep sharp in Practice.</div>`}
-    ${C.chapters.map((ch, ci) => `<h2>${ci+1}. ${esc(ch.title)}</h2><div class="lessons">${ch.lessons.map(L => { const d = isDone(c, L); return `<button class="lrow ${d?'done':''}" data-l="${L.id}"><span class="lchk">${d?'✓':''}</span><span class="grow">${esc(L.title)}</span><span class="mut small">${L.task ? 'challenge' : L.sim ? 'simulation' : L.practice ? 'practice' : ''}</span></button>`; }).join('')}</div>`).join('')}`;
+    ${C.chapters.map((ch, ci) => `<h2>${ci+1}. ${esc(ch.title)}</h2><div class="lessons">${ch.lessons.map(L => { const d = isDone(c, L); return `<button class="lrow ${d?'done':''}" data-l="${L.id}"><span class="lchk">${d?'✓':''}</span><span class="grow">${esc(L.title)}</span><span class="mut small">${L.task ? 'build' : L.sim ? 'simulation' : L.practice ? 'drills' : ''}</span></button>`; }).join('')}</div>`).join('')}`;
   app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ln.course = b.dataset.c; store.set('lastCourse', ln.course); renderLearn(); });
   app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => openLesson(c, b.dataset.l));
   const ct = $('#cont'); if (ct) ct.onclick = () => openLesson(c, next.id);
@@ -5476,9 +6845,11 @@ function renderLesson(){
     ${L.example ? `<h2>Try it</h2><p class="sub">Edit the code and press Run. The simulator drives the inputs and draws the waveform.</p><div id="play"></div>` : ''}
     ${L.sim ? `<h2>Experiment</h2><div id="sim"></div>` : ''}
     ${L.task ? `<h2>Challenge</h2><div class="card task">${mdLong(L.task)}</div><div id="chal"></div>` : ''}
-    ${!L.task && L.practice ? `<h2>Practice</h2><p class="sub">Get 4 right to complete the lesson. Explanations follow each answer.</p><div id="prac"></div>` : ''}
+    ${!L.task && L.practice ? `<h2>${c==='m'?'Drills':'Practice'}</h2><p class="sub">Get 4 right to complete the lesson. ${c==='m'?'Questions are generated, so they never repeat; missed ones go to Review.':'Explanations follow each answer.'}</p><div id="prac"></div>` : ''}
+    ${L.iq && L.iq.length ? `<h2>Interview questions</h2><p class="sub">Answer out loud first, then reveal. These are also in Flashcards → ITCH pipeline interview.</p>${L.iq.map((x,k)=>`<div class="card iq"><b>${md(x.q)}</b><div class="iqa" id="iqa${k}" style="display:none">${md(x.a)}</div><button class="chip" data-iq="${k}" style="margin-top:10px">Show answer</button></div>`).join('')}` : ''}
     <div id="lfoot"></div>`;
   $('#lback').onclick = () => { ln.lesson = null; renderLearn(); window.scrollTo(0,0); };
+  app.querySelectorAll('[data-iq]').forEach(b => b.onclick = () => { const a = $('#iqa' + b.dataset.iq); const show = a.style.display === 'none'; a.style.display = show ? 'block' : 'none'; b.textContent = show ? 'Hide answer' : 'Show answer'; });
   if (L.example) mountEditor($('#play'), {key: 'ex:' + lkey(c, L), initial: L.example, run: src => VSim.play(src, {}), runLabel: 'Run', reset: L.example});
   if (L.sim) mountSim($('#sim'), L.sim);
   if (L.task) mountChallenge($('#chal'), c, L);
@@ -5612,6 +6983,7 @@ function mountChallenge(host, c, L){
 function practicePool(spec){
   const [cat, concept] = spec.split(':');
   if (cat === 'quant') return {gens: GENS.filter(g => g.cat === concept), mcs: MCB.filter(m => m.cat === concept)};
+  if (cat === 'mdp') return {gens: GENS.filter(g => g.cat === 'mdp' && g.tag === concept), mcs: MCB.filter(m => m.cat === 'mdp' && m.tag === concept)};
   const gens = GENS.filter(g => { if (g.cat !== cat) return false; for (let k = 0; k < 6; k++){ const it = makeGen(g); if (it && conceptOf(it) === concept) return true; } return false; });
   const mcs = MCB.filter(m => m.cat === cat && conceptOf(m) === concept);
   return {gens, mcs, concept};
@@ -5621,6 +6993,7 @@ function mountPractice(host, c, L){
   const next = () => {
     for (let k = 0; k < 30; k++){
       if (pool.mcs.length && (!pool.gens.length || Math.random() < 0.25)) return {...pick(pool.mcs)};
+      if (!pool.gens.length) return {...pick(pool.mcs)};
       const it = makeGen(pick(pool.gens)); if (it && (!pool.concept || conceptOf(it) === pool.concept)) return it;
     }
     return makeGen(pick(pool.gens));
