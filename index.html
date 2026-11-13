@@ -162,6 +162,18 @@ pre.hlb{background:#1e1e1e;border-color:#333a45;color:#d4d4d4}
 pre.hlb .tk,pre.hlb .tq,pre.hlb .tt{font-weight:600}
 .syms button{color:#c9d1d9}
 .code2 .tc{font-style:normal}
+
+/* ---- market maker ---- */
+.mmside{display:flex;gap:5px;align-items:center;margin:6px 0}
+.mmside button{flex:0 0 auto;min-width:40px;padding:10px 6px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;font:600 14px var(--mono)}
+.mmside input{flex:1;min-width:0;text-align:center;font:700 22px var(--mono);padding:8px 4px}
+.mmside.blk{opacity:.4}
+.mml{width:38px;font-size:13px;color:var(--mut)}
+.mmmsg{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:14px;line-height:1.5}
+.mmt{display:grid;grid-template-columns:28px 1fr 1fr 1.1fr 1.2fr;gap:6px;padding:6px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;font-size:13px}
+.mmt.mmh{color:var(--mut);font-size:12px}
+.gr-best{color:#4ec9a0;font-weight:700} .gr-good{color:#9be3c8} .gr-inacc{color:#f2cf8a} .gr-mist{color:#f2b84b;font-weight:600} .gr-blun{color:#ff6b6b;font-weight:700}
+.mmrow{cursor:pointer}
 </style>
 </head>
 <body>
@@ -5963,6 +5975,203 @@ const CourseRT = (() => {
 })();
 if (typeof module !== 'undefined') module.exports = CourseRT;
 
+/* ================= Market Maker engine (pure, deterministic, offline) =================
+   Spec: hidden V, 10 slots, reveals after slots 4 and 8, exact FV, seeded counterparties,
+   benchmark bot, and "Engine": a Bayesian market maker that grades every quote. */
+const MM = (function(){
+  const SLOTS = 10, REVEAL_AFTER = [4, 8], PASS = 0.15, NOISE = 0.6, K_INV = 0.03;
+  const LEVELS = [null,
+    {lvl:1, prod:'dice',  n:2, pi:0,    L:5, name:'Two dice',     desc:'Learn to quote around fair value. Nobody knows more than you.'},
+    {lvl:2, prod:'dice',  n:3, pi:0.15, L:5, name:'Three dice',   desc:'Reveals on, ~15% of flow is informed.'},
+    {lvl:3, prod:'cards', n:2, pi:0.30, L:3, name:'Two cards',    desc:'Cards without replacement, ~30% informed, inventory limit 3.'},
+    {lvl:4, prod:'cards', n:3, pi:0.45, L:3, noise:1.0, name:'Three cards',  desc:'~45% informed, limit 3, noisier retail flow. Timer recommended.'}];
+
+  function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function erf(x){ const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1/(1+0.3275911*x); const y = 1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return s*y; }
+  const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
+  const cardName = v => ({1:'A',11:'J',12:'Q',13:'K'})[v] || String(v);
+
+  /* ---------- deal + pre-sampled counterparties ---------- */
+  function deal(cfg, seed){
+    const r = mulberry32(seed >>> 0); let comps;
+    if (cfg.prod === 'dice') comps = Array.from({length:cfg.n}, () => 1 + Math.floor(r()*6));
+    else { const d = [...Array(52)].map((_,i) => i%13 + 1); for (let i = 51; i > 0; i--){ const j = Math.floor(r()*(i+1)); [d[i], d[j]] = [d[j], d[i]]; } comps = d.slice(0, cfg.n); }
+    return comps;
+  }
+  function draws(cfg, seed){
+    const r = mulberry32(((seed >>> 0) ^ 0x9E3779B9) >>> 0); const out = [];
+    for (let i = 0; i < SLOTS; i++){
+      const u = r(); let u1 = r(), u2 = r(); if (u1 < 1e-12) u1 = 1e-12;
+      out.push({informed: u < cfg.pi, eps: Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2), pass: r()});
+    }
+    return out;
+  }
+  const revealedBefore = (slot, n) => Math.min(n, REVEAL_AFTER.filter(s => slot > s).length);
+
+  /* ---------- exact distribution of V given reveals ---------- */
+  const _pc = {};
+  function priorDist(cfg, comps, r){
+    const seen = comps.slice(0, r), base = seen.reduce((a,b) => a+b, 0), m = cfg.n - r;
+    const key = cfg.prod + '|' + m + '|' + (cfg.prod === 'cards' ? seen.slice().sort((a,b)=>a-b).join(',') : '');
+    let rel = _pc[key];
+    if (!rel){
+      const acc = new Map();
+      if (cfg.prod === 'dice'){
+        let cur = new Map([[0,1]]);
+        for (let k = 0; k < m; k++){ const nx = new Map(); for (const [v,p] of cur) for (let f = 1; f <= 6; f++) nx.set(v+f, (nx.get(v+f)||0) + p/6); cur = nx; }
+        cur.forEach((p,v) => acc.set(v,p));
+      } else {
+        const cnt = Array(14).fill(4); seen.forEach(v => cnt[v]--);
+        (function rec(d, sum, w, tot){ if (d === m){ acc.set(sum, (acc.get(sum)||0) + w); return; } for (let v = 1; v <= 13; v++) if (cnt[v]){ const p = cnt[v]/tot; cnt[v]--; rec(d+1, sum+v, w*p, tot-1); cnt[v]++; } })(0, 0, 1, 52 - r);
+      }
+      rel = _pc[key] = [...acc.entries()].sort((a,b) => a[0]-b[0]);
+    }
+    return rel.map(([v,p]) => [v + base, p]);
+  }
+  function moments(dist){ let m = 0, s = 0; for (const [v,p] of dist){ m += v*p; s += v*v*p; } return {mean: m, sd: Math.sqrt(Math.max(0, s - m*m))}; }
+
+  /* ---------- counterparty model ---------- */
+  function uninf(a, b, fv, sd, noise){   // P(uninformed buys at a), P(sells at b)
+    if (sd < 1e-9) return [a < fv ? 1-PASS : 0, b > fv ? 1-PASS : 0];
+    const s = (noise || NOISE)*sd; return [(1-PASS)*(1-Phi((a-fv)/s)), (1-PASS)*Phi((b-fv)/s)];
+  }
+  function lik(ob, V, pi){
+    const pB = ob.bb ? 0 : pi*(ob.a < V ? 1 : 0) + (1-pi)*ob.pu[0];
+    const pS = ob.bs ? 0 : pi*(ob.b > V ? 1 : 0) + (1-pi)*ob.pu[1];
+    return ob.s > 0 ? pB : ob.s < 0 ? pS : 1 - pB - pS;
+  }
+  function posterior(prior, obs, pi){
+    let tot = 0; const d = prior.map(([v,p]) => { let w = p; for (const ob of obs) w *= lik(ob, v, pi); tot += w; return [v, w]; });
+    if (tot <= 0) return {dist: prior, ...moments(prior)};
+    d.forEach(x => x[1] /= tot); return {dist: d, ...moments(d)};
+  }
+
+  /* ---------- round state machine ---------- */
+  function newRound(cfg, seed){
+    const comps = deal(cfg, seed);
+    return {cfg, seed: seed >>> 0, comps, V: comps.reduce((a,b) => a+b, 0), dr: draws(cfg, seed), slot: 1, pos: 0, cash: 0, quotes: [], obs: [], trades: [], snaps: []};
+  }
+  function state(g){
+    const r = revealedBefore(g.slot, g.cfg.n), prior = priorDist(g.cfg, g.comps, r), pub = moments(prior);
+    return {r, prior, fv: pub.mean, sd: pub.sd, post: posterior(prior, g.obs, g.cfg.pi), pos: g.pos, bb: g.pos <= -g.cfg.L, bs: g.pos >= g.cfg.L};
+  }
+  function validQuote(q){ return q && Number.isInteger(q.b) && Number.isInteger(q.a) && q.a - q.b >= 1; }
+  function step(g, q){
+    if (g.slot > SLOTS) throw new Error('round over');
+    if (!validQuote(q)) throw new Error('quote needs integer bid < ask with spread ≥ 1');
+    const st = state(g), d = g.dr[g.slot-1], V = g.V; let s = 0;
+    if (d.informed){ if (q.a < V && !st.bb) s = 1; else if (q.b > V && !st.bs) s = -1; }
+    else if (d.pass >= PASS){ const X = st.fv + d.eps*st.sd*(g.cfg.noise || NOISE); if (q.a < X && !st.bb) s = 1; else if (q.b > X && !st.bs) s = -1; }
+    const ob = {slot: g.slot, b: q.b, a: q.a, fv: st.fv, sd: st.sd, pu: uninf(q.a, q.b, st.fv, st.sd, g.cfg.noise), bb: st.bb, bs: st.bs, s};
+    g.snaps.push({slot: g.slot, b: q.b, a: q.a, mid: (q.a+q.b)/2, fv: st.fv, sd: st.sd, r: st.r, posBefore: g.pos, bb: st.bb, bs: st.bs});
+    g.quotes.push({slot: g.slot, b: q.b, a: q.a});
+    g.obs.push(ob);
+    let ev = {slot: g.slot, s, p: null};
+    if (s){
+      const p = s > 0 ? q.a : q.b; g.pos -= s; g.cash += s*p;
+      const fair = posterior(st.prior, g.obs, g.cfg.pi).mean;
+      const t = {slot: g.slot, s, price: p, FV_t: st.fv, fair, edge: s*(p - fair), pnl: s*(p - V), posAfter: g.pos};
+      g.trades.push(t); ev = {...ev, p, trade: t};
+    }
+    g.snaps[g.snaps.length-1].posAfter = g.pos;
+    ev.reveal = REVEAL_AFTER.includes(g.slot) && revealedBefore(g.slot+1, g.cfg.n) > st.r ? g.comps[st.r] : null;
+    g.slot++;
+    return ev;
+  }
+
+  /* ---------- engine: myopic Bayesian quote with inventory penalty ---------- */
+  function evaluator(g, st){
+    const pi = g.cfg.pi, sp = Math.max(st.post.sd, 0.5), c = K_INV*sp, pos = st.pos, D = st.post.dist, memo = {};
+    function side(x){
+      if (memo[x]) return memo[x];
+      const [pb] = uninf(x, -1e9, st.fv, st.sd, g.cfg.noise), [, ps] = uninf(1e9, x, st.fv, st.sd, g.cfg.noise);
+      let ea = 0, pa = 0, eb = 0, pbT = 0;
+      for (const [v,w] of D){ const B = pi*(x < v ? 1 : 0) + (1-pi)*pb, S = pi*(x > v ? 1 : 0) + (1-pi)*ps; ea += w*B*(x-v); pa += w*B; eb += w*S*(v-x); pbT += w*S; }
+      return memo[x] = {ask: st.bb ? 0 : ea - c*pa*((pos-1)**2 - pos**2), bid: st.bs ? 0 : eb - c*pbT*((pos+1)**2 - pos**2), pBuy: st.bb ? 0 : pa, pSell: st.bs ? 0 : pbT};
+    }
+    const ev = q => side(q.a).ask + side(q.b).bid;
+    function best(){
+      const lo = Math.floor(st.post.mean - 4*sp) - 3, hi = Math.ceil(st.post.mean + 4*sp) + 3;
+      let bq = null, bv = -Infinity;
+      for (let a = lo+1; a <= hi; a++) for (let b = a-1; b >= lo; b--){ const v = side(a).ask + side(b).bid; if (v > bv + 1e-12){ bv = v; bq = {b, a}; } }
+      return {q: bq, ev: bv};
+    }
+    return {ev, best, side};
+  }
+  const enginePolicy = g => evaluator(g, state(g)).best().q;
+  const benchPolicy = h => g => { const st = state(g), c0 = Math.round(st.fv), w = h || Math.max(1, Math.round(0.5*st.sd)); return {b: c0 - w, a: c0 + w}; };
+  function simulate(cfg, seed, policy){ const g = newRound(cfg, seed); while (g.slot <= SLOTS) step(g, policy(g)); return g; }
+  const sum = (xs, f) => xs.reduce((a,x) => a + f(x), 0);
+  const edgeOf = g => sum(g.trades, t => t.edge), pnlOf = g => sum(g.trades, t => t.pnl);
+
+  const GRADES = [[0.01,'Best','best'],[0.05,'Good','good'],[0.12,'Inaccuracy','inacc'],[0.3,'Mistake','mist'],[Infinity,'Blunder','blun']];
+  function grade(lossSd){ return GRADES.find(x => lossSd <= x[0]); }
+
+  /* ---------- full post-round analysis ---------- */
+  function analyse(g){
+    const cfg = g.cfg, sd0 = g.snaps[0].sd || 1, n = g.snaps.length;
+    // replay the player's own information set slot by slot and ask the engine
+    const rp = newRound(cfg, g.seed), moves = [];
+    for (const q of g.quotes){
+      const st = state(rp), E = evaluator(rp, st), bst = E.best(), mine = E.ev(q), loss = Math.max(0, bst.ev - mine);
+      const gr = grade(loss/sd0);
+      const pullB = st.bs || (E.side(bst.q.b).bid <= 0.02*Math.max(st.post.sd, 0.5) && st.post.mean - bst.q.b > 1.5*Math.max(st.post.sd, 0.5)), pullA = st.bb || (E.side(bst.q.a).ask <= 0.02*Math.max(st.post.sd, 0.5) && bst.q.a - st.post.mean > 1.5*Math.max(st.post.sd, 0.5));
+      moves.push({slot: q.slot, b: q.b, a: q.a, eb: bst.q.b, ea: bst.q.a, pullB, pullA, loss, lossSd: loss/sd0, label: gr[1], cls: gr[2], post: st.post.mean, fv: st.fv});
+      step(rp, q);
+    }
+    const accuracy = 100 * sum(moves, m => Math.exp(-4*m.lossSd)) / n;
+    const bench = simulate(cfg, g.seed, benchPolicy()), eng = simulate(cfg, g.seed, enginePolicy);
+    let hBest = 1, eBest = -Infinity; for (let h = 1; h <= 8; h++){ const e = edgeOf(simulate(cfg, g.seed, benchPolicy(h))); if (e > eBest + 1e-9){ eBest = e; hBest = h; } }
+
+    const S = g.snaps, mean = (xs, f) => xs.length ? sum(xs, f)/xs.length : null;
+    const fv_error = mean(S, s => Math.abs(s.mid - s.fv)), fv_bias = mean(S, s => s.mid - s.fv), avg_spread = mean(S, s => s.a - s.b), avg_sd = mean(S, s => s.sd);
+    const resp = g.trades.filter(t => t.slot < n).map(t => t.s * (S[t.slot].mid - S[t.slot-1].mid));
+    const adverse_response = resp.length ? resp.filter(x => x >= 0).length / resp.length : null;
+    const heavy = S.slice(0, n-1).map((s,i) => ({p: s.posAfter, d: S[i+1].mid - s.mid})).filter(x => Math.abs(x.p) >= 3);
+    const inventory_skew_ok = heavy.length ? heavy.filter(x => (x.p > 0 && x.d < 0) || (x.p < 0 && x.d > 0)).length / heavy.length : null;
+    const reveals = REVEAL_AFTER.filter(k => k < n).map(k => ({k, dFV: S[k].fv - S[k-1].fv, dMid: S[k].mid - S[k-1].mid})).filter(x => Math.abs(x.dFV) >= 1);
+    const ignored = reveals.filter(x => Math.sign(x.dMid) !== Math.sign(x.dFV));
+    const fill_rate = g.trades.length / n;
+    const metrics = {engine_fill: eng.trades.length/SLOTS, fv_error, fv_bias, avg_spread, adverse_response, inventory_skew_ok, fill_rate, avg_sd, opt_spread: 2*hBest};
+
+    const tags = [];
+    if (Math.abs(fv_bias) > 0.5*avg_sd) tags.push('FV_BIAS');
+    if (ignored.length) tags.push('IGNORED_REVEAL');
+    if (cfg.pi > 0 && adverse_response != null && adverse_response < 0.5) tags.push('NO_ADJUST');
+    const engFill = eng.trades.length / SLOTS;
+    if (avg_spread > 1.5*2*hBest || (fill_rate < 0.25 && engFill >= 0.25)) tags.push('TOO_WIDE');
+    if (inventory_skew_ok != null && inventory_skew_ok < 0.5) tags.push('NO_SKEW');
+
+    const edge = edgeOf(g), pnl = pnlOf(g);
+    return {V: g.V, comps: g.comps, sd0, edge, pnl, edgeSd: edge/sd0, bench_edge: edgeOf(bench), engine_edge: edgeOf(eng), engine_pnl: pnlOf(eng),
+      vs_bench: edge - edgeOf(bench), vs_engine: edge - edgeOf(eng), accuracy, moves, metrics, tags, trades: g.trades, engine_quotes: eng.quotes};
+  }
+
+  const COACH = {
+    FV_BIAS: b => `Your mid sat ${b > 0 ? 'above' : 'below'} fair value on average. Anchor on the exact expectation first: 3.5 per unseen die, (364 − seen total)/(cards left) per unseen card, then add a spread.`,
+    IGNORED_REVEAL: () => `A reveal moved fair value and your market didn't follow. Re-centre on the new expectation before the next slot.`,
+    NO_ADJUST: () => `Fills are information. When your offer gets lifted, value is probably higher: move up. When your bid gets hit, move down.`,
+    TOO_WIDE: () => `Too wide: safety is costing you trades. Tighten towards roughly ±0.5 sd when most flow is uninformed, widen only as informed share rises.`,
+    NO_SKEW: () => `With 3+ lots on, shade the whole market against your position: long → lower both sides so you sell; short → raise them.`,
+  };
+  const TAG_ORDER = ['FV_BIAS','IGNORED_REVEAL','NO_ADJUST','TOO_WIDE','NO_SKEW'];
+  const TAG_NAME = {FV_BIAS:'Fair-value bias', IGNORED_REVEAL:'Ignored a reveal', NO_ADJUST:'No update after fills', TOO_WIDE:'Too wide', NO_SKEW:'No inventory skew'};
+  const TAG_LEVEL = {FV_BIAS:1, IGNORED_REVEAL:2, NO_ADJUST:3, TOO_WIDE:1, NO_SKEW:3};
+  function dominant(tags){ return TAG_ORDER.find(t => tags.includes(t)) || null; }
+
+  function unlocked(rounds, lvl){
+    if (lvl <= 1) return true;
+    const prev = rounds.filter(r => r.level === lvl-1).slice(-5);
+    if (prev.length < 5) return false;
+    return sum(prev, r => r.edge)/5 > 0 && sum(prev, r => r.metrics.fv_error/(r.metrics.avg_sd || 1))/5 < 0.5;
+  }
+  function describe(cfg){ return cfg.prod === 'dice' ? `Sum of ${cfg.n} dice. Make a market.` : `Sum of ${cfg.n} cards from one deck (A=1 … K=13). Make a market.`; }
+
+  return {SLOTS, REVEAL_AFTER, LEVELS, mulberry32, priorDist, moments, posterior, newRound, state, step, validQuote, simulate, evaluator,
+    enginePolicy, benchPolicy, analyse, edgeOf, pnlOf, COACH, TAG_NAME, TAG_ORDER, TAG_LEVEL, dominant, unlocked, describe, cardName, revealedBefore};
+})();
+if (typeof module !== 'undefined') module.exports = MM;
+
 </script>
 <script>
 (() => {
@@ -6571,8 +6780,9 @@ function nextMixed(groups){
 /* ================= TRAIN (endless mixed feed) ================= */
 let tr = {item:null, n:0, ok:0, streak:0, best:0, wrong:0};
 function renderTrain(){
+  if (mmS) return renderMMX();
   const gs = settings.groups;
-  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
+  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="gomm">📈 Market maker</button><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
     <p class="sub">Endless shuffled questions to keep what you've learned sharp.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
     <div class="chips">${Object.entries(GROUPS).map(([k,t])=>`<button class="chip ${gs.includes(k)?'on':''}" data-grp="${k}">${t}</button>`).join('')}<button class="chip ${settings.focus?'on':''}" id="focus">🎯 Weak spots</button></div>
     <div id="itm"></div>`;
@@ -6581,6 +6791,7 @@ function renderTrain(){
     if (!g.length) return toast('Keep at least one on'); settings.groups=g; store.set('settings',settings); tr.item=null; renderTrain();
   });
   $('#gocards').onclick = () => { rv.queue=null; tab('cards'); };
+  $('#gomm').onclick = () => mmOpen();
   $('#focus').onclick = () => { settings.focus=!settings.focus; store.set('settings',settings); toast(settings.focus?'Weak spots: your worst topics and past mistakes come up more':'Weak spots off: even mix'); tr.item=null; renderTrain(); };
   const gr=$('#gorev'); if (gr) gr.onclick = e => { e.preventDefault(); rvw.view='session'; tab('review'); };
   if (!tr.item) tr.item = nextMixed(settings.groups);
@@ -6604,12 +6815,11 @@ const PRESETS = {
 let ts = null;
 function renderTests(){
   if (ts && ts.kind==='sprint') return renderSprint();
-  if (ts && ts.kind==='mm') return renderMM();
   if (ts && ts.kind==='test') return ts.over ? renderTestEnd() : renderTestQ();
   const th = store.get('tests', {});
   const best = k => { const h=th[k]||[]; return h.length ? Math.max(...h.map(x=>x.score)) : null; };
   const sb = store.get('sprints',[]).reduce((m,s)=>Math.max(m,s.score),0);
-  const mm = store.get('mm',[]);
+  const mm = mmRounds();
   const row = (id, ico, col, title, sub, extra) => `<button class="drill" data-t="${id}"><span class="ico" style="background:${col}">${ico}</span><span class="grow"><b>${title}</b><span class="mut small">${sub}${extra?'<br>'+extra:''}</span></span></button>`;
   app.innerHTML = `<h1>Tests</h1><p class="sub">Timed, no feedback until the end, like the real thing.</p>
     ${row('oa80','80','#f2b84b','80 in 8 simulator',PRESETS.oa80.sub, best('oa80')!=null?`Best ${best('oa80')}`:'')}
@@ -6617,9 +6827,9 @@ function renderTests(){
     ${row('seq','1,2','#7aa2ff','Sequences',PRESETS.seq.sub, best('seq')!=null?`Best ${best('seq')}/15`:'')}
     ${row('prob','P','#7aa2ff','Probability & EV',PRESETS.prob.sub, best('prob')!=null?`Best ${best('prob')}/12`:'')}
     ${row('fpga','RTL','#4ec9a0','FPGA technical',PRESETS.fpga.sub, best('fpga')!=null?`Best ${best('fpga')}/25`:'')}
-    ${row('mm','$','#b48cff','Market-making game','Quote a market on a hidden card sum while cards are revealed. Some counterparties know the answer.', mm.length?`Games ${mm.length} · avg P&L ${fmt(mm.reduce((a,g)=>a+g.pnl,0)/mm.length,1)}`:'')}
+    ${row('mm','$','#b48cff','Market maker vs engine','10-trade rounds on a hidden dice or card sum with informed flow. An engine grades every quote.', mm.length?`Rounds ${mm.length} · last-10 edge ${fmt(mm.slice(-10).reduce((a,r)=>a+r.edge,0)/Math.min(10,mm.length),1)} · accuracy ${fmt(mm.slice(-10).reduce((a,r)=>a+r.accuracy,0)/Math.min(10,mm.length),0)}%`:'')}
     <p class="sub" style="margin-top:14px">Formats follow candidate reports (e.g. Optiver's widely reported 80-in-8). Firms change their tests, so treat these as practice, not a replica.</p>`;
-  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') startMM(); else startTest(t); });
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') mmOpen(); else startTest(t); });
 }
 function startTest(k){ const p=PRESETS[k]; ts={kind:'test', key:k, p, i:0, score:0, right:0, wrong:0, skip:0, end:Date.now()+p.secs*1000, log:[], over:false}; ts.item=p.make(0); renderTestQ(); startTimer(); }
 function startTimer(){ clearInterval(window._tt); window._tt = setInterval(() => { if (!ts || ts.kind!=='test' || ts.over) return clearInterval(window._tt); const left=Math.max(0,Math.ceil((ts.end-Date.now())/1000)); const el=$('#tm'); if (el) el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`; if (left<=0) endTest(); }, 250); }
@@ -6669,48 +6879,130 @@ function renderSprint(){
 }
 
 /* ---- market-making game ---- */
-const CARDNAME = v => ({1:'A',11:'J',12:'Q',13:'K'})[v] || String(v);
-const MAXSPREAD = [10,8,6,4];
-function startMM(){
-  const deck=shuffle([...Array(52)].map((_,i)=>i%13+1)); const hand=deck.slice(0,5);
-  ts={kind:'mm', hand, sum:hand.reduce((a,b)=>a+b,0), round:0, pos:0, cash:0, hist:[], field:'bid', bid:'', ask:'', over:false, msg:''}; renderMM();
+/* ================= MARKET MAKER (Practice section; engine in mm.js) ================= */
+let mmS = null;
+const mmSet = () => store.get('mmset', {timer:0});
+const mmRounds = () => store.get('mm_rounds', []);
+const mmF = (x, d=2) => (x > 0 ? '+' : '') + fmt(x, d);
+const mmComp = (cfg, v) => cfg.prod === 'dice' ? String(v) : MM.cardName(v);
+function mmOpen(){ mmS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function mmStart(lvl, seed){
+  const cfg = MM.LEVELS[lvl]; seed = seed != null ? seed : (Math.floor(Math.random()*2**32) >>> 0);
+  mmS = {view:'play', lvl, cfg, g: MM.newRound(cfg, seed), q:{b:'', a:''}, msg:'', log:[]}; renderMMX();
 }
-const mmFair = (hand, r) => { const s=hand.slice(0,r).reduce((a,b)=>a+b,0); return s + (5-r)*(364-s)/(52-r); };
-function renderMM(){
-  const g=ts, r=g.round;
-  if (g.over){ kp=null;
-    const pnl=g.cash+g.pos*g.sum; const err=g.hist.reduce((a,h)=>a+Math.abs(h.mid-h.fair),0)/g.hist.length;
-    app.innerHTML = `<h1>Settlement</h1><div class="card"><div class="cards">${g.hand.map(v=>`<span class="pc">${CARDNAME(v)}</span>`).join('')}</div>
-      <p>Sum = <b>${g.sum}</b>. Final position ${g.pos>0?'+':''}${g.pos}, cash ${g.cash}.</p>
-      <div class="stat"><div><b style="color:${pnl>=0?'var(--good)':'var(--bad)'}">${pnl>0?'+':''}${pnl}</b><span>P&L</span></div><div><b>${fmt(err,2)}</b><span>avg |mid − fair|</span></div><div><b>${g.hist.filter(h=>h.trade).length}</b><span>trades</span></div></div>
-      <div class="list">${g.hist.map((h,i)=>`<div class="li"><span>R${i+1}: ${h.bid} – ${h.ask}</span><span class="mut">fair ${fmt(h.fair,2)} · ${h.trade||'no trade'}</span></div>`).join('')}</div>
-      <p class="small mut">Judge yourself on quote error, not P&L: one game's P&L is mostly luck. A mid close to fair value, tightening as cards appear, is the skill.</p>
-      <button class="big" id="again">New game</button><button class="big ghost" id="back">Back</button></div>`;
-    $('#again').onclick=startMM; $('#back').onclick=()=>{ts=null; renderTests();}; return; }
-  const shown=g.hand.slice(0,r);
-  app.innerHTML = `<div class="row"><h1 class="grow">Make a market</h1><button class="chip" id="quit">Quit</button></div>
-    <p class="sub">Settlement = sum of 5 cards from one deck (A=1 … K=13). Round ${r+1}/4. Max spread ${MAXSPREAD[r]}. Each trade is 1 lot.</p>
-    <div class="card"><div class="cards">${g.hand.map((v,i)=>`<span class="pc ${i<r?'':'hid'}">${i<r?CARDNAME(v):'?'}</span>`).join('')}</div>
-      <p class="small">Position <b>${g.pos>0?'+':''}${g.pos}</b> · cash <b>${g.cash}</b>${g.msg?`<br><span class="mut">${g.msg}</span>`:''}</p>
-      <div class="row"><button class="qf ${g.field==='bid'?'on':''}" data-f="bid"><small>Bid</small>${g.bid||'—'}</button><button class="qf ${g.field==='ask'?'on':''}" data-f="ask"><small>Ask</small>${g.ask||'—'}</button></div>
-      ${keypadHTML('num')}</div>`;
-  app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { g.field=b.dataset.f; renderMM(); });
-  $('#quit').onclick = () => { ts=null; kp=null; renderTests(); };
-  bindKeypad(app, {get:()=>g[g.field], set:v=>{ g[g.field]=v.replace(/[^0-9.]/g,''); renderMM(); }, submit:()=>{
-    if (g.field==='bid' && g.bid){ g.field='ask'; return renderMM(); }
-    const b=parseFloat(g.bid), a=parseFloat(g.ask);
-    if (!isFinite(b)||!isFinite(a)) return toast('Enter a bid and an ask');
-    if (a<=b) return toast('Ask must be above bid');
-    if (a-b>MAXSPREAD[r]) return toast(`Spread too wide (max ${MAXSPREAD[r]})`);
-    const fair=mmFair(g.hand,r); let trade='';
-    if (Math.random()<0.5){ if (g.sum>a){ g.pos--; g.cash+=a; trade=`informed bought @ ${a}`; } else if (g.sum<b){ g.pos++; g.cash-=b; trade=`informed sold @ ${b}`; } }
-    else { if (Math.random()<.5){ g.pos--; g.cash+=a; trade=`noise bought @ ${a}`; } else { g.pos++; g.cash-=b; trade=`noise sold @ ${b}`; } }
-    g.hist.push({bid:b, ask:a, mid:(a+b)/2, fair, trade});
-    g.msg = `${trade || 'No trade'}. Fair value was ${fmt(fair,2)}, your mid ${fmt((a+b)/2,2)}.`;
-    g.round++; g.bid=''; g.ask=''; g.field='bid';
-    if (g.round>=4){ g.over=true; const h=store.get('mm',[]); h.push({d:today(), pnl:g.cash+g.pos*g.sum, err:g.hist.reduce((s,x)=>s+Math.abs(x.mid-x.fair),0)/4}); store.set('mm',h.slice(-200)); markActive(); }
-    renderMM();
-  }});
+function renderMMX(){
+  clearInterval(window._mmt); kp = null;
+  if (!mmS) return renderTrain();
+  ({home:mmHome, play:mmPlay, done:mmDone})[mmS.view]();
+}
+function mmHome(){
+  const R = mmRounds(), st = mmSet();
+  const lv = MM.LEVELS.slice(1).map(c => { const rs = R.filter(r => r.level === c.lvl), un = MM.unlocked(R, c.lvl), l5 = rs.slice(-5);
+    return `<button class="drill" data-lv="${c.lvl}"><span class="ico" style="background:${un?'#b48cff':'#3a3f4b'}">L${c.lvl}</span><span class="grow"><b>${c.name}${un?'':' 🔒'}</b><span class="mut small">${c.desc} Informed ≈ ${Math.round(c.pi*100)}%, limit ±${c.L}.${rs.length?`<br>${rs.length} rounds · last-5 edge ${mmF(l5.reduce((a,r)=>a+r.edge,0)/l5.length,1)} · accuracy ${fmt(l5.reduce((a,r)=>a+r.accuracy,0)/l5.length,0)}%`:''}${un?'':`<br>Unlock: last 5 rounds on L${c.lvl-1} with mean edge > 0 and quote error < 0.5 sd. Tap to play anyway.`}</span></span></button>`; }).join('');
+  const tg = {}; R.slice(-20).forEach(r => r.tags.forEach(t => tg[t] = (tg[t]||0)+1));
+  const dom = MM.TAG_ORDER.slice().sort((a,b) => (tg[b]||0)-(tg[a]||0))[0];
+  app.innerHTML = `<div class="row"><h1 class="grow">Market maker</h1><button class="chip" id="mmback">← Practice</button></div>
+    <p class="sub">Quote a bid and an ask on a hidden sum for 10 trades. Your edge is scored against fair value <i>after</i> each fill, so being picked off by an informed trader counts against you. After every round the engine replays the same deal and grades each quote, like a chess engine.</p>
+    <div class="chips">${[[0,'No timer'],[12,'12 s timer'],[8,'Speed 8 s']].map(([v,t])=>`<button class="chip ${st.timer===v?'on':''}" data-tm="${v}">${t}</button>`).join('')}</div>
+    ${lv}
+    ${R.length && tg[dom] ? `<div class="card small"><b>Weak spot (last 20 rounds): ${MM.TAG_NAME[dom]}</b> · ${tg[dom]}×<br>${MM.COACH[dom](1).replace('above','away from')}<button class="big ghost" id="mmrec">Train it on L${MM.TAG_LEVEL[dom]}</button></div>` : ''}
+    ${R.length ? `<h2>Recent rounds</h2><div class="list">${R.slice(-12).reverse().map(r=>`<div class="li mmrow" data-id="${r.id}"><span>L${r.level} · V ${r.V} · ${r.trades.length} fills</span><span class="mut">edge <b style="color:${r.edge>=0?'var(--good)':'var(--bad)'}">${mmF(r.edge,1)}</b> · ${fmt(r.accuracy,0)}% ›</span></div>`).join('')}</div>` : ''}
+    <details class="lib"><summary>How it's scored</summary><div class="small mut" style="line-height:1.55">
+      <p><b>Fair value</b> = E[V | revealed so far]: 3.5 per unseen die; for cards, (364 − seen total)/(cards left) per unseen card.</p>
+      <p><b>Counterparties:</b> some are informed (know V exactly, trade only when your price is wrong). The rest trade on fair value plus noise and pass 15% of the time. You never see which.</p>
+      <p><b>Edge</b> per fill = side × (price − fair value given everything public, including that fill). With no informed traders this is just price vs fair value. With them, a fill tells you V is probably beyond your price, so edge drops. It's an unbiased, much less noisy estimate of P&L.</p>
+      <p><b>Engine:</b> keeps an exact Bayesian posterior over V from reveals <i>and</i> every fill or pass, then picks the bid/ask with the best expected value, with a small inventory penalty. Grades: Best, Good, Inaccuracy, Mistake, Blunder by expected loss per slot in sd units.</p>
+      <p><b>Benchmark:</b> a fixed bot quoting fair value ± max(1, round(0.5 sd)) that never reacts to fills.</p></div></details>`;
+  $('#mmback').onclick = () => { mmS = null; renderTrain(); };
+  app.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { store.set('mmset', {...st, timer:+b.dataset.tm}); mmHome(); });
+  app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => mmStart(+b.dataset.lv));
+  app.querySelectorAll('.mmrow').forEach(b => b.onclick = () => { const r = mmRounds().find(x => x.id === b.dataset.id); if (r) mmReview(r); });
+  const rc = $('#mmrec'); if (rc) rc.onclick = () => mmStart(MM.TAG_LEVEL[dom]);
+}
+function mmReview(r){
+  const cfg = MM.LEVELS[r.level], g = MM.newRound(cfg, r.seed);
+  r.quotes.forEach(q => MM.step(g, {b:q.b, a:q.a}));
+  mmS = {view:'done', lvl:r.level, cfg, g, res:MM.analyse(g), rec:r, past:true}; renderMMX();
+}
+function mmPlay(){
+  const S = mmS, g = S.g, cfg = S.cfg, st = MM.state(g), r = st.r, tm = mmSet().timer;
+  const mark = S.q.b !== '' && S.q.a !== '' ? g.cash + g.pos*((+S.q.b + +S.q.a)/2) : null;
+  const side = (k, lab, blocked) => `<div class="mmside ${blocked?'blk':''}"><span class="mml">${lab}</span>${[-5,-1].map(d=>`<button data-st="${k}" data-d="${d}">${d}</button>`).join('')}<input id="mm${k}" inputmode="numeric" autocomplete="off" value="${S.q[k]}" placeholder="—">${[1,5].map(d=>`<button data-st="${k}" data-d="${d}">+${d}</button>`).join('')}</div>${blocked?`<div class="small mut" style="margin:-2px 0 6px">Blocked: you're at the ${g.pos>0?'long':'short'} limit (${g.pos>0?'+':''}${g.pos}).</div>`:''}`;
+  app.innerHTML = `<div class="row"><h1 class="grow">L${S.lvl} · slot ${g.slot}/10</h1>${tm && g.slot>1?`<span class="pill" id="mmt">${tm}s</span>`:''}<button class="chip" id="quit">Quit</button></div>
+    <div class="card"><div class="small" style="margin-bottom:8px">${MM.describe(cfg)}</div>
+      <div class="cards">${g.comps.map((v,i)=>`<span class="pc ${i<r?'':'hid'}">${i<r?mmComp(cfg,v):'?'}</span>`).join('')}</div>
+      <div class="small mut">One ${cfg.prod==='dice'?'die':'card'} revealed after slots 4 and 8 · informed ≈ ${Math.round(cfg.pi*100)}% · limit ±${cfg.L} · 1 lot per trade</div>
+      <div class="stat" style="margin-top:10px"><div><b>${g.pos>0?'+':''}${g.pos}</b><span>position</span></div><div><b>${fmt(g.cash,0)}</b><span>cash</span></div><div><b>${mark==null?'—':mmF(mark,1)}</b><span>P&L at your mid</span></div></div>
+      ${S.msg?`<div class="mmmsg">${S.msg}</div>`:''}
+      <div style="margin-top:12px">${side('a','Ask',st.bb)}${side('b','Bid',st.bs)}
+        <div class="mmside"><span class="mml">Both</span><button data-sh="-1">▼ −1</button><button data-sh="1">▲ +1</button><span class="grow small mut" id="mmsp" style="text-align:right"></span></div></div>
+      <button class="big" id="mmgo">Quote · trade slot ${g.slot}</button></div>
+    ${S.log.length?`<h2>Trade log</h2><div class="list">${S.log.slice().reverse().map(e=>`<div class="li"><span>${e.slot}. ${e.t}</span><span class="mut">pos ${e.pos>0?'+':''}${e.pos}</span></div>`).join('')}</div>`:''}`;
+  const upd = () => {
+    const b = parseInt(S.q.b), a = parseInt(S.q.a), ok = Number.isInteger(b) && Number.isInteger(a) && a - b >= 1;
+    $('#mmb').value = S.q.b; $('#mma').value = S.q.a;
+    $('#mmsp').textContent = Number.isInteger(b) && Number.isInteger(a) ? (a - b >= 1 ? `spread ${a-b} · mid ${fmt((a+b)/2,1)}` : 'ask must be ≥ bid + 1') : '';
+    $('#mmgo').disabled = !ok; $('#mmgo').style.opacity = ok ? 1 : .45;
+  };
+  ['b','a'].forEach(k => $('#mm'+k).oninput = e => { S.q[k] = e.target.value.replace(/[^0-9-]/g,''); upd(); });
+  app.querySelectorAll('[data-st]').forEach(x => x.onclick = () => { const k = x.dataset.st, o = k==='a'?'b':'a'; let v = parseInt(S.q[k]); if (!Number.isInteger(v)) v = parseInt(S.q[o]) + (k==='a'?1:-1); if (!Number.isInteger(v)) return toast('Type a price first'); S.q[k] = String(v + +x.dataset.d); upd(); });
+  app.querySelectorAll('[data-sh]').forEach(x => x.onclick = () => { const d = +x.dataset.sh; ['b','a'].forEach(k => { const v = parseInt(S.q[k]); if (Number.isInteger(v)) S.q[k] = String(v + d); }); upd(); });
+  $('#quit').onclick = () => { clearInterval(window._mmt); mmS = {view:'home'}; renderMMX(); };
+  $('#mmgo').onclick = () => mmSubmit(false);
+  upd();
+  if (tm && g.slot > 1){ const end = Date.now() + tm*1000; window._mmt = setInterval(() => { const left = Math.ceil((end - Date.now())/1000), el = $('#mmt'); if (el) el.textContent = Math.max(0,left) + 's'; if (cur !== 'train' || !mmS || mmS.view !== 'play'){ clearInterval(window._mmt); return; } if (left <= 0){ clearInterval(window._mmt); mmSubmit(true); } }, 200); }
+}
+function mmSubmit(timeout){
+  const S = mmS, g = S.g; if (!S || S.view !== 'play') return;
+  let q = {b: parseInt(S.q.b), a: parseInt(S.q.a)};
+  if (!MM.validQuote(q)){ if (!timeout) return toast('Bid and ask must be whole numbers with ask ≥ bid + 1'); const lq = g.quotes[g.quotes.length-1]; q = {b: lq.b, a: lq.a}; S.q = {b: String(q.b), a: String(q.a)}; }
+  clearInterval(window._mmt);
+  const ev = MM.step(g, q);
+  const t = ev.s > 0 ? `Lifted: they bought at ${ev.p}` : ev.s < 0 ? `Hit: they sold at ${ev.p}` : 'No trade';
+  S.log.push({slot: ev.slot, t: `${q.b} – ${q.a} → ${t}`, pos: g.pos});
+  S.msg = `${timeout ? '⏱ Time: your last quote stood. ' : ''}<b>Slot ${ev.slot}:</b> ${t}${ev.s ? ` → you're ${g.pos>0?'long':g.pos<0?'short':'flat'}${g.pos?' '+Math.abs(g.pos):''}` : ''}.${ev.reveal != null ? `<br><b>Reveal:</b> ${S.cfg.prod==='dice'?'a die shows':'a card is'} <b>${mmComp(S.cfg, ev.reveal)}</b>. Re-centre your market.` : ''}`;
+  if (ev.reveal != null) toast(`Revealed: ${mmComp(S.cfg, ev.reveal)}`);
+  if (g.slot > MM.SLOTS){
+    const res = MM.analyse(g);
+    const rec = {id: g.seed.toString(36) + Date.now().toString(36), ts: Date.now(), product: S.cfg.prod, level: S.lvl, seed: g.seed, quotes: g.quotes,
+      trades: g.trades.map(t => ({slot: t.slot, s: t.s, price: t.price, FV_t: t.FV_t})), V: g.V, pnl: res.pnl, edge: res.edge, benchmark_edge: res.bench_edge,
+      engine_edge: res.engine_edge, accuracy: res.accuracy, metrics: res.metrics, tags: res.tags};
+    const R = mmRounds(); R.push(rec); store.set('mm_rounds', R.slice(-300)); markActive();
+    mmS = {view:'done', lvl: S.lvl, cfg: S.cfg, g, res, rec}; return renderMMX();
+  }
+  mmPlay();
+}
+function mmDone(){
+  const S = mmS, cfg = S.cfg, x = S.res, m = x.metrics, dom = MM.dominant(x.tags);
+  const col = v => v >= 0 ? 'var(--good)' : 'var(--bad)';
+  const counts = {}; x.moves.forEach(mv => counts[mv.label] = (counts[mv.label]||0)+1);
+  const pct = v => v == null ? '—' : Math.round(100*v) + '%';
+  app.innerHTML = `<div class="row"><h1 class="grow">${S.past?'Round review':'Settlement'}</h1><button class="chip" id="mmhome">Market maker</button></div>
+    <div class="card"><div class="small mut">${MM.describe(cfg).replace(' Make a market.','')} · L${S.lvl}</div>
+      <div class="cards">${x.comps.map(v=>`<span class="pc">${mmComp(cfg,v)}</span>`).join('')}</div>
+      <p style="margin:4px 0 12px">V = <b>${x.V}</b>. Final position ${S.g.pos>0?'+':''}${S.g.pos}, settled at ${x.V}.</p>
+      <div class="stat"><div><b style="color:${col(x.edge)}">${mmF(x.edge,1)}</b><span>edge £ · ${mmF(x.edgeSd,2)} sd</span></div><div><b style="color:${col(x.pnl)}">${mmF(x.pnl,0)}</b><span>realised P&L £</span></div><div><b>${fmt(x.accuracy,0)}%</b><span>accuracy</span></div></div>
+      <div class="stat" style="margin-top:8px"><div><b style="color:${col(x.vs_bench)}">${mmF(x.vs_bench,1)}</b><span>vs benchmark (${mmF(x.bench_edge,1)})</span></div><div><b style="color:${col(x.vs_engine)}">${mmF(x.vs_engine,1)}</b><span>vs engine (${mmF(x.engine_edge,1)})</span></div><div><b>${x.trades.length}</b><span>fills</span></div></div>
+      ${dom ? `<div class="mmmsg"><b>${MM.TAG_NAME[dom]}.</b> ${MM.COACH[dom](m.fv_bias)}</div>` : `<div class="mmmsg"><b>Clean round.</b> No weak-skill flags. Judge yourself over many rounds: one round's P&L is mostly the deal.</div>`}
+      ${x.tags.length>1?`<div class="chips" style="margin-top:8px">${x.tags.map(t=>`<span class="chip">${MM.TAG_NAME[t]}</span>`).join('')}</div>`:''}</div>
+    <h2>Engine review</h2><p class="sub">The engine's best quote given exactly what you knew at that slot (reveals and the fills you'd seen). ${['Best','Good','Inaccuracy','Mistake','Blunder'].filter(k=>counts[k]).map(k=>`${counts[k]} ${k.toLowerCase()}`).join(' · ')}</p>
+    <div class="card small" style="padding:10px 12px"><div class="mmt mmh"><span>#</span><span>you</span><span>engine</span><span>fair*</span><span>grade</span></div>
+      ${x.moves.map(mv=>`<div class="mmt"><span>${mv.slot}${MM.REVEAL_AFTER.includes(mv.slot-1)?'<i class="mut">·r</i>':''}</span><span>${mv.b}–${mv.a}</span><span class="mut">${mv.pullB?'—':mv.eb}–${mv.pullA?'—':mv.ea}</span><span class="mut">${fmt(mv.post,1)}</span><span class="gr-${mv.cls}">${mv.label}</span></div>`).join('')}
+      <div class="mut" style="margin-top:8px">*fair = engine's estimate of V before quoting, from reveals and all fills/passes so far. — = engine pulls that side (no price there has positive expected value, usually because only informed traders would hit it). ·r = first quote after a reveal.</div></div>
+    <h2>Trades</h2>${x.trades.length?`<div class="card small" style="padding:10px 12px"><div class="mmt mmh"><span>#</span><span>they</span><span>price</span><span>FV / after</span><span>edge</span></div>
+      ${x.trades.map(t=>`<div class="mmt"><span>${t.slot}</span><span>${t.s>0?'bought':'sold'}</span><span>${t.price}</span><span class="mut">${fmt(t.FV_t,1)} / ${fmt(t.fair,1)}</span><span style="color:${col(t.edge)}">${mmF(t.edge,2)}</span></div>`).join('')}
+      <div class="mut" style="margin-top:8px">FV = public fair value at the time. After = fair value once that fill is taken into account; a big gap means the fill was likely informed.</div></div>`:'<p class="sub">No fills this round.</p>'}
+    <h2>Quote quality</h2><div class="list">
+      <div class="li"><span>Avg |mid − FV|</span><span class="mut">${fmt(m.fv_error,2)} (${fmt(m.fv_error/(m.avg_sd||1),2)} sd)</span></div>
+      <div class="li"><span>Bias (mid − FV)</span><span class="mut">${mmF(m.fv_bias,2)}</span></div>
+      <div class="li"><span>Avg spread</span><span class="mut">${fmt(m.avg_spread,1)} · best fixed spread this deal ${m.opt_spread}</span></div>
+      <div class="li"><span>Fill rate</span><span class="mut">${pct(m.fill_rate)} · engine ${pct(m.engine_fill)}</span></div>
+      <div class="li"><span>Moved with fills</span><span class="mut">${pct(m.adverse_response)}</span></div>
+      <div class="li"><span>Skewed when ≥3 lots on</span><span class="mut">${pct(m.inventory_skew_ok)}</span></div></div>
+    <button class="big" id="mmagain">New round · L${S.lvl}</button><button class="big ghost" id="mmsame">Replay this deal</button>`;
+  $('#mmhome').onclick = () => { mmS = {view:'home'}; renderMMX(); };
+  $('#mmagain').onclick = () => mmStart(S.lvl);
+  $('#mmsame').onclick = () => mmStart(S.lvl, S.g.seed);
 }
 
 /* ================= REVIEW (mistakes + guides) ================= */
@@ -6718,7 +7010,7 @@ let rvw = {view:'session', cat:'all', drill:null};
 function renderReview(){
   if (rvw.drill) return renderDrill();
   kp=null;
-  const views = {session:'This session', open:'To fix', fixed:'Fixed', guides:'Study guides'};
+  const views = {session:'This session', open:'To fix', fixed:'Fixed', mm:'Market making', guides:'Study guides'};
   const base = rvw.view==='session' ? mistakes.filter(m=>m.sess===SESSION) : rvw.view==='open' ? mistakes.filter(m=>!m.fixed) : rvw.view==='fixed' ? mistakes.filter(m=>m.fixed) : [];
   const byCat = {}; base.forEach(m => byCat[m.it.cat]=(byCat[m.it.cat]||0)+1);
   const list = base.filter(m => rvw.cat==='all' || m.it.cat===rvw.cat).sort((a,b)=>b.t-a.t);
@@ -6728,6 +7020,17 @@ function renderReview(){
     <div id="rbody"></div>`;
   app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { rvw.view=b.dataset.v; rvw.cat='all'; renderReview(); });
   const body = $('#rbody');
+  if (rvw.view==='mm'){
+    const R = mmRounds().slice(-20), tg = {}; R.forEach(r => r.tags.forEach(t => tg[t]=(tg[t]||0)+1));
+    const ord = MM.TAG_ORDER.filter(t=>tg[t]).sort((a,b)=>tg[b]-tg[a]);
+    body.innerHTML = !R.length ? `<div class="card empty">No market-making rounds yet.<button class="big" id="mmgo2">Play a round</button></div>`
+      : `<p class="sub" style="margin-top:12px">Weak-skill flags from your last ${R.length} rounds. Each one sends you to the level that trains it.</p>` + (ord.length ? ord.map(t=>`<div class="card small"><span class="tag">${tg[t]} of ${R.length} rounds</span><div><b>${MM.TAG_NAME[t]}</b></div><div class="mut" style="margin-top:6px">${MM.COACH[t](1).replace('above','away from')}</div><button class="chip" data-mml="${MM.TAG_LEVEL[t]}" style="margin-top:10px">Train on L${MM.TAG_LEVEL[t]}</button></div>`).join('') : `<div class="card empty">No flags in your recent rounds. 🎉 Push up a level.</div>`)
+      + `<h2>Worst graded quotes</h2><div class="list">${R.slice().sort((a,b)=>a.accuracy-b.accuracy).slice(0,5).map(r=>`<div class="li mmrow" data-id="${r.id}"><span>L${r.level} · ${fmt(r.accuracy,0)}% accuracy</span><span class="mut">edge ${fmt(r.edge,1)} · review ›</span></div>`).join('')}</div>`;
+    body.querySelectorAll('[data-mml]').forEach(b => b.onclick = () => { tab('train'); mmStart(+b.dataset.mml); });
+    body.querySelectorAll('.mmrow').forEach(b => b.onclick = () => { const r = mmRounds().find(x=>x.id===b.dataset.id); if (r){ tab('train'); mmReview(r); } });
+    const g2=$('#mmgo2'); if (g2) g2.onclick = mmOpen;
+    return;
+  }
   if (rvw.view==='guides'){
     const cs = store.get('cstat',{});
     body.innerHTML = `<p class="sub" style="margin-top:12px">Offline guides behind the "Learn" buttons.</p>` + Object.values(PRIMERS).map(p => `<div class="card guide"><button class="gh" data-g="${p.id}"><b>${esc(p.title)}</b><span class="mut">▾</span></button><div class="gb" id="g-${p.id}" style="display:none">${mdLong(p.body)}</div></div>`).join('');
@@ -6794,7 +7097,7 @@ function renderStats(){
   kp=null; renderStatsInner(); app.insertAdjacentHTML('beforeend', '<div id="morebox"></div>'); renderMore($('#morebox'));
 }
 function renderStatsInner(){
-  const cs=store.get('cstat',{}), th=store.get('tests',{}), sp=store.get('sprints',[]), mm=store.get('mm',[]);
+  const cs=store.get('cstat',{}), th=store.get('tests',{}), sp=store.get('sprints',[]), mm=mmRounds();
   const total=Object.values(cs).reduce((a,c)=>a+c.n,0);
   const seen=CARDS.filter(c=>srs[c.id]).length, due=CARDS.filter(c=>srs[c.id]&&srs[c.id].d<=Date.now()).length;
   const accRows = Object.entries(CATS).filter(([k])=>cs[k]).sort((a,b)=>(cs[a[0]].ok/cs[a[0]].n)-(cs[b[0]].ok/cs[b[0]].n)).map(([k,v])=>{const c=cs[k]; const p=Math.round(100*c.ok/c.n); return `<div class="list"><div class="li"><span>${v.t}</span><span class="mut">${c.ok}/${c.n} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${p>=80?'var(--good)':p>=60?'var(--warn)':'var(--bad)'}"></i></div></div>`;}).join('');
@@ -6805,7 +7108,7 @@ function renderStatsInner(){
     <h2>80 in 8</h2>${(th.oa80||[]).length?spark(th.oa80.slice(-20).map(x=>x.score),'80 in 8 scores'):'<p class="sub">No runs yet.</p>'}
     <h2>Zetamac sprint</h2>${sp.length?spark(sp.slice(-20).map(x=>x.score),'Sprint scores')+`<p class="sub">Best ${Math.max(...sp.map(s=>s.score))} · avg last 10 ${fmt(sp.slice(-10).reduce((a,s)=>a+s.score,0)/Math.min(10,sp.length),1)}</p>`:'<p class="sub">No runs yet.</p>'}
     <h2>Other tests</h2><div class="list">${['seq','prob','fpga'].map(k=>{const h=th[k]||[]; return `<div class="li"><span>${PRESETS[k].title}</span><span class="mut">${h.length?`best ${Math.max(...h.map(x=>x.score))}/${PRESETS[k].n} · last ${h[h.length-1].score} · ${h.length} runs`:'—'}</span></div>`;}).join('')}</div>
-    <h2>Market making</h2>${mm.length?spark(mm.slice(-20).map(x=>+x.err.toFixed(2)),'Average quote error per game')+`<p class="sub">Bars: average distance of your mid from fair value per game (lower is better). ${mm.length} games, total P&L ${mm.reduce((a,g)=>a+g.pnl,0)}.</p>`:'<p class="sub">No games yet.</p>'}
+    <h2>Market maker</h2>${mm.length?spark(mm.slice(-20).map(x=>Math.round(x.accuracy)),'Engine accuracy per round')+`<p class="sub">Bars: engine accuracy per round (higher is better). ${mm.length} rounds · mean edge ${fmt(mm.reduce((a,r)=>a+r.edge,0)/mm.length,2)} · vs engine ${fmt(mm.reduce((a,r)=>a+r.edge-r.engine_edge,0)/mm.length,2)} per round.</p>`:'<p class="sub">No rounds yet. Practice → Market maker.</p>'}
     <h2>Cards</h2><p class="sub">${seen}/${CARDS.length} seen · ${CARDS.filter(c=>srs[c.id]&&srs[c.id].i>=21).length} mature</p>`;
 }
 
@@ -6819,7 +7122,7 @@ function renderMore(host){
     <p class="sub" style="margin-top:14px">${CARDS.length} cards · ${MCB.length} multiple-choice · ${GENS.length} problem generators.</p>`;
   $('#addc').onclick = () => { const q=$('#cq').value.trim(), a=$('#ca').value.trim(); if (!q||!a) return toast('Fill in both sides'); const custom=store.get('custom',[]); const c={id:hash('mine'+q+Date.now()), q, a}; custom.push(c); store.set('custom',custom); if (!DECKS.find(d=>d.id==='mine')) DECKS.push({id:'mine',title:'My cards',cat:'mine'}); CARDS.push({...c,deck:'mine',cat:'mine'}); rv.queue=null; $('#cq').value=''; $('#ca').value=''; toast('Card added'); };
   $('#saves').onclick = () => { settings.newPerDay=Math.max(0,+$('#snew').value||0); settings.sprintSecs=+$('#ssec').value; settings.autoNext=$('#sauto').checked; store.set('settings',settings); rv.queue=null; toast('Saved'); };
-  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
+  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','mm_rounds','mmset','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
   $('#doimp').onclick = () => { try{ const o=JSON.parse($('#imp').value); if (!o.edge) throw 0; Object.entries(o.data).forEach(([k,v])=>{ if (v!==null) store.set(k,v); }); toast('Restored, reloading'); setTimeout(()=>location.reload(),600); }catch(e){ toast("That doesn't look like a backup"); } };
 }
 
@@ -7211,6 +7514,7 @@ function tab(t){
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; if (b.dataset.tab==='learn' && cur==='learn') ln.lesson=null; tab(b.dataset.tab); });
 if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost') && !location.hostname.endsWith('claude.ai') && window.top===window){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS, COURSES, practicePool, SIMS, allLessons};
+window.__mmS = () => mmS;
 tab('learn');
 })();
 
