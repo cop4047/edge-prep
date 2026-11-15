@@ -174,6 +174,41 @@ pre.hlb .tk,pre.hlb .tq,pre.hlb .tt{font-weight:600}
 .mmt.mmh{color:var(--mut);font-size:12px}
 .gr-best{color:#4ec9a0;font-weight:700} .gr-good{color:#9be3c8} .gr-inacc{color:#f2cf8a} .gr-mist{color:#f2b84b;font-weight:600} .gr-blun{color:#ff6b6b;font-weight:700}
 .mmrow{cursor:pointer}
+
+/* ---- IMC ---- */
+.azs{position:sticky;top:0;z-index:20;background:var(--bg);padding:6px 0 6px;margin:-6px 0 8px;border-bottom:1px solid var(--line)}
+.azs div{display:grid;grid-template-columns:repeat(13,1fr);gap:2px}
+.azs div+div{margin-top:3px}
+.azs span{text-align:center;font:600 10px/1.15 var(--mono);color:var(--mut);background:var(--panel);border-radius:5px;padding:2px 0}
+.azs b{display:block;color:var(--fg);font-size:13px}
+.pz{display:block}
+.imo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.imo-odd{grid-template-columns:repeat(5,1fr)}
+.imo button{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:8px;font:700 20px var(--mono);position:relative;display:flex;flex-direction:column;align-items:center;gap:2px}
+.imo-matrix button,.imo-seq button{padding:4px}
+.imo button.on{border-color:var(--acc);background:rgba(122,162,255,.12)}
+.imo button.ok{border-color:var(--good);background:rgba(78,201,160,.15)}
+.imo button.bad{border-color:var(--bad);background:rgba(255,107,107,.12)}
+.olab{position:absolute;top:4px;left:8px;font:600 12px system-ui;color:var(--mut)}
+.imsteps{margin-top:12px;line-height:1.55} .imsteps .st{padding:8px 0;border-top:1px solid var(--line)} .imsteps .st:first-of-type{margin-top:8px}
+.imdots{display:flex;gap:4px;flex-wrap:wrap}
+.imdots button{width:30px;height:30px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--mut)}
+.imdots button.ans{background:var(--panel2);color:var(--fg);border-color:#4b5263}
+.imdots button.cur{border-color:var(--acc);color:var(--acc);border-width:2px}
+.chip.on.bad{background:var(--bad);border-color:var(--bad)}
+.fb.good{color:var(--good);font-weight:700} .fb.bad{color:var(--bad);font-weight:700}
+.imo-matrix,.imo-seq{grid-template-columns:repeat(4,1fr);gap:6px}
+.imo-matrix .olab,.imo-seq .olab{top:2px;left:5px;font-size:10px}
+
+.imo-shape{grid-template-columns:repeat(4,1fr);gap:6px} .imo-shape button{padding:4px}
+.bdemo{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bd{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 6px 2px;position:relative}
+.bb{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-weight:800;color:#0b1020;font-size:14px}
+.bbtns{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}
+.bbtns button{aspect-ratio:1;border-radius:12px;font-weight:800;font-size:20px;background:var(--panel);border:3px solid var(--bc);color:var(--fg)}
+.bbtns button.on{background:var(--bc);color:#0b1020}
+.bbtns button.right{box-shadow:0 0 0 3px var(--good)} .bbtns button.wrong{box-shadow:0 0 0 3px var(--bad)}
+.paint path{transition:fill .1s}
 </style>
 </head>
 <body>
@@ -6172,6 +6207,550 @@ const MM = (function(){
 })();
 if (typeof module !== 'undefined') module.exports = MM;
 
+/* ================= IMC-style inductive reasoning: generators + SVG renderers (pure, offline) ================= */
+const IMC = (function(){
+  const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const shuffle = a => { for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  const wrap = i => ((i-1) % 26 + 26) % 26 + 1;
+  const LET = i => String.fromCharCode(64 + wrap(i));
+  const sg = d => (d >= 0 ? '+' : '−') + Math.abs(d);
+  const lt = i => `${LET(i)}=${wrap(i)}`;
+  function shiftTxt(i, d){ const raw = i + d; return `${lt(i)} ${sg(d)} → ${raw}${raw > 26 || raw < 1 ? ` (wraps to ${wrap(raw)})` : ''} = ${LET(raw)}`; }
+
+  /* ---------- number operations ---------- */
+  const apply = (o, n) => o.t === '+' ? n + o.k : o.t === '-' ? n - o.k : n * o.k;
+  const opTxt = o => o.t === '+' ? `+${o.k}` : o.t === '-' ? `−${o.k}` : `×${o.k}`;
+  const OPS = [...[2,3,4,5,6,7,8,9].map(k => ({t:'+',k})), ...[1,2,3,4,5,6].map(k => ({t:'-',k})), {t:'*',k:2}, {t:'*',k:3}];
+  const CAND = [...Array(80)].map((_,i) => ({t:'+',k:i+1})).concat([...Array(80)].map((_,i) => ({t:'-',k:i+1})), [2,3,4,5].map(k => ({t:'*',k})));
+  const sameOp = (a,b) => a.t === b.t && a.k === b.k;
+
+  /* =================== 1. NODE-CONNECTION WEBS =================== */
+  const TPL = [
+    {pos:[[45,60],[170,60],[295,60],[45,190],[170,190],[295,190]], e:[[0,1],[1,2],[3,4],[4,5]]},
+    {pos:[[45,125],[170,55],[170,195],[295,55],[295,195]], e:[[0,1],[0,2],[1,3],[2,4]]},
+    {pos:[[40,50],[145,50],[40,200],[145,200],[220,125],[305,125]], e:[[0,1],[2,3],[1,4,'m'],[3,4,'m'],[4,5]]},
+    {pos:[[40,60],[125,60],[210,60],[300,60],[85,190],[255,190]], e:[[0,1],[1,2],[2,3],[4,5]]},
+    {pos:[[55,60],[285,60],[285,190],[55,190]], e:[[0,1],[1,2],[2,3]]},
+    {pos:[[45,60],[170,60],[45,190],[170,190],[295,125]], e:[[0,1],[2,3],[1,4,'m'],[3,4,'m']]},
+    {pos:[[40,60],[150,60],[260,60],[40,190],[150,190],[290,190]], e:[[0,1],[1,2],[3,4],[4,5]]},
+  ];
+  const TYPES = ['solid','dashed','double'], TNAME = {solid:'Solid arrow', dashed:'Dashed arrow', double:'Double line'};
+
+  function genWeb(){
+    for (let tries = 0; tries < 400; tries++){
+      const tp = pick(TPL), n = tp.pos.length;
+      const used = shuffle([...TYPES]).slice(0, rnd(2,3));
+      const rule = {}; used.forEach(t => { let d; do d = pick([-5,-4,-3,-2,-1,1,2,3,4,5,6,7]); while (Object.values(rule).some(r => r.dl === d)); rule[t] = {dl: d, op: pick(OPS)}; });
+      const edges = tp.e.map(([a,b,m]) => ({a, b, ty: m ? 'merge' : pick(used)}));
+      const parents = i => edges.filter(e => e.b === i);
+      const nodes = []; let bad = false;
+      for (let i = 0; i < n; i++){
+        const ps = parents(i);
+        if (ps.length > 1 && ps.some(e => e.ty !== 'merge')) throw new Error('template mixes merge and typed edges');
+        if (!ps.length) nodes[i] = {L: rnd(1,26), N: rnd(2,14)};
+        else if (ps[0].ty === 'merge'){ const [p,q] = ps.map(e => nodes[e.a]); nodes[i] = {L: wrap(p.L + q.L), N: p.N + q.N}; }
+        else { const p = nodes[ps[0].a], r = rule[ps[0].ty]; nodes[i] = {L: wrap(p.L + r.dl), N: apply(r.op, p.N)}; }
+        if (nodes[i].N < 1 || nodes[i].N > 99) bad = true;
+      }
+      if (bad) continue;
+      const cands = [...Array(n).keys()].filter(i => parents(i).length);
+      const h = pick(cands), inc = parents(h);
+      const tyUsed = new Set(edges.filter(e => e.ty !== 'merge').map(e => e.ty));
+      if ([...tyUsed].some(t => edges.filter(e => e.ty === t).length < 1)) continue;
+      // deducibility: every typed rule that is needed must be pinned down by fully visible examples
+      let ok = true;
+      if (inc[0].ty !== 'merge'){
+        const t = inc[0].ty, ex = edges.filter(e => e.ty === t && e.a !== h && e.b !== h);
+        if (!ex.length) ok = false;
+        else { const fits = CAND.filter(o => ex.every(e => apply(o, nodes[e.a].N) === nodes[e.b].N)); if (fits.length !== 1 || !sameOp(fits[0], rule[t].op)) ok = false; }
+      }
+      if (!ok) continue;
+      if (edges.some(e => e.ty === 'merge') && !edges.some(e => e.ty === 'merge' && e.b !== h) && inc[0].ty !== 'merge') {}
+      const ans = nodes[h], key = x => LET(x.L) + x.N;
+      // distractors
+      const pool = [];
+      const r = inc[0].ty !== 'merge' ? rule[inc[0].ty] : null, par = r ? nodes[inc[0].a] : null;
+      pool.push({L: ans.L + 1, N: ans.N}, {L: ans.L - 1, N: ans.N}, {L: ans.L, N: ans.N + pick([1,2])}, {L: ans.L, N: ans.N - pick([1,2])});
+      if (r){
+        const ex = edges.filter(e => e.ty === inc[0].ty && e.a !== h && e.b !== h);
+        CAND.filter(o => !sameOp(o, r.op) && apply(o, nodes[ex[0].a].N) === nodes[ex[0].b].N).slice(0,2).forEach(o => pool.push({L: ans.L, N: apply(o, par.N)}));
+        Object.entries(rule).filter(([t]) => t !== inc[0].ty).forEach(([,o]) => pool.push({L: par.L + o.dl, N: apply(o.op, par.N)}, {L: ans.L, N: apply(o.op, par.N)}));
+        pool.push({L: par.L - r.dl, N: ans.N});
+      } else { const [p,q] = inc.map(e => nodes[e.a]); pool.push({L: Math.abs(p.L - q.L) || 1, N: ans.N}, {L: ans.L, N: Math.abs(p.N - q.N) || 1}, {L: ans.L, N: p.N * 2}); }
+      const seen = new Set([key(ans)]), opts = [{L: ans.L, N: ans.N}];
+      for (const c of shuffle(pool)){ c.L = wrap(c.L); if (c.N < 1 || c.N > 199) continue; const k = key(c); if (seen.has(k)) continue; seen.add(k); opts.push(c); if (opts.length === 4) break; }
+      if (opts.length < 4) continue;
+      const order = shuffle([0,1,2,3]);
+      return {mode:'web', tpl: TPL.indexOf(tp), nodes, edges, rule, h, opts: order.map(i => key(opts[i])), ans: order.indexOf(0)};
+    }
+    throw new Error('web gen failed');
+  }
+  function webSteps(p){
+    const out = [], N = p.nodes, h = p.h, inc = p.edges.filter(e => e.b === h);
+    const types = [...new Set(p.edges.map(e => e.ty))].filter(t => t !== 'merge');
+    for (const t of types){
+      const r = p.rule[t], ex = p.edges.filter(e => e.ty === t && e.a !== h && e.b !== h);
+      const lines = ex.map(e => `${LET(N[e.a].L)}${N[e.a].N} → ${LET(N[e.b].L)}${N[e.b].N}: letters ${lt(N[e.a].L)} → ${lt(N[e.b].L)} (${sg(r.dl)}); numbers ${N[e.a].N} → ${N[e.b].N} (${opTxt(r.op)})`);
+      out.push(`<b>${TNAME[t]} = ${sg(r.dl)} letters, ${opTxt(r.op)} number.</b>${lines.length ? '<br>' + lines.join('<br>') : '<br><i>(No fully visible example; not needed for the answer.)</i>'}${ex.length > 1 && r.op.t !== '*' ? '' : ex.length > 1 ? '<br>Two examples rule out a plain "+k": only ' + opTxt(r.op) + ' fits both.' : ''}`);
+    }
+    if (p.edges.some(e => e.ty === 'merge')) out.push(`<b>Orange arrows meeting at a node = sum of the parents</b> (letter positions add, then wrap past Z).`);
+    const a = N[h];
+    if (inc[0].ty === 'merge'){
+      const [x,y] = inc.map(e => N[e.a]), raw = x.L + y.L;
+      out.push(`<b>Answer:</b> ${lt(x.L)} + ${lt(y.L)} = ${raw}${raw > 26 ? ` → wraps to ${wrap(raw)}` : ''} = ${LET(raw)}; ${x.N} + ${y.N} = ${a.N}. So <b>? = ${LET(a.L)}${a.N}</b>.`);
+    } else {
+      const e = inc[0], par = N[e.a], r = p.rule[e.ty];
+      out.push(`<b>Answer:</b> ? comes from ${LET(par.L)}${par.N} by a ${TNAME[e.ty].toLowerCase()}: ${shiftTxt(par.L, r.dl)}; ${par.N} ${opTxt(r.op)} = ${a.N}. So <b>? = ${LET(a.L)}${a.N}</b>.`);
+    }
+    return out;
+  }
+  function webSVG(p){
+    const tp = TPL[p.tpl], R = 26;
+    const line = (x1,y1,x2,y2,attrs) => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" ${attrs}/>`;
+    const ed = p.edges.map(e => {
+      const [x1,y1] = tp.pos[e.a], [x2,y2] = tp.pos[e.b], dx = x2-x1, dy = y2-y1, L = Math.hypot(dx,dy), ux = dx/L, uy = dy/L;
+      const sx = x1 + ux*R, sy = y1 + uy*R, ex = x2 - ux*(R+2), ey = y2 - uy*(R+2), nx = -uy, ny = ux;
+      const col = e.ty === 'merge' ? '#f2b84b' : '#e7e9ee';
+      const head = `<polygon points="${ex},${ey} ${ex - ux*11 + nx*6},${ey - uy*11 + ny*6} ${ex - ux*11 - nx*6},${ey - uy*11 - ny*6}" fill="${col}"/>`;
+      const bx = ex - ux*9, by = ey - uy*9;
+      if (e.ty === 'double') return line(sx+nx*3.5, sy+ny*3.5, bx+nx*3.5, by+ny*3.5, `stroke="${col}" stroke-width="1.8"`) + line(sx-nx*3.5, sy-ny*3.5, bx-nx*3.5, by-ny*3.5, `stroke="${col}" stroke-width="1.8"`) + head;
+      return line(sx, sy, bx, by, `stroke="${col}" stroke-width="2.4"${e.ty === 'dashed' ? ' stroke-dasharray="7 6"' : ''}`) + head;
+    }).join('');
+    const nd = p.nodes.map((v,i) => { const [x,y] = tp.pos[i], hid = i === p.h;
+      return `<circle cx="${x}" cy="${y}" r="${R}" fill="${hid ? '#1b2a4a' : '#1e222b'}" stroke="${hid ? '#7aa2ff' : '#9aa1ae'}" stroke-width="2"/><text x="${x}" y="${y+6}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="${hid ? 22 : 17}" font-weight="700" fill="${hid ? '#7aa2ff' : '#e7e9ee'}">${hid ? '?' : LET(v.L) + v.N}</text>`; }).join('');
+    return `<svg viewBox="0 0 340 250" width="100%" class="pz">${ed}${nd}</svg>`;
+  }
+
+  /* =================== shared cell renderer (matrices, sequences, odd one out) =================== */
+  const SH = ['#f3f1ea', '#8a93a6', '#06080c'], SHN = ['white', 'grey', 'black'];
+  function shape(c, cx, cy, R){
+    const pts = []; for (let i = 0; i < c.s; i++){ const a = (c.rot - 90 + i*360/c.s)*Math.PI/180; pts.push([cx + R*Math.cos(a), cy + R*Math.sin(a)]); }
+    const pa = (c.rot - 90)*Math.PI/180, px = cx + R*0.95*Math.cos(pa), py = cy + R*0.95*Math.sin(pa), pc = c.sh === 2 ? '#f3f1ea' : '#1d2230';
+    return `<polygon points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="${SH[c.sh]}" stroke="#c9ceda" stroke-width="2"/><line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${pc}" stroke-width="3" stroke-linecap="round"/><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.6" fill="${pc}"/>`;
+  }
+  function cell(c, x, y, w, hl){
+    const bg = `<rect x="${x}" y="${y}" width="${w}" height="${w}" rx="10" fill="#262b36" stroke="${hl ? '#7aa2ff' : '#3a4050'}" stroke-width="${hl ? 2.5 : 1}"/>`;
+    if (!c) return bg + `<text x="${x+w/2}" y="${y+w/2+12}" text-anchor="middle" font-size="${w*0.36}" font-weight="700" fill="#7aa2ff">?</text>`;
+    return bg + shape(c, x + w/2, y + w*0.4, w*0.25) + `<text x="${x+w/2}" y="${y+w*0.9}" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="${w*0.19}" font-weight="700" fill="#e7e9ee">${LET(c.L)}${c.N}</text>`;
+  }
+  const cellSVG = c => `<svg viewBox="0 0 100 100" width="100%">${cell(c, 0, 0, 100)}</svg>`;
+  const ckey = c => [c.s, ((c.rot % 360) + 360) % 360, c.sh, wrap(c.L), c.N].join('|');
+  const sides = s => ({3:'triangle',4:'square',5:'pentagon',6:'hexagon',7:'heptagon',8:'octagon'})[s];
+  function finishOpts(ans, pool){
+    const seen = new Set([ckey(ans)]), opts = [ans];
+    for (const c of shuffle(pool)){ c.L = wrap(c.L); if (c.s < 3 || c.s > 8 || c.N < 1 || c.N > 199) continue; const k = ckey(c); if (seen.has(k)) continue; seen.add(k); opts.push(c); if (opts.length === 4) break; }
+    if (opts.length < 4) return null;
+    const order = shuffle([0,1,2,3]); return {opts: order.map(i => opts[i]), ans: order.indexOf(0)};
+  }
+  const vary = (a, ch) => ({...a, ...ch});
+
+  /* =================== 2. 3x3 MATRICES =================== */
+  function genMatrix(){
+    for (let tries = 0; tries < 400; tries++){
+      const vis = shuffle(['sides','rot','shade']).slice(0, rnd(1,2)), alp = shuffle(['letter','number']).slice(0, rnd(1,2));
+      const act = new Set([...vis, ...alp]), R = {};
+      R.sides = act.has('sides') ? {v: pick(['col','row','diag']), b: rnd(3,4)} : {c: rnd(3,6)};
+      R.rot = act.has('rot') ? {v: pick(['col','rowcol']), step: pick([45,90]), r0: pick([0,45,90,180])} : {c: pick([0,0,45])};
+      R.shade = act.has('shade') ? {m: pick([1,2]), off: rnd(0,2)} : {c: rnd(0,2)};
+      R.letter = act.has('letter') ? (() => { let dr, dc; do { dr = rnd(-3,4); dc = pick([-3,-2,-1,1,2,3,4]); } while (dr === dc && Math.random() < .5); return {a0: rnd(1,26), dr, dc}; })() : {c: rnd(1,26)};
+      R.number = act.has('number') ? pick([{v:'lin', n0: rnd(1,12), kr: rnd(0,6), kc: pick([1,2,3,4,5,-2])}, {v:'sum'}, {v:'prod'}]) : {c: rnd(2,20)};
+      const sumRows = [...Array(3)].map(() => R.number.v === 'prod' ? [rnd(2,6), rnd(2,5)] : [rnd(1,15), rnd(1,15)]);
+      const G = [...Array(3)].map((_,r) => [...Array(3)].map((_,c) => {
+        const s = R.sides.c || (R.sides.b + (R.sides.v === 'col' ? c : R.sides.v === 'row' ? r : r + c));
+        const rot = R.rot.c != null ? R.rot.c : R.rot.r0 + R.rot.step*(R.rot.v === 'col' ? c : r + c);
+        const sh = R.shade.c != null ? R.shade.c : (c + R.shade.m*r + R.shade.off) % 3;
+        const L = R.letter.c || wrap(R.letter.a0 + r*R.letter.dr + c*R.letter.dc);
+        let N; if (R.number.c) N = R.number.c; else if (R.number.v === 'lin') N = R.number.n0 + r*R.number.kr + c*R.number.kc;
+        else { const [x,y] = sumRows[r]; N = c === 0 ? x : c === 1 ? y : R.number.v === 'sum' ? x + y : x*y; }
+        return {s, rot, sh, L, N};
+      }));
+      if (G.flat().some(c => c.N < 1 || c.N > 99 || c.s > 8)) continue;
+      const ans = G[2][2], pool = [];
+      if (act.has('sides')) pool.push(vary(ans,{s: ans.s+1}), vary(ans,{s: ans.s-1}));
+      if (act.has('rot')) pool.push(vary(ans,{rot: ans.rot + R.rot.step}), vary(ans,{rot: ans.rot - R.rot.step}), vary(ans,{rot: ans.rot + 180}));
+      if (act.has('shade')) pool.push(vary(ans,{sh: (ans.sh+1)%3}), vary(ans,{sh: (ans.sh+2)%3}));
+      if (act.has('letter')) pool.push(vary(ans,{L: ans.L+1}), vary(ans,{L: ans.L-1}), vary(ans,{L: ans.L - R.letter.dc + R.letter.dr}));
+      if (act.has('number')) pool.push(vary(ans,{N: ans.N+1}), vary(ans,{N: ans.N-1}), vary(ans,{N: R.number.v === 'lin' ? ans.N + R.number.kc : R.number.v === 'sum' ? Math.abs(sumRows[2][0]-sumRows[2][1]) || 1 : sumRows[2][0]+sumRows[2][1]}));
+      const fo = finishOpts(ans, pool.map(x => ({...x}))); if (!fo) continue;
+      return {mode:'matrix', G: G.map(r => r.map(c => ({...c}))), R, act: [...act], sumRows, ...fo};
+    }
+    throw new Error('matrix gen failed');
+  }
+  function matrixSVG(p){ let s = ''; p.G.forEach((row, r) => row.forEach((c, k) => { s += cell(r === 2 && k === 2 ? null : c, k*104, r*104, 100, r === 2 && k === 2); })); return `<svg viewBox="0 0 308 308" width="100%" class="pz">${s}</svg>`; }
+  function matrixSteps(p){
+    const G = p.G, R = p.R, A = G[2][2], out = [], row = r => G[r];
+    if (p.act.includes('sides')) out.push(`<b>Sides:</b> ${R.sides.v === 'col' ? 'go up by 1 left → right in every row' : R.sides.v === 'row' ? 'are fixed within a row and go up by 1 per row' : 'go up by 1 left → right and by 1 per row down'}: bottom row ${row(2).slice(0,2).map(c => c.s).join(', ')}, ? → <b>${A.s} (${sides(A.s)})</b>.`);
+    else out.push(`Sides don't change (all ${sides(G[0][0].s)}s).`);
+    if (p.act.includes('rot')) out.push(`<b>Rotation:</b> the pointer turns ${R.rot.step}° clockwise each step ${R.rot.v === 'col' ? 'left → right (rows repeat)' : 'right and also each row down'}: bottom row ${row(2).slice(0,2).map(c => ((c.rot%360)+360)%360 + '°').join(', ')}, ? → <b>${((A.rot%360)+360)%360}°</b> (0° = pointing up).`);
+    if (p.act.includes('shade')) out.push(`<b>Shading:</b> white, grey and black each appear once in every row and column (a Latin square). Bottom row has ${row(2).slice(0,2).map(c => SHN[c.sh]).join(' and ')}, so ? is <b>${SHN[A.sh]}</b>.`);
+    if (p.act.includes('letter')) out.push(`<b>Letters:</b> ${sg(R.letter.dc)} per column, ${sg(R.letter.dr)} per row. Row 1: ${row(0).map(c => lt(c.L)).join(' → ')}. Bottom row: ${row(2).slice(0,2).map(c => lt(c.L)).join(' → ')} → ${shiftTxt(row(2)[1].L, R.letter.dc)}. <b>? letter = ${LET(A.L)}</b>.`);
+    else out.push(`Letters don't change (all ${LET(G[0][0].L)}).`);
+    if (p.act.includes('number')){
+      if (R.number.v === 'lin') out.push(`<b>Numbers:</b> ${sg(R.number.kc)} per column${R.number.kr ? `, ${sg(R.number.kr)} per row` : ' (every row starts at the same number)'}. Bottom row ${row(2).slice(0,2).map(c => c.N).join(', ')} → ${row(2)[1].N} ${sg(R.number.kc)} = <b>${A.N}</b>.`);
+      else out.push(`<b>Numbers:</b> third column = first ${R.number.v === 'sum' ? '+' : '×'} second in every row (${row(0).map(c => c.N).join(', ')}). Bottom: ${row(2)[0].N} ${R.number.v === 'sum' ? '+' : '×'} ${row(2)[1].N} = <b>${A.N}</b>.`);
+    } else out.push(`Numbers don't change (all ${G[0][0].N}).`);
+    out.push(`<b>Answer: ${sides(A.s)}, ${SHN[A.sh]}, pointer at ${((A.rot%360)+360)%360}°, ${LET(A.L)}${A.N}.</b>`);
+    return out;
+  }
+
+  /* =================== 3a. NEXT IN SEQUENCE =================== */
+  function genSeq(){
+    for (let tries = 0; tries < 400; tries++){
+      const others = shuffle(['sides','rot','shade','number']).slice(0, 2), act = new Set(['letter', ...others]);
+      const R = {};
+      R.sides = act.has('sides') ? pick([{v:'inc', b: 3}, {v:'alt', a: rnd(3,5), b: rnd(6,8)}]) : {c: rnd(3,6)};
+      R.rot = act.has('rot') ? pick([{v:'step', d: pick([45,90,-90])}, {v:'alt', a: 90, b: -45}]) : {c: 0};
+      R.shade = act.has('shade') ? pick([{v:'p3', off: rnd(0,2)}, {v:'p2', a: 0, b: 2}]) : {c: rnd(0,2)};
+      R.letter = pick([{v:'step', d: pick([-3,-2,2,3,4,5])}, {v:'alt', a: rnd(1,4), b: rnd(2,6)}]); if (R.letter.v === 'alt' && R.letter.a === R.letter.b) continue; R.letter.L0 = rnd(1,26);
+      R.number = act.has('number') ? pick([{v:'add', n0: rnd(1,12), k: rnd(2,7)}, {v:'alt', n0: rnd(10,20), a: rnd(3,8), b: rnd(1,4)}, {v:'dbl', n0: rnd(1,3)}, {v:'tri', n0: rnd(1,6)}]) : {c: rnd(2,20)};
+      const F = []; let L = R.letter.L0, N = R.number.c || R.number.n0;
+      for (let i = 0; i < 6; i++){
+        const s = R.sides.c || (R.sides.v === 'inc' ? R.sides.b + i : (i % 2 ? R.sides.b : R.sides.a));
+        const rot = R.rot.c != null ? R.rot.c : R.rot.v === 'step' ? R.rot.d*i : Math.ceil(i/2)*R.rot.a + Math.floor(i/2)*R.rot.b;
+        const sh = R.shade.c != null ? R.shade.c : R.shade.v === 'p3' ? (i + R.shade.off) % 3 : (i % 2 ? R.shade.b : R.shade.a);
+        F.push({s, rot, sh, L: wrap(L), N});
+        L += R.letter.v === 'step' ? R.letter.d : (i % 2 ? R.letter.b : R.letter.a);
+        if (!R.number.c) N = R.number.v === 'add' ? N + R.number.k : R.number.v === 'alt' ? (i % 2 ? N - R.number.b : N + R.number.a) : R.number.v === 'dbl' ? N*2 : N + i + 1;
+      }
+      if (F.some(f => f.N < 1 || f.N > 99 || f.s > 8)) continue;
+      const ans = F[5], prev = F[4], pool = [];
+      pool.push(vary(ans,{L: ans.L+1}), vary(ans,{L: ans.L-1}));
+      if (R.letter.v === 'alt') pool.push(vary(ans,{L: prev.L + (R.letter.b)}));
+      else pool.push(vary(ans,{L: prev.L - R.letter.d}));
+      if (act.has('number')) pool.push(vary(ans,{N: ans.N+1}), vary(ans,{N: ans.N + 2}), vary(ans,{N: R.number.v === 'alt' ? prev.N + R.number.a : R.number.v === 'dbl' ? prev.N + 2 : Math.max(1, ans.N - 2)}));
+      if (act.has('sides')) pool.push(vary(ans,{s: ans.s+1}), vary(ans,{s: ans.s-1}));
+      if (act.has('rot')) pool.push(vary(ans,{rot: ans.rot+90}), vary(ans,{rot: ans.rot+45}));
+      if (act.has('shade')) pool.push(vary(ans,{sh: (ans.sh+1)%3}), vary(ans,{sh: (ans.sh+2)%3}));
+      const fo = finishOpts(ans, pool.map(x => ({...x}))); if (!fo) continue;
+      return {mode:'seq', F, R, act: [...act], ...fo};
+    }
+    throw new Error('seq gen failed');
+  }
+  function seqSVG(p){ let s = ''; p.F.forEach((c,i) => { const x = (i%3)*104, y = Math.floor(i/3)*104; s += cell(i === 5 ? null : c, x, y, 100, i === 5) + `<text x="${x+90}" y="${y+17}" text-anchor="end" font-size="13" font-weight="700" fill="#7f8796">${i+1}</text>`; }); return `<svg viewBox="0 0 308 204" width="100%" class="pz">${s}</svg>`; }
+  function seqSteps(p){
+    const F = p.F, R = p.R, A = F[5], out = [], d = (a, b) => { let x = wrap(b) - wrap(a); if (x > 13) x -= 26; if (x < -13) x += 26; return x; };
+    out.push(`<b>Letters:</b> ${F.slice(0,5).map(f => lt(f.L)).join(' → ')}. Jumps: ${F.slice(1,5).map((f,i) => sg(d(F[i].L, f.L))).join(', ')}. ${R.letter.v === 'alt' ? `They alternate ${sg(R.letter.a)}, ${sg(R.letter.b)}, so the next jump is ${sg(R.letter.b)}` : `Constant ${sg(R.letter.d)}`}: ${shiftTxt(F[4].L, R.letter.v === 'alt' ? R.letter.b : R.letter.d)}.`);
+    if (p.act.includes('number')) out.push(`<b>Numbers:</b> ${F.slice(0,5).map(f => f.N).join(', ')}. ${R.number.v === 'add' ? `+${R.number.k} each time` : R.number.v === 'alt' ? `alternate +${R.number.a}, −${R.number.b}` : R.number.v === 'dbl' ? 'double each time' : 'add 1, 2, 3, 4, then 5'} → <b>${A.N}</b>.`);
+    else out.push(`Numbers stay at ${F[0].N}.`);
+    if (p.act.includes('sides')) out.push(`<b>Sides:</b> ${F.slice(0,5).map(f => f.s).join(', ')} → ${R.sides.v === 'inc' ? '+1 each frame' : 'alternate'} → <b>${A.s} (${sides(A.s)})</b>.`);
+    if (p.act.includes('rot')) out.push(`<b>Rotation:</b> pointer at ${F.slice(0,5).map(f => ((f.rot%360)+360)%360 + '°').join(', ')}. ${R.rot.v === 'step' ? `Turns ${R.rot.d > 0 ? R.rot.d + '° clockwise' : -R.rot.d + '° anticlockwise'} each frame` : 'Alternates +90° then −45°'} → <b>${((A.rot%360)+360)%360}°</b>.`);
+    if (p.act.includes('shade')) out.push(`<b>Shading:</b> ${F.slice(0,5).map(f => SHN[f.sh]).join(', ')} → ${R.shade.v === 'p3' ? 'repeats every 3' : 'alternates'} → <b>${SHN[A.sh]}</b>.`);
+    out.push(`<b>Answer: ${sides(A.s)}, ${SHN[A.sh]}, ${((A.rot%360)+360)%360}°, ${LET(A.L)}${A.N}.</b>`);
+    return out;
+  }
+
+  /* =================== 3b. ODD ONE OUT =================== */
+  const FAM = {
+    mul: {fit: it => it.L && it.N % it.L === 0 ? 'k' + it.N / it.L : null, txt: (k) => `number = ${k.slice(1)} × letter position`},
+    sum: {fit: it => 's' + (it.L + it.N), txt: k => `letter position + number = ${k.slice(1)}`},
+    dif: {fit: it => 'd' + (it.N - it.L), txt: k => `number − letter position = ${k.slice(1)}`},
+    sid: {fit: it => 'n' + (it.N - it.s), txt: k => k === 'n0' ? 'the number equals the number of sides' : `number = sides ${sg(+k.slice(1))}`},
+    rot: {fit: it => ((it.rot % 90) + 90) % 90 === 0 ? 'r90' : 'r45', txt: () => 'pointer is at a multiple of 90° (up, right, down or left)'},
+  };
+  function fourOfFive(items, f){ const k = items.map(FAM[f].fit), cnt = {}; k.forEach(x => x && (cnt[x] = (cnt[x]||0)+1)); const top = Object.entries(cnt).find(([,c]) => c === 4); if (!top) return null; return {key: top[0], odd: k.findIndex(x => x !== top[0])}; }
+  function genOdd(){
+    for (let tries = 0; tries < 600; tries++){
+      const fam = pick(['mul','sum','dif','sid','rot','mul','sum']), it = [];
+      const k = rnd(2,4), S = rnd(18,34), D = rnd(2,12), so = pick([0,0,2,3]);
+      for (let i = 0; i < 5; i++){
+        const s = rnd(3,8), L = fam === 'mul' ? rnd(2, Math.floor(60/k)) : rnd(1,26);
+        let N = fam === 'mul' ? k*L : fam === 'sum' ? S - L : fam === 'dif' ? L + D : fam === 'sid' ? s + so : rnd(2,40);
+        const rot = fam === 'rot' ? 90*rnd(0,3) : 45*rnd(0,7);
+        it.push({s, L, N, rot, sh: rnd(0,2)});
+      }
+      const o = rnd(0,4);
+      if (fam === 'rot') it[o].rot = 45 + 90*rnd(0,3); else it[o].N += pick([-2,-1,1,2,3]);
+      if (fam === 'sum' && it.some(x => x.N < 1)) continue;
+      if (it.some(x => x.N < 1 || x.N > 99 || x.L < 1 || x.L > 26)) continue;
+      const mine = fourOfFive(it, fam); if (!mine || mine.odd !== o) continue;
+      if (Object.keys(FAM).some(f => f !== fam && fourOfFive(it, f))) continue;
+      const vis = a => { const c = {}; it.forEach(x => c[a(x)] = (c[a(x)]||0)+1); return Math.max(...Object.values(c)); };
+      if (vis(x => x.sh) >= 4 || vis(x => x.s) >= 4) continue;
+      if (fam !== 'rot' && vis(x => ((x.rot%90)+90)%90) >= 4) continue;
+      return {mode:'odd', items: it, fam, key: mine.key, ans: o, opts: ['A','B','C','D','E']};
+    }
+    throw new Error('odd gen failed');
+  }
+  function oddSVG(p){ let s = ''; p.items.forEach((c,i) => { const x = i < 3 ? i*104 : 52 + (i-3)*104, y = i < 3 ? 0 : 104; s += cell(c, x, y, 100) + `<text x="${x+10}" y="${y+19}" font-size="15" font-weight="700" fill="#9aa1ae">${'ABCDE'[i]}</text>`; }); return `<svg viewBox="0 0 308 204" width="100%" class="pz">${s}</svg>`; }
+  function oddSteps(p){
+    const f = FAM[p.fam], out = [`<b>Rule shared by four items:</b> ${f.txt(p.key)}.`];
+    p.items.forEach((x,i) => {
+      const ok = i !== p.ans, L = `${LET(x.L)}=${x.L}`;
+      const calc = p.fam === 'mul' ? `${x.N} ÷ ${x.L} = ${+(x.N/x.L).toFixed(2)}` : p.fam === 'sum' ? `${x.L} + ${x.N} = ${x.L + x.N}` : p.fam === 'dif' ? `${x.N} − ${x.L} = ${x.N - x.L}` : p.fam === 'sid' ? `${sides(x.s)} has ${x.s} sides, number ${x.N}` : `pointer at ${((x.rot%360)+360)%360}°`;
+      out.push(`${'ABCDE'[i]}: ${LET(x.L)}${x.N} → ${p.fam === 'sid' || p.fam === 'rot' ? '' : L + '; '}${calc} ${ok ? '✓' : '<b style="color:var(--bad)">✗ odd one out</b>'}`);
+    });
+    out.push(`<b>Answer: ${'ABCDE'[p.ans]}.</b> Tip: convert letters to positions first, then test ×, +, − against the number before looking at shapes.`);
+    return out;
+  }
+
+  /* =================== OPQ-style work-style triplets =================== */
+  const TRAITS = {
+    AR:{n:'Analytical rigour', s:['I check the numbers myself before trusting a conclusion.','I like to break a problem down before acting.','I enjoy finding the flaw in an argument.','I prefer decisions backed by data.','I test my assumptions before relying on them.','I double-check calculations, even under time pressure.']},
+    CU:{n:'Calm under uncertainty', s:['I stay calm when things go wrong quickly.','I can act decisively with incomplete information.','A losing trade doesn\'t change how I make the next decision.','I\'m comfortable taking a calculated risk.','Pressure helps me focus rather than panic.','I can let go of a bad outcome if the decision was sound.']},
+    CH:{n:'Collaborative humility', s:['I ask for help when someone knows more than me.','I change my mind quickly when shown I\'m wrong.','I share credit for team successes.','I listen fully before giving my view.','I admit my mistakes openly.','I value feedback, even when it\'s blunt.']},
+    CD:{n:'Competitive drive', s:['I want to be the best at what I do.','I set myself demanding targets.','I keep going until I win.','I enjoy being measured against others.','I push hard to improve my performance.','Winning matters a lot to me.']},
+    SO:{n:'Sociable', s:['I enjoy meeting new people.','I\'m energised by working in a busy group.','I start conversations easily.','I like being at the centre of things.','I enjoy social events with colleagues.','I prefer talking problems through out loud.']},
+    DT:{n:'Structured', s:['I plan my work carefully in advance.','I like clear rules and procedures.','I finish tasks fully before starting new ones.','I keep my work well organised.','I notice small errors others miss.','I prefer a predictable routine.']},
+    IN:{n:'Innovative', s:['I enjoy coming up with new ideas.','I like trying unusual approaches.','I get bored doing things the standard way.','I enjoy thinking about abstract possibilities.','I like improving how things are done.','I\'m curious about how things work.']},
+    PE:{n:'Persuasive', s:['I enjoy convincing others of my view.','I like negotiating.','I\'m comfortable taking charge of a group.','I argue my case firmly.','I enjoy selling an idea.','I like to influence decisions.']},
+  };
+  function genOPQ(){
+    for (let t = 0; t < 500; t++){
+      const bag = shuffle(Object.entries(TRAITS).flatMap(([k,v]) => v.s.map((s,i) => ({t:k, s, id:k+i}))));
+      const blocks = []; let ok = true;
+      while (bag.length){ const b = [bag.shift()]; for (let j = 0; j < bag.length && b.length < 3; j++) if (!b.some(x => x.t === bag[j].t)){ b.push(bag.splice(j,1)[0]); j--; } if (b.length < 3){ ok = false; break; } blocks.push(b); }
+      if (ok) return blocks;
+    }
+    throw new Error('opq gen failed');
+  }
+  function scoreOPQ(blocks, ans){   // ans[i] = {most: idx, least: idx}
+    const pts = {}, cnt = {}, pair = {};
+    blocks.forEach((b, i) => {
+      const a = ans[i]; if (!a) return; const rank = b.map((_,j) => j === a.most ? 2 : j === a.least ? 0 : 1);
+      b.forEach((x,j) => { pts[x.t] = (pts[x.t]||0) + rank[j]; cnt[x.t] = (cnt[x.t]||0) + 1; });
+      for (let p = 0; p < 3; p++) for (let q = p+1; q < 3; q++){ const [X,Y] = [b[p].t, b[q].t].sort(), win = (b[p].t === X ? rank[p] - rank[q] : rank[q] - rank[p]) > 0 ? X : Y; (pair[X+'|'+Y] = pair[X+'|'+Y] || []).push({win, blk: i}); }
+    });
+    let agree = 0, tot = 0; const clashes = [];
+    Object.entries(pair).forEach(([k, v]) => { if (v.length < 2) return; const c = {}; v.forEach(x => c[x.win] = (c[x.win]||0)+1); const maj = Math.max(...Object.values(c)); agree += maj; tot += v.length; if (maj < v.length) clashes.push(k.split('|')); });
+    const prof = Object.keys(TRAITS).map(t => ({t, n: TRAITS[t].n, v: cnt[t] ? pts[t]/(2*cnt[t]) : 0})).sort((a,b) => b.v - a.v);
+    return {prof, consistency: tot ? agree/tot : 1, clashes};
+  }
+
+  const GEN = {web: genWeb, matrix: genMatrix, seq: genSeq, odd: genOdd};
+  const SVG = {web: webSVG, matrix: matrixSVG, seq: seqSVG, odd: oddSVG};
+  const STEPS = {web: webSteps, matrix: matrixSteps, seq: seqSteps, odd: oddSteps};
+  const optHTML = (p, i) => p.mode === 'web' || p.mode === 'odd' ? p.opts[i] : cellSVG(p.opts[i]);
+  return {GEN, SVG, STEPS, optHTML, genOPQ, scoreOPQ, TRAITS, LET, wrap, FAM, fourOfFive, CAND, apply, TPL};
+})();
+if (typeof module !== 'undefined') module.exports = IMC;
+
+/* ================= SHL Verify Interactive-style inductive items: node sequences, shape fill-ins, button rules ================= */
+const IMC2 = (function(){
+  const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const shuffle = a => { for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  const wl = i => ((i-1) % 26 + 26) % 26 + 1, wd = i => ((i % 10) + 10) % 10;
+  const CH = (ty, v) => ty === 'L' ? String.fromCharCode(64 + wl(v)) : String(wd(v));
+  const sg = d => (d >= 0 ? '+' : '−') + Math.abs(d);
+  const MONO = 'ui-monospace,Menlo,monospace';
+
+  /* =================== 1. NODE SEQUENCES =================== */
+  // Each position of a short token follows its own rule; drag (tap) from the last connected node to the next ones.
+  function posVal(r, t){ return r.k === 'const' ? r.v : r.k === 'step' ? r.v + r.d*t : r.k === 'alt' ? (t % 2 ? r.b : r.v) : r.v + Math.ceil(t/2)*r.d + Math.floor(t/2)*r.e; }
+  function token(rules, t){ return rules.map(r => CH(r.ty, posVal(r, t))).join(''); }
+  function genNode(lv){
+    lv = lv || 2;
+    for (let tries = 0; tries < 500; tries++){
+      const len = lv === 1 ? rnd(2,3) : lv === 2 ? rnd(3,4) : rnd(4,5);
+      const tys = [...Array(len)].map(() => Math.random() < .6 ? 'L' : 'D'); if (!tys.includes('L')) tys[0] = 'L';
+      const nChange = Math.min(len, lv === 1 ? rnd(1,2) : lv === 2 ? rnd(2,3) : rnd(3,4));
+      const ch = new Set(shuffle([...Array(len).keys()]).slice(0, nChange));
+      const kinds = lv === 1 ? ['step'] : lv === 2 ? ['step','step','alt'] : ['step','alt','altstep','step'];
+      const rules = tys.map((ty, i) => {
+        const v = ty === 'L' ? rnd(1,26) : rnd(0,9);
+        if (!ch.has(i)) return {ty, k:'const', v};
+        const k = pick(kinds), steps = lv === 1 ? [-1,1,1,2] : lv === 2 ? [-2,-1,1,2,3] : [-3,-2,-1,1,2,3,4];
+        if (k === 'step') return {ty, k, v, d: pick(steps)};
+        if (k === 'alt'){ let b; do b = ty === 'L' ? rnd(1,26) : rnd(0,9); while (b === v); return {ty, k, v, b}; }
+        let d = pick([1,2,3]), e = pick([-1,1,2,4]); if (d === e) e = d + 1; return {ty, k:'altstep', v, d, e};
+      });
+      const c = rules.some(r => r.k === 'altstep') ? 5 : 4, r = lv, total = c + r;
+      const seq = [...Array(total)].map((_,t) => token(rules, t));
+      if (new Set(seq).size !== total) continue;
+      // decoys: each breaks exactly one changing rule of one of the answer tokens
+      const dec = new Set();
+      const changing = rules.map((x,i) => x.k !== 'const' ? i : -1).filter(i => i >= 0);
+      for (let g = 0; g < 60 && dec.size < (lv === 1 ? 3 : lv === 2 ? 4 : 5); g++){
+        const t = c + rnd(0, r-1), i = pick(Math.random() < .8 ? changing : [...rules.keys()]), R = rules[i];
+        const chars = seq[t].split('');
+        let alt;
+        if (R.k === 'alt') alt = CH(R.ty, t % 2 ? R.v : R.b);                          // wrong phase: the classic trap
+        else if (R.k === 'altstep') alt = CH(R.ty, posVal(R, t-1) + (t % 2 ? R.e : R.d)); // used the other jump
+        else alt = CH(R.ty, posVal(R, t) + pick([-1,1]));
+        chars[i] = alt; const tok = chars.join('');
+        if (!seq.includes(tok)) dec.add(tok);
+      }
+      if (dec.size < 3) continue;
+      const labels = [...seq.map((t,i) => ({t, role: i < c ? 'chain' : 'ans', i})), ...[...dec].map(t => ({t, role:'decoy'}))];
+      // scatter on a jittered grid
+      const cols = 3, rows = Math.ceil(labels.length / cols), H = 60 + rows*80;
+      const segD = (n, a, b) => { const dx = b.x-a.x, dy = b.y-a.y, L2 = dx*dx + dy*dy, u = Math.max(0, Math.min(1, ((n.x-a.x)*dx + (n.y-a.y)*dy)/L2)); return Math.hypot(n.x - a.x - u*dx, n.y - a.y - u*dy); };
+      let placed = false;
+      for (let lay = 0; lay < 80 && !placed; lay++){
+        const cells = shuffle([...Array(cols*rows).keys()]);
+        labels.forEach((n, j) => { const cl = cells[j]; n.x = 60 + (cl % cols)*110 + rnd(-12,12); n.y = 45 + Math.floor(cl/cols)*80 + rnd(-8,8); });
+        const ch = labels.filter(n => n.role === 'chain');
+        placed = ch.slice(1).every((b, k) => labels.every(n => n === b || n === ch[k] || segD(n, ch[k], b) > 34));
+      }
+      if (!placed) continue;
+      return {mode:'node', lv, rules, c, r, seq, nodes: labels, H};
+    }
+    throw new Error('node gen failed');
+  }
+  function nodeSVG(p, picked, reveal){
+    const N = p.nodes, chain = N.filter(n => n.role === 'chain').sort((a,b) => a.i - b.i);
+    const path = [...chain, ...(picked || []).map(j => N[j])];
+    const ln = (a,b,col,dash) => { const mx = (a.x+b.x)/2, my = (a.y+b.y)/2, L = Math.hypot(b.x-a.x, b.y-a.y) || 1, ux = (b.x-a.x)/L, uy = (b.y-a.y)/L;
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${col}" stroke-width="3"${dash ? ' stroke-dasharray="6 5"' : ''}/><polygon points="${(mx+ux*7).toFixed(1)},${(my+uy*7).toFixed(1)} ${(mx-ux*6-uy*6).toFixed(1)},${(my-uy*6+ux*6).toFixed(1)} ${(mx-ux*6+uy*6).toFixed(1)},${(my-uy*6-ux*6).toFixed(1)}" fill="${col}"/>`; };
+    let s = '';
+    for (let k = 1; k < path.length; k++) s += ln(path[k-1], path[k], k < chain.length ? '#9aa1ae' : '#7aa2ff');
+    if (reveal){ const ans = N.filter(n => n.role === 'ans').sort((a,b) => a.i - b.i); let prev = chain[chain.length-1]; ans.forEach(a => { s += ln(prev, a, '#4ec9a0', true); prev = a; }); }
+    s += N.map((n, j) => { const inChain = n.role === 'chain', sel = (picked || []).includes(j), isAns = reveal && n.role === 'ans', last = n === chain[chain.length-1];
+      const w = Math.max(54, n.t.length*13 + 18);
+      return `<g data-n="${j}" style="cursor:pointer"><rect x="${n.x - w/2}" y="${n.y-19}" width="${w}" height="38" rx="19" fill="${sel ? '#1b2a4a' : inChain ? '#2a2f3a' : '#1e222b'}" stroke="${isAns ? '#4ec9a0' : sel ? '#7aa2ff' : last ? '#f2b84b' : '#5a6070'}" stroke-width="${isAns || sel || last ? 3 : 1.5}"/><text x="${n.x}" y="${n.y+6}" text-anchor="middle" font-family="${MONO}" font-size="17" font-weight="700" fill="${inChain ? '#c9ceda' : '#e7e9ee'}">${n.t}</text></g>`; }).join('');
+    return `<svg viewBox="0 0 340 ${p.H}" width="100%" class="pz nodesvg">${s}</svg>`;
+  }
+  function nodeCheck(p, picked){ const ans = p.nodes.map((n,j) => n.role === 'ans' ? [n.i, j] : null).filter(Boolean).sort((a,b) => a[0]-b[0]).map(x => x[1]); return picked.length === ans.length && picked.every((j,k) => j === ans[k]); }
+  function nodeSteps(p){
+    const out = [`<b>Chain so far:</b> ${p.seq.slice(0, p.c).join(' → ')}. Read each character position separately.`];
+    p.rules.forEach((R, i) => {
+      const vals = p.seq.map(t => t[i]), shown = vals.slice(0, p.c), nxt = vals.slice(p.c);
+      const num = ch => R.ty === 'L' ? `${ch}=${ch.charCodeAt(0)-64}` : ch;
+      const what = R.k === 'const' ? 'stays the same' : R.k === 'step' ? `${R.ty === 'L' ? 'letter' : 'digit'} moves ${sg(R.d)} each step${R.ty === 'D' ? ' (9 wraps to 0)' : ' (Z wraps to A)'}` : R.k === 'alt' ? `alternates ${CH(R.ty,R.v)}, ${CH(R.ty,R.b)}, ${CH(R.ty,R.v)}, …` : `jumps alternate ${sg(R.d)}, ${sg(R.e)}`;
+      out.push(`<b>Position ${i+1}:</b> ${shown.map(num).join(' → ')}: ${what}. Next: <b>${nxt.join(', ')}</b>.`);
+    });
+    out.push(`<b>Connect:</b> ${p.seq.slice(p.c).join(' → ')}. The other nodes each break one position's rule (often the wrong phase of an alternation).`);
+    return out;
+  }
+
+  /* =================== 2. SHAPE FILL-INS (zoned figures) =================== */
+  const COL = [null, '#5b8def', '#f2a33a', 'url(#hatch)'], CNAME = ['empty','blue','orange','striped'];
+  const KIND = {quad:{n:4, ring:[4]}, sect:{n:8, ring:[8]}, ring:{n:12, ring:[8,4]}};
+  function zonePaths(kind, cx, cy, R){
+    const P = [], f = v => v.toFixed(1), arc = (r0, r1, a0, a1) => { const p = (r,a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)]; const [x1,y1] = p(r1,a0), [x2,y2] = p(r1,a1), [x3,y3] = p(r0,a1), [x4,y4] = p(r0,a0);
+      return r0 > 0 ? `M${f(x1)},${f(y1)} A${r1},${r1} 0 0 1 ${f(x2)},${f(y2)} L${f(x3)},${f(y3)} A${r0},${r0} 0 0 0 ${f(x4)},${f(y4)} Z` : `M${cx},${cy} L${f(x1)},${f(y1)} A${r1},${r1} 0 0 1 ${f(x2)},${f(y2)} Z`; };
+    const A = k => (-90 + k) * Math.PI/180;
+    if (kind === 'quad'){ const h = R*0.85; [[-1,-1],[0,-1],[0,0],[-1,0]].forEach(([a,b]) => P.push(`M${cx + a*h},${cy + b*h} h${h} v${h} h${-h} Z`)); }
+    else if (kind === 'sect') for (let k = 0; k < 8; k++) P.push(arc(0, R, A(45*k), A(45*k + 45)));
+    else { for (let k = 0; k < 8; k++) P.push(arc(R*0.52, R, A(45*k), A(45*k + 45))); for (let k = 0; k < 4; k++) P.push(arc(0, R*0.52, A(90*k), A(90*k + 90))); }
+    return P;
+  }
+  function figure(kind, zones, cx, cy, R, clickable){
+    return zonePaths(kind, cx, cy, R).map((d, z) => `<path d="${d}" fill="${zones[z] ? COL[zones[z]] : '#ece9e1'}" stroke="#1d2230" stroke-width="2"${clickable ? ` data-z="${z}" style="cursor:pointer"` : ''}/>`).join('');
+  }
+  const HATCH = `<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#c9ceda"/><line x1="0" y1="0" x2="0" y2="7" stroke="#1d2230" stroke-width="3"/></pattern></defs>`;
+  function shapeFrame(p, t){
+    const z = Array(KIND[p.kind].n).fill(0);
+    for (const m of p.markers){ const ringN = KIND[p.kind].ring[m.ring], off = m.ring ? 8 : 0, pos = ((m.p0 + Math.ceil(t/2)*m.d + Math.floor(t/2)*m.e) % ringN + ringN) % ringN; z[off + pos] = m.alt ? (t % 2 ? m.c2 : m.c) : m.c; }
+    return z;
+  }
+  function genShape(lv){
+    lv = lv || 2;
+    for (let tries = 0; tries < 400; tries++){
+      const kind = lv === 1 ? pick(['quad','sect']) : lv === 2 ? pick(['sect','sect','ring']) : 'ring';
+      const nm = lv === 1 ? rnd(1,2) : lv === 2 ? 2 : 3;
+      const cols = shuffle([1,2,3]), markers = [];
+      for (let i = 0; i < nm; i++){
+        const ring = kind === 'ring' ? (i === 0 ? 0 : rnd(0,1)) : 0, ringN = KIND[kind].ring[ring];
+        const steps = ringN === 4 ? [1,-1,2] : lv === 1 ? [1,-1] : [1,-1,2,-2,3];
+        let d = pick(steps), e = d;
+        if (lv === 3 && i === 0 && Math.random() < .5){ e = pick([1,2,-1].filter(x => x !== d)); }
+        markers.push({ring, p0: rnd(0, ringN-1), d, e, c: cols[i], alt: false});
+      }
+      if (lv >= 2 && nm === 2 && Math.random() < .5){ markers[0].alt = true; markers[0].c2 = cols[2]; }
+      const F = [...Array(5)].map((_,t) => shapeFrame({kind, markers}, t));
+      // every marker visible in every frame (no overlaps) and something must move
+      if (F.some(z => z.filter(Boolean).length !== markers.length)) continue;
+      if (markers.every(m => m.d === 0)) continue;
+      const p = {mode:'shape', lv, kind, markers, F, variant: Math.random() < .55 ? 'paint' : 'pick'};
+      // multiple-choice options: correct + versions that each break one rule
+      const wrong = [];
+      for (const [mi, m] of markers.entries()){
+        const v = JSON.parse(JSON.stringify(markers));
+        v[mi].d = -m.d; v[mi].e = -m.e; wrong.push(shapeFrame({kind, markers: v}, 4));
+        const v2 = JSON.parse(JSON.stringify(markers)); v2[mi].d = m.e; v2[mi].e = m.d; if (m.d !== m.e) wrong.push(shapeFrame({kind, markers: v2}, 3)); else { v2[mi].d = m.d + Math.sign(m.d); v2[mi].e = v2[mi].d; wrong.push(shapeFrame({kind, markers: v2}, 4)); }
+        if (m.alt){ const v3 = JSON.parse(JSON.stringify(markers)); v3[mi].alt = false; v3[mi].c = t4col(m); wrong.push(shapeFrame({kind, markers: v3}, 4)); }
+        const v4 = JSON.parse(JSON.stringify(markers)); wrong.push(shapeFrame({kind, markers: v4}, 3));
+      }
+      const key = z => z.join(''), seen = new Set([key(F[4])]), opts = [F[4]];
+      for (const w of shuffle(wrong)){ if (w.filter(Boolean).length !== markers.length) continue; if (seen.has(key(w))) continue; seen.add(key(w)); opts.push(w); if (opts.length === 4) break; }
+      if (opts.length < 4) continue;
+      const order = shuffle([0,1,2,3]); p.opts = order.map(i => opts[i]); p.ans = order.indexOf(0);
+      return p;
+    }
+    throw new Error('shape gen failed');
+  }
+  function t4col(m){ return m.c2; }
+  function shapeSVG(p, paint, reveal){
+    const fr = [0,1,2,3].map(t => `<g>${figure(p.kind, p.F[t], 42 + t*84, 46, 36)}<text x="${42 + t*84}" y="102" text-anchor="middle" font-size="12" fill="#9aa1ae">${t+1}</text></g>`).join('');
+    return `<svg viewBox="0 0 340 108" width="100%" class="pz">${HATCH}${fr}</svg>`;
+  }
+  function paintSVG(p, zones, locked){ return `<svg viewBox="0 0 200 200" width="62%" class="pz paint" style="margin:6px auto 0">${HATCH}${figure(p.kind, zones, 100, 100, 92, !locked)}</svg>`; }
+  const optSVG = (p, z) => `<svg viewBox="0 0 100 100" width="100%">${HATCH}${figure(p.kind, z, 50, 50, 44)}</svg>`;
+  function shapeSteps(p){
+    const out = [`<b>Track each coloured piece on its own.</b> ${p.kind === 'quad' ? 'Zones are the four quarters, counted clockwise from top-left.' : p.kind === 'sect' ? 'Zones are 8 slices, counted clockwise from 12 o\'clock.' : 'Outer ring: 8 slices; inner circle: 4 quarters, both counted clockwise from 12 o\'clock.'}`];
+    p.markers.forEach(m => {
+      const ringN = KIND[p.kind].ring[m.ring], pos = [0,1,2,3,4].map(t => ((m.p0 + Math.ceil(t/2)*m.d + Math.floor(t/2)*m.e) % ringN + ringN) % ringN + 1);
+      const dir = x => `${Math.abs(x)} ${p.kind === 'quad' ? 'quarter' : 'slice'}${Math.abs(x) > 1 ? 's' : ''} ${x > 0 ? 'clockwise' : 'anticlockwise'}`;
+      out.push(`<b>${m.alt ? `${CNAME[m.c]}/${CNAME[m.c2]}` : CNAME[m.c][0].toUpperCase() + CNAME[m.c].slice(1)} piece${p.kind === 'ring' ? (m.ring ? ' (inner circle)' : ' (outer ring)') : ''}:</b> positions ${pos.slice(0,4).join(' → ')}; moves ${m.d === m.e ? dir(m.d) + ' each frame' : `alternately ${dir(m.d)} then ${dir(m.e)}`}${m.alt ? `, and its colour alternates ${CNAME[m.c]}, ${CNAME[m.c2]}` : ''}. Frame 5: position <b>${pos[4]}</b>, ${CNAME[m.alt ? m.c : m.c]}.`);
+    });
+    out.push('Each wrong option gets one piece wrong: moved the wrong way, used the wrong jump, or forgot the colour switch. Check every piece against every option.');
+    return out;
+  }
+  const shapeCheck = (p, resp) => p.variant === 'pick' ? resp === p.ans : Array.isArray(resp) && resp.join('') === p.F[4].join('');
+
+  /* =================== 3. BUTTON RULES =================== */
+  const PRIM = {
+    rot1:{a:'rot', v:1, txt:'rotates 90° clockwise'}, rot2:{a:'rot', v:2, txt:'rotates 180°'}, rot3:{a:'rot', v:3, txt:'rotates 90° anticlockwise'},
+    fill:{a:'fill', v:1, txt:'changes colour: white → blue → orange → white'}, shape:{a:'sh', v:1, txt:'adds a side: triangle → square → pentagon → triangle'},
+    dash:{a:'dash', v:1, txt:'switches the outline solid ↔ dashed'}, size:{a:'big', v:1, txt:'switches size small ↔ large'}, dot:{a:'dot', v:1, txt:'adds or removes the centre dot'},
+  };
+  const MOD = {rot:4, fill:3, sh:3, dash:2, big:2, dot:2};
+  const applyB = (s, b) => { const o = {...s}; b.fx.forEach(k => { const P = PRIM[k]; o[P.a] = (o[P.a] + P.v) % MOD[P.a]; }); return o; };
+  const skey = s => [s.rot, s.fill, s.sh, s.dash, s.big, s.dot].join('');
+  const rstate = () => ({rot: rnd(0,3), fill: rnd(0,2), sh: rnd(0,2), dash: rnd(0,1), big: rnd(0,1), dot: rnd(0,1)});
+  function genBtn(lv){
+    lv = lv || 2;
+    for (let tries = 0; tries < 500; tries++){
+      const pool = shuffle(Object.keys(PRIM)); let btns;
+      if (lv < 3) btns = pool.slice(0, 6).map(k => ({fx:[k]}));
+      else { btns = pool.slice(0, 4).map(k => ({fx:[k]})); btns.push({fx:[pool[4], pool[5]]}, {fx:[pool[6], pick(pool.slice(0,4))]}); }
+      btns = shuffle(btns);
+      const k = lv === 1 ? rnd(1,2) : lv === 2 ? 2 : rnd(2,3);
+      const press = shuffle([0,1,2,3,4,5]).slice(0, k).sort();
+      const s0 = rstate(); let s1 = s0; press.forEach(i => s1 = applyB(s1, btns[i]));
+      if (skey(s1) === skey(s0)) continue;
+      // unique: no other subset of buttons gives the same after-state
+      let hits = 0;
+      for (let m = 0; m < 64; m++){ let s = s0; for (let i = 0; i < 6; i++) if (m >> i & 1) s = applyB(s, btns[i]); if (skey(s) === skey(s1)) hits++; }
+      if (hits !== 1) continue;
+      const base = rstate(), demo = btns.map(() => base);
+      return {mode:'btn', lv, btns, press, s0, s1, demo, k};
+    }
+    throw new Error('btn gen failed');
+  }
+  const FILLS = ['#ece9e1', '#5b8def', '#f2a33a'], SIDES = [3,4,5], BNAME = ['triangle','square','pentagon'], FNAME = ['white','blue','orange'];
+  function bShape(s, cx, cy, sc){
+    const R = (s.big ? 30 : 19)*sc, n = SIDES[s.sh], rot = s.rot*90, pts = [];
+    for (let i = 0; i < n; i++){ const a = (rot - 90 + i*360/n)*Math.PI/180; pts.push(`${(cx + R*Math.cos(a)).toFixed(1)},${(cy + R*Math.sin(a)).toFixed(1)}`); }
+    const pa = (rot - 90)*Math.PI/180, px = cx + R*0.9*Math.cos(pa), py = cy + R*0.9*Math.sin(pa);
+    return `<polygon points="${pts.join(' ')}" fill="${FILLS[s.fill]}" stroke="#e7e9ee" stroke-width="${2.5*sc}"${s.dash ? ` stroke-dasharray="${5*sc} ${4*sc}"` : ''}/><line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#1d2230" stroke-width="${3*sc}" stroke-linecap="round"/>${s.dot ? `<circle cx="${cx}" cy="${cy}" r="${5*sc}" fill="#e2445c"/>` : ''}`;
+  }
+  const BCOL = ['#7aa2ff','#4ec9a0','#f2b84b','#b48cff','#ff8f6b','#5fd3e6'], BLAB = ['A','B','C','D','E','F'];
+  function btnDemoHTML(p){
+    return `<div class="bdemo">${p.btns.map((b,i) => { const a = p.demo[i], z = applyB(a, b);
+      return `<div class="bd"><span class="bb" style="background:${BCOL[i]}">${BLAB[i]}</span><svg viewBox="0 0 170 80" width="100%"><g>${bShape(a, 40, 40, 1)}</g><text x="85" y="46" text-anchor="middle" font-size="20" fill="#9aa1ae">→</text><g>${bShape(z, 130, 40, 1)}</g></svg></div>`; }).join('')}</div>`;
+  }
+  function btnQSVG(p){ return `<svg viewBox="0 0 300 100" width="100%" class="pz"><text x="70" y="14" text-anchor="middle" font-size="12" fill="#9aa1ae">BEFORE</text><text x="230" y="14" text-anchor="middle" font-size="12" fill="#9aa1ae">AFTER</text>${bShape(p.s0, 70, 58, 1.1)}<text x="150" y="64" text-anchor="middle" font-size="24" fill="#9aa1ae">→</text>${bShape(p.s1, 230, 58, 1.1)}</svg>`; }
+  const btnCheck = (p, resp) => Array.isArray(resp) && resp.slice().sort().join() === p.press.join();
+  function btnSteps(p){
+    const out = [`<b>What each button does:</b><br>${p.btns.map((b,i) => `${BLAB[i]}: ${b.fx.map(k => PRIM[k].txt).join(' <i>and</i> ')}`).join('<br>')}`];
+    const diff = [], a = p.s0, z = p.s1;
+    if (a.sh !== z.sh) diff.push(`shape ${BNAME[a.sh]} → ${BNAME[z.sh]}`); if (a.rot !== z.rot) diff.push(`pointer ${a.rot*90}° → ${z.rot*90}°`); if (a.fill !== z.fill) diff.push(`colour ${FNAME[a.fill]} → ${FNAME[z.fill]}`);
+    if (a.dash !== z.dash) diff.push(`outline ${a.dash ? 'dashed' : 'solid'} → ${z.dash ? 'dashed' : 'solid'}`); if (a.big !== z.big) diff.push(`size ${a.big ? 'large' : 'small'} → ${z.big ? 'large' : 'small'}`); if (a.dot !== z.dot) diff.push(`dot ${a.dot ? 'on' : 'off'} → ${z.dot ? 'on' : 'off'}`);
+    out.push(`<b>Compare attribute by attribute:</b> ${diff.join('; ')}.`);
+    out.push(`<b>Pressed: ${p.press.map(i => BLAB[i]).join(' + ')}</b> (each at most once, order doesn't matter). No other combination gives this result.`);
+    return out;
+  }
+
+  const GEN = {node: genNode, shape: genShape, btn: genBtn};
+  const STEPS = {node: nodeSteps, shape: shapeSteps, btn: btnSteps};
+  const CHECK = {node: nodeCheck, shape: shapeCheck, btn: btnCheck};
+  return {GEN, STEPS, CHECK, nodeSVG, shapeSVG, paintSVG, optSVG, btnDemoHTML, btnQSVG, applyB, skey, KIND, BLAB, BCOL, CNAME, shapeFrame};
+})();
+if (typeof module !== 'undefined') module.exports = IMC2;
+
 </script>
 <script>
 (() => {
@@ -6781,8 +7360,9 @@ function nextMixed(groups){
 let tr = {item:null, n:0, ok:0, streak:0, best:0, wrong:0};
 function renderTrain(){
   if (mmS) return renderMMX();
+  if (imcS) return renderIMC();
   const gs = settings.groups;
-  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="gomm">📈 Market maker</button><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
+  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="goimc">🧩 IMC SHL</button><button class="chip" id="gomm">📈 Market maker</button><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
     <p class="sub">Endless shuffled questions to keep what you've learned sharp.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
     <div class="chips">${Object.entries(GROUPS).map(([k,t])=>`<button class="chip ${gs.includes(k)?'on':''}" data-grp="${k}">${t}</button>`).join('')}<button class="chip ${settings.focus?'on':''}" id="focus">🎯 Weak spots</button></div>
     <div id="itm"></div>`;
@@ -6792,6 +7372,7 @@ function renderTrain(){
   });
   $('#gocards').onclick = () => { rv.queue=null; tab('cards'); };
   $('#gomm').onclick = () => mmOpen();
+  $('#goimc').onclick = () => imcOpen();
   $('#focus').onclick = () => { settings.focus=!settings.focus; store.set('settings',settings); toast(settings.focus?'Weak spots: your worst topics and past mistakes come up more':'Weak spots off: even mix'); tr.item=null; renderTrain(); };
   const gr=$('#gorev'); if (gr) gr.onclick = e => { e.preventDefault(); rvw.view='session'; tab('review'); };
   if (!tr.item) tr.item = nextMixed(settings.groups);
@@ -6827,9 +7408,10 @@ function renderTests(){
     ${row('seq','1,2','#7aa2ff','Sequences',PRESETS.seq.sub, best('seq')!=null?`Best ${best('seq')}/15`:'')}
     ${row('prob','P','#7aa2ff','Probability & EV',PRESETS.prob.sub, best('prob')!=null?`Best ${best('prob')}/12`:'')}
     ${row('fpga','RTL','#4ec9a0','FPGA technical',PRESETS.fpga.sub, best('fpga')!=null?`Best ${best('fpga')}/25`:'')}
+    ${row('imc','15','#f2b84b','IMC SHL inductive mock','15 adaptive items in 18 min: node sequences, shape sequences, button rules. No going back.', (()=>{const d=imcStore(), M=d.mocks2||[]; return M.length?`Best ${Math.max(...M.map(x=>x.score))}/15 · ${M.length} mocks`:'';})())}
     ${row('mm','$','#b48cff','Market maker vs engine','10-trade rounds on a hidden dice or card sum with informed flow. An engine grades every quote.', mm.length?`Rounds ${mm.length} · last-10 edge ${fmt(mm.slice(-10).reduce((a,r)=>a+r.edge,0)/Math.min(10,mm.length),1)} · accuracy ${fmt(mm.slice(-10).reduce((a,r)=>a+r.accuracy,0)/Math.min(10,mm.length),0)}%`:'')}
     <p class="sub" style="margin-top:14px">Formats follow candidate reports (e.g. Optiver's widely reported 80-in-8). Firms change their tests, so treat these as practice, not a replica.</p>`;
-  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') mmOpen(); else startTest(t); });
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') mmOpen(); else if (t==='imc'){ tab('train'); mmS=null; imc2StartMock(); } else startTest(t); });
 }
 function startTest(k){ const p=PRESETS[k]; ts={kind:'test', key:k, p, i:0, score:0, right:0, wrong:0, skip:0, end:Date.now()+p.secs*1000, log:[], over:false}; ts.item=p.make(0); renderTestQ(); startTimer(); }
 function startTimer(){ clearInterval(window._tt); window._tt = setInterval(() => { if (!ts || ts.kind!=='test' || ts.over) return clearInterval(window._tt); const left=Math.max(0,Math.ceil((ts.end-Date.now())/1000)); const el=$('#tm'); if (el) el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`; if (left<=0) endTest(); }, 250); }
@@ -6885,7 +7467,7 @@ const mmSet = () => store.get('mmset', {timer:0});
 const mmRounds = () => store.get('mm_rounds', []);
 const mmF = (x, d=2) => (x > 0 ? '+' : '') + fmt(x, d);
 const mmComp = (cfg, v) => cfg.prod === 'dice' ? String(v) : MM.cardName(v);
-function mmOpen(){ mmS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function mmOpen(){ imcS = null; mmS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
 function mmStart(lvl, seed){
   const cfg = MM.LEVELS[lvl]; seed = seed != null ? seed : (Math.floor(Math.random()*2**32) >>> 0);
   mmS = {view:'play', lvl, cfg, g: MM.newRound(cfg, seed), q:{b:'', a:''}, msg:'', log:[]}; renderMMX();
@@ -7005,6 +7587,272 @@ function mmDone(){
   $('#mmsame').onclick = () => mmStart(S.lvl, S.g.seed);
 }
 
+/* ================= IMC OA PREP (Practice section; generators in imc.js) ================= */
+let imcS = null;
+const IMC_MODES = {web:{t:'Node-connection webs', s:'Letter+number nodes joined by solid, dashed and double lines. Each line style is one rule.', ico:'⬡', col:'#f2b84b'},
+  matrix:{t:'3×3 matrices', s:'Shapes, pointer rotation, shading, and letter/number arithmetic across rows and columns.', ico:'▦', col:'#7aa2ff'},
+  seq:{t:'Next in sequence', s:'Five frames with alternating letter jumps and shape changes. Pick the sixth.', ico:'→', col:'#4ec9a0'},
+  odd:{t:'Odd one out', s:'Five items, four share a letter/number or shape rule.', ico:'≠', col:'#ff8f6b'}};
+const IMC_PROMPT = {web: p => `Each line style applies one fixed rule to both the letter (A–Z, wrapping past Z) and the number. What is <b>?</b>${p.edges.some(e => e.ty === 'merge') ? ' <span style="color:#f2b84b">Orange arrows meeting at a node: that node is the sum of its parents.</span>' : ''}`,
+  matrix: () => 'Which cell completes the grid? Rules run across rows and/or down columns. The pointer shows rotation (0° = up).',
+  seq: () => 'Frames 1–5 run left to right, top row then bottom row. Which is frame 6? The pointer shows rotation (0° = up).', odd: () => 'Which is the odd one out?'};
+const imcStore = () => store.get('imc', {m:{}, mocks:[], opq:[]});
+const imcSave = d => store.set('imc', d);
+const AZHTML = `<div class="azs">${[0,1].map(r => `<div>${[...Array(13)].map((_,i) => { const n = r*13 + i + 1; return `<span><b>${String.fromCharCode(64+n)}</b>${n}</span>`; }).join('')}</div>`).join('')}</div>`;
+function imcOpen(){ mmS = null; imcS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function renderIMC(){ clearInterval(window._imct); kp = null; if (!imcS) return renderTrain(); ({home:imcHome, prac:imcPrac, mock:imcMock, mockEnd:imcMockEnd, opq:imcOPQ, opqEnd:imcOPQEnd, miss:imcMiss, prac2:imcPrac2, mock2:imcMock2, mock2End:imcMock2End})[imcS.view](); }
+function imcBump(mode, ok, secs){ const d = imcStore(), m = d.m[mode] = d.m[mode] || {n:0, ok:0, t:0}; m.n++; if (ok) m.ok++; m.t += secs; imcSave(d); markActive(); }
+function imcLogMiss(p, given){ const L = store.get('imc_miss', []); L.push({p, given, t: Date.now()}); store.set('imc_miss', L.slice(-80)); }
+const imcFmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+
+function imcHome(){
+  const d = imcStore(), miss = store.get('imc_miss', []), M2 = d.mocks2 || [];
+  const row = (id, ico, col, t, sub, extra) => `<button class="drill" data-im="${id}"><span class="ico" style="background:${col}">${ico}</span><span class="grow"><b>${t}</b><span class="mut small">${sub}${extra ? '<br>' + extra : ''}</span></span></button>`;
+  const st = k => { const m = d.m[k]; return m && m.n ? `${m.ok}/${m.n} right · ${Math.round(100*m.ok/m.n)}% · avg ${Math.round(m.t/m.n)}s` : ''; };
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow">IMC trader assessment</h1><button class="chip" id="imback">← Practice</button></div>
+    <p class="sub">Candidates describe IMC's SHL assessment (about 40 min) as a work-style questionnaire followed by SHL Verify Interactive Inductive Reasoning: up to 15 adaptive items in 18 minutes, with no going back and no maths. The item types below match the formats candidates and prep sites describe; the items themselves are generated, not real SHL questions.</p>
+    ${row('mock2','15','#b48cff','Full mock: 15 adaptive items, 18 min','Node sequences, shape sequences and button rules. Difficulty rises when you\'re right; you can\'t go back.', M2.length ? `Best ${Math.max(...M2.map(x => x.score))}/15 · last ${M2[M2.length-1].score}/15, ${M2[M2.length-1].hard} at level 3 · ${M2.length} mocks` : '')}
+    ${Object.entries(IMC2_MODES).map(([k,v]) => row(k, v.ico, v.col, (k === 'node' ? '★ ' : '') + v.t, v.s, st(k))).join('')}
+    ${row('opq','OPQ','#3a3f4b','Work-style questionnaire','Choose most and least like you in blocks of three. See your profile and consistency.', d.opq.length ? `Last consistency ${Math.round(100*d.opq[d.opq.length-1].cons)}%` : '')}
+    ${miss.length ? row('miss','↺','#ff6b6b',`Review misses (${miss.length})`,'Everything you got wrong, with the logic.','') : ''}
+    <details class="lib" style="margin-top:12px"><summary>Extra: older multiple-choice styles (matrices, odd one out, letter webs)</summary>
+      <p class="sub" style="margin-top:6px">Not reported in the current IMC test, but good general rule-finding practice.</p>
+      ${Object.entries(IMC_MODES).map(([k,v]) => row(k, v.ico, v.col, v.t, v.s, st(k))).join('')}
+      ${row('mock','15','#3a3f4b','Old-style mock (multiple choice)','15 in 18 min using the extra types.', d.mocks.length ? `Best ${Math.max(...d.mocks.map(x => x.score))}/15` : '')}</details>
+    <details class="lib"><summary>How to solve these fast</summary><div class="small mut" style="line-height:1.55">
+      <p><b>Node sequences:</b> read the token one character position at a time. Convert letters with the strip above. Look for constant, step, alternating value, or alternating jump. Wrong nodes usually get one position wrong, often the phase of an alternation.</p>
+      <p><b>Shape sequences:</b> track one coloured piece at a time: where is it in frames 1 to 4 and how far does it move? Then check colour switches. Each wrong option breaks exactly one piece.</p>
+      <p><b>Button rules:</b> during the one-time demo, write a word per button (A rot90, B colour, C +side …). Then compare before and after one attribute at a time and tick the button for each change.</p>
+      <p><b>Pace:</b> about 72 s per item. If you're stuck after 90 s, commit to your best answer and move on.</p></div></details>`;
+  $('#imback').onclick = () => { imcS = null; renderTrain(); };
+  app.querySelectorAll('[data-im]').forEach(b => b.onclick = () => { const k = b.dataset.im;
+    if (k === 'mock2') imc2StartMock(); else if (k === 'mock') imcStartMock(); else if (is2(k)) imc2New(k, 2); else if (k === 'opq'){ imcS = {view:'opq', blocks: IMC.genOPQ(), ans: [], i: 0}; renderIMC(); } else if (k === 'miss'){ imcS = {view:'miss'}; renderIMC(); } else imcNew(k); });
+}
+function imcNew(mode){ imcS = {view:'prac', mode, p: IMC.GEN[mode](), sel: null, rev: false, t0: Date.now(), streak: (imcS && imcS.streak) || 0}; renderIMC(); }
+function imcOptsHTML(p, sel, showAns){
+  const cls = i => showAns ? (i === p.ans ? 'ok' : i === sel ? 'bad' : '') : (i === sel ? 'on' : '');
+  return `<div class="imo imo-${p.mode}">${p.opts.map((o,i) => `<button class="${cls(i)}" data-o="${i}">${p.mode === 'web' ? `<span class="mut small">${'ABCD'[i]}</span>${o}` : p.mode === 'odd' ? o : `<span class="olab">${'ABCD'[i]}</span>${IMC.optHTML(p,i)}`}</button>`).join('')}</div>`;
+}
+const imcStepsHTML = p => `<div class="card small imsteps"><b>Step-by-step logic</b>${IMC.STEPS[p.mode](p).map(s => `<div class="st">${s}</div>`).join('')}</div>`;
+function imcPrac(){
+  const S = imcS, p = S.p, done = S.sel != null;
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow" style="font-size:20px">${IMC_MODES[p.mode].t}</h1><span class="pill" id="imct">0:00</span><button class="chip" id="imhome">Back</button></div>
+    <p class="sub" style="margin-bottom:8px">${IMC_PROMPT[p.mode](p)}</p>
+    <div class="card" style="padding:10px">${IMC.SVG[p.mode](p)}</div>
+    ${imcOptsHTML(p, S.sel, done || S.rev)}
+    ${done ? `<div class="fb ${S.sel === p.ans ? 'ok' : 'no'}" style="margin-top:10px">${S.sel === p.ans ? `✓ Correct in ${S.secs}s${S.secs > 72 ? ' (mock pace is 72s)' : ''}` : `✗ Answer: ${'ABCDE'[p.ans]}`}${S.streak > 1 ? ` · streak ${S.streak}` : ''}</div>` : S.rev ? '<div class="fb" style="margin-top:10px">Revealed before answering: not scored.</div>' : ''}
+    <div class="row" style="gap:8px;margin-top:12px"><button class="big ghost" id="imrev" style="margin:0">Reveal step-by-step logic</button><button class="big" id="imnew" style="margin:0">↻ New puzzle</button></div>
+    <div id="imst">${S.rev ? imcStepsHTML(p) : ''}</div>`;
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  $('#imnew').onclick = () => imcNew(p.mode);
+  $('#imrev').onclick = () => { S.rev = true; imcPrac(); $('#imst').scrollIntoView({behavior:'smooth', block:'start'}); };
+  if (!done && !S.rev) app.querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+    S.sel = +b.dataset.o; S.secs = Math.round((Date.now() - S.t0)/1000); const ok = S.sel === p.ans;
+    S.streak = ok ? (S.streak||0) + 1 : 0; imcBump(p.mode, ok, S.secs); if (!ok){ imcLogMiss(p, S.sel); S.rev = true; } imcPrac();
+  });
+  if (!done && !S.rev){ const tick = () => { const el = $('#imct'); if (!el || cur !== 'train' || imcS !== S) return clearInterval(window._imct); const s = (Date.now() - S.t0)/1000; el.textContent = imcFmt(s); el.style.color = s > 72 ? 'var(--warn)' : ''; }; tick(); window._imct = setInterval(tick, 500); }
+  else $('#imct').textContent = S.secs != null ? imcFmt(S.secs) : '—';
+}
+function imcStartMock(){
+  const modes = shuffle(['web','web','web','web','web','web','web','matrix','matrix','matrix','seq','seq','seq','odd','odd']);
+  imcS = {view:'mock', qs: modes.map(m => IMC.GEN[m]()), sel: Array(15).fill(null), i: 0, start: Date.now(), end: Date.now() + 18*60e3, tq: Array(15).fill(0), tIn: Date.now()};
+  renderIMC();
+}
+function imcMock(){
+  const S = imcS, p = S.qs[S.i];
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow" style="font-size:20px">Question ${S.i+1} / 15</h1><span class="pill" id="imct"></span><button class="chip" id="imquit">Quit</button></div>
+    <div class="imdots">${S.qs.map((_,i) => `<button data-q="${i}" class="${i === S.i ? 'cur' : ''} ${S.sel[i] != null ? 'ans' : ''}">${i+1}</button>`).join('')}</div>
+    <p class="sub" style="margin:8px 0">${IMC_PROMPT[p.mode](p)}</p>
+    <div class="card" style="padding:10px">${IMC.SVG[p.mode](p)}</div>
+    ${imcOptsHTML(p, S.sel[S.i], false)}
+    <div class="row" style="gap:8px;margin-top:12px"><button class="big ghost" id="imprev" style="margin:0" ${S.i ? '' : 'disabled'}>← Prev</button>${S.i < 14 ? `<button class="big" id="imnext" style="margin:0">Next →</button>` : `<button class="big" id="imfin" style="margin:0">Finish</button>`}</div>
+    ${S.i < 14 ? `<button class="big ghost" id="imfin2">Finish test</button>` : ''}`;
+  const go = i => { S.tq[S.i] += Date.now() - S.tIn; S.tIn = Date.now(); S.i = i; imcMock(); };
+  app.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { S.sel[S.i] = +b.dataset.o; app.querySelectorAll('[data-o]').forEach(x => x.classList.toggle('on', x === b)); app.querySelector(`[data-q="${S.i}"]`).classList.add('ans'); });
+  app.querySelectorAll('[data-q]').forEach(b => b.onclick = () => go(+b.dataset.q));
+  const pv = $('#imprev'); if (S.i) pv.onclick = () => go(S.i - 1);
+  const nx = $('#imnext'); if (nx) nx.onclick = () => go(S.i + 1);
+  const fin = () => { const un = S.sel.filter(x => x == null).length; if (un && !confirm(`${un} unanswered. Finish anyway?`)) return; imcFinishMock(); };
+  [$('#imfin'), $('#imfin2')].forEach(b => b && (b.onclick = fin));
+  $('#imquit').onclick = () => { if (confirm('Quit this mock? It won\'t be saved.')){ imcS = {view:'home'}; renderIMC(); } };
+  const tick = () => { if (cur !== 'train' || imcS !== S) return clearInterval(window._imct); const left = Math.max(0, (S.end - Date.now())/1000), el = $('#imct'); if (el){ el.textContent = imcFmt(left); el.style.color = left < 120 ? 'var(--bad)' : ''; } if (left <= 0){ clearInterval(window._imct); toast('Time up'); imcFinishMock(); } };
+  clearInterval(window._imct); tick(); window._imct = setInterval(tick, 500);
+}
+function imcFinishMock(){
+  const S = imcS; clearInterval(window._imct); S.tq[S.i] += Date.now() - S.tIn;
+  const score = S.qs.filter((p,i) => S.sel[i] === p.ans).length, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
+  const d = imcStore(); d.mocks.push({d: today(), score, secs}); d.mocks = d.mocks.slice(-100);
+  S.qs.forEach((p,i) => { const m = d.m[p.mode] = d.m[p.mode] || {n:0, ok:0, t:0}; m.n++; if (S.sel[i] === p.ans) m.ok++; m.t += Math.round(S.tq[i]/1000); if (S.sel[i] !== p.ans) imcLogMiss(p, S.sel[i]); });
+  imcSave(d); markActive();
+  imcS = {view:'mockEnd', qs: S.qs, sel: S.sel, tq: S.tq, score, secs, open: {}}; renderIMC();
+}
+function imcMockEnd(){
+  const S = imcS, by = {};
+  S.qs.forEach((p,i) => { const b = by[p.mode] = by[p.mode] || {n:0, ok:0}; b.n++; if (S.sel[i] === p.ans) b.ok++; });
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow">Mock result</h1><button class="chip" id="imhome">IMC home</button></div>
+    <div class="stat"><div><b>${S.score}/15</b><span>score</span></div><div><b>${imcFmt(S.secs)}</b><span>time used</span></div><div><b>${Math.round(S.tq.reduce((a,b)=>a+b,0)/15000)}s</b><span>avg / question</span></div></div>
+    <div class="list">${Object.entries(by).map(([k,b]) => `<div class="li"><span>${IMC_MODES[k].t}</span><span class="mut">${b.ok}/${b.n}</span></div>`).join('')}</div>
+    <h2>Review</h2>${S.qs.map((p,i) => { const ok = S.sel[i] === p.ans; return `<div class="card small"><button class="gh" data-rq="${i}" style="width:100%;display:flex;justify-content:space-between;background:none;padding:0"><b>${i+1}. ${IMC_MODES[p.mode].t}</b><span style="color:${ok ? 'var(--good)' : 'var(--bad)'}">${ok ? '✓' : S.sel[i] == null ? 'blank' : '✗'} · ${Math.round(S.tq[i]/1000)}s ▾</span></button>${S.open[i] ? `<div style="margin-top:10px">${IMC.SVG[p.mode](p)}${imcOptsHTML(p, S.sel[i], true)}${imcStepsHTML(p)}</div>` : ''}</div>`; }).join('')}
+    <button class="big" id="imagain">New mock</button>`;
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  $('#imagain').onclick = imcStartMock;
+  app.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => { const i = +b.dataset.rq; S.open[i] = !S.open[i]; const y = window.scrollY; imcMockEnd(); window.scrollTo(0, y); });
+}
+function imcMiss(){
+  const L = store.get('imc_miss', []).slice().reverse();
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow">Misses</h1><button class="chip" id="imhome">IMC home</button></div><p class="sub">Newest first. Use "Similar" for a fresh puzzle of the same type.</p>
+    ${L.map((m,i) => `<div class="card small"><span class="tag">${(is2(m.p.mode) ? IMC2_MODES : IMC_MODES)[m.p.mode].t} · ${new Date(m.t).toLocaleDateString()}</span>${is2(m.p.mode) ? imc2Static(m.p, m.given) : IMC.SVG[m.p.mode](m.p) + imcOptsHTML(m.p, m.given, true) + imcStepsHTML(m.p)}<button class="chip" data-sim="${m.p.mode}" style="margin-top:8px">Similar</button></div>`).join('')}
+    ${L.length ? '<button class="big ghost" id="imclr">Clear misses</button>' : '<div class="card empty">No misses.</div>'}`;
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  app.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => is2(b.dataset.sim) ? imc2New(b.dataset.sim, 2) : imcNew(b.dataset.sim));
+  const c = $('#imclr'); if (c) c.onclick = () => { if (confirm('Clear all misses?')){ store.set('imc_miss', []); imcMiss(); } };
+}
+function imcOPQ(){
+  const S = imcS, b = S.blocks[S.i], a = S.ans[S.i] || {};
+  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">Work style ${S.i+1} / ${S.blocks.length}</h1><button class="chip" id="imhome">Quit</button></div>
+    <p class="sub">Pick the statement <b>most</b> like you and the one <b>least</b> like you. Untimed. Answer as you actually are: firms use this for fit, and an inconsistent or "ideal" profile gets flagged. Use this to learn the format and check your consistency, not to game it.</p>
+    <div class="bar"><i style="width:${100*S.i/S.blocks.length}%"></i></div>
+    ${b.map((x,j) => `<div class="card opqr"><div style="font-size:16px">${esc(x.s)}</div><div class="row" style="gap:8px;margin-top:10px"><button class="chip ${a.most === j ? 'on' : ''}" data-m="${j}">Most like me</button><button class="chip ${a.least === j ? 'on bad' : ''}" data-l="${j}">Least like me</button></div></div>`).join('')}
+    <div class="row" style="gap:8px"><button class="big ghost" id="opprev" ${S.i ? '' : 'disabled'}>← Back</button><button class="big" id="opnext" ${a.most != null && a.least != null ? '' : 'disabled style="opacity:.45"'}>${S.i === S.blocks.length - 1 ? 'See profile' : 'Next →'}</button></div>`;
+  const set = (k, j) => { const o = S.ans[S.i] = S.ans[S.i] || {}; o[k] = j; const other = k === 'most' ? 'least' : 'most'; if (o[other] === j) o[other] = null; imcOPQ(); };
+  app.querySelectorAll('[data-m]').forEach(x => x.onclick = () => set('most', +x.dataset.m));
+  app.querySelectorAll('[data-l]').forEach(x => x.onclick = () => set('least', +x.dataset.l));
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  if (S.i) $('#opprev').onclick = () => { S.i--; imcOPQ(); };
+  const nx = $('#opnext'); if (a.most != null && a.least != null) nx.onclick = () => { if (S.i < S.blocks.length - 1){ S.i++; imcOPQ(); } else { const r = IMC.scoreOPQ(S.blocks, S.ans); const d = imcStore(); d.opq.push({d: today(), cons: r.consistency, prof: r.prof.map(x => [x.t, +x.v.toFixed(2)])}); d.opq = d.opq.slice(-50); imcSave(d); imcS = {view:'opqEnd', r}; renderIMC(); } };
+}
+function imcOPQEnd(){
+  const r = imcS.r, FOCUS = ['AR','CU','CH'];
+  app.innerHTML = `<div class="row"><h1 class="grow">Your work-style profile</h1><button class="chip" id="imhome">IMC home</button></div>
+    <div class="stat" style="grid-template-columns:1fr"><div><b>${Math.round(100*r.consistency)}%</b><span>consistency: how often you ranked the same two traits the same way when they met again (random answering ≈ 65–70%)</span></div></div>
+    <h2>Trait profile</h2>${r.prof.map(x => `<div class="list"><div class="li"><span>${FOCUS.includes(x.t) ? '<b>' + x.n + '</b> ★' : x.n}</span><span class="mut">${Math.round(100*x.v)}%</span></div><div class="bar"><i style="width:${100*x.v}%;background:${FOCUS.includes(x.t) ? 'var(--acc)' : 'var(--mut)'}"></i></div></div>`).join('')}
+    <p class="sub" style="margin-top:10px">★ = the traits you asked to test: analytical rigour, calm under uncertainty and collaborative humility. Scores are relative: in forced-choice tests, ranking one trait higher always pushes another down.</p>
+    ${r.clashes.length ? `<h2>Inconsistent pairs</h2><div class="card small">${r.clashes.map(([a,b]) => `You ranked <b>${IMC.TRAITS[a].n}</b> and <b>${IMC.TRAITS[b].n}</b> in different orders in different blocks.`).join('<br>')}<p class="mut" style="margin-bottom:0">Some of this is normal: statements differ. Lots of clashes usually means answering for an imagined ideal rather than yourself.</p></div>` : ''}
+    <button class="big" id="imagain">Take it again</button>`;
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  $('#imagain').onclick = () => { imcS = {view:'opq', blocks: IMC.genOPQ(), ans: [], i: 0}; renderIMC(); };
+}
+
+/* ================= IMC: SHL interactive-style items (node / shape / buttons) ================= */
+const IMC2_MODES = {node:{t:'Node sequences', s:'Letter/number tokens scattered on a canvas. Tap the next node(s) to continue the chain.', ico:'⟿', col:'#f2b84b'},
+  shape:{t:'Shape sequences', s:'Four zoned figures. Colour in frame 5, or pick it from four options.', ico:'◔', col:'#7aa2ff'},
+  btn:{t:'Button rules', s:'Memorise six buttons once, then work out which ones turned a shape from before to after.', ico:'⊞', col:'#4ec9a0'}};
+const is2 = m => m in IMC2_MODES;
+function imc2State(p){ return p.mode === 'node' ? {pick: []} : p.mode === 'shape' ? (p.variant === 'paint' ? {zones: Array(IMC2.KIND[p.kind].n).fill(0)} : {sel: null}) : {phase: 'learn', presses: []}; }
+function imc2Ready(p, st){ return p.mode === 'node' ? st.pick.length === p.r : p.mode === 'shape' ? (p.variant === 'paint' ? st.zones.some(Boolean) : st.sel != null) : st.phase === 'ask' && st.presses.length > 0; }
+function imc2Resp(p, st){ return p.mode === 'node' ? st.pick : p.mode === 'shape' ? (p.variant === 'paint' ? st.zones : st.sel) : st.presses; }
+function imc2Body(p, st, done){
+  const ok = done && IMC2.CHECK[p.mode](p, imc2Resp(p, st));
+  if (p.mode === 'node') return `<p class="sub" style="margin-bottom:8px">Continue the chain from the <b style="color:#f2b84b">orange-ringed</b> node: tap the next <b>${p.r}</b> node${p.r > 1 ? 's in order' : ''}. Each character position follows its own rule.${done ? '' : ' Tap your last pick again to undo.'}</p>
+    <div class="card" style="padding:8px">${IMC2.nodeSVG(p, st.pick, done)}</div>${done ? `<div class="small mut" style="margin-top:6px">Green dashed = correct continuation${ok ? '' : `: ${p.seq.slice(p.c).join(' → ')}`}.</div>` : ''}`;
+  if (p.mode === 'shape'){
+    const frames = `<div class="card" style="padding:8px">${IMC2.shapeSVG(p)}</div>`;
+    if (p.variant === 'paint') return `<p class="sub" style="margin-bottom:8px">Colour frame 5. Tap a zone to cycle <span style="color:#5b8def">blue</span> → <span style="color:#f2a33a">orange</span> → striped → empty.</p>${frames}
+      <div class="row" style="gap:10px;align-items:flex-start"><div class="grow" style="text-align:center"><div class="small mut">Your frame 5</div>${IMC2.paintSVG(p, st.zones, done)}</div>${done ? `<div class="grow" style="text-align:center"><div class="small" style="color:var(--good)">Correct frame 5</div>${IMC2.paintSVG(p, p.F[4], true)}</div>` : ''}</div>
+      ${done ? '' : '<button class="chip" id="i2clr" style="margin-top:6px">Clear</button>'}`;
+    return `<p class="sub" style="margin-bottom:8px">Which figure is frame 5?</p>${frames}<div class="imo imo-shape">${p.opts.map((z,i) => `<button data-o="${i}" class="${done ? (i === p.ans ? 'ok' : i === st.sel ? 'bad' : '') : i === st.sel ? 'on' : ''}"><span class="olab">${'ABCD'[i]}</span>${IMC2.optSVG(p, z)}</button>`).join('')}</div>`;
+  }
+  if (st.phase === 'learn') return `<p class="sub" style="margin-bottom:8px"><b>Memorise what each button does.</b> You see this once. In the real test, jot one or two words per button on paper.</p>${IMC2.btnDemoHTML(p)}<button class="big" id="i2learned">I've memorised them →</button>`;
+  return `<p class="sub" style="margin-bottom:8px">Which buttons turned BEFORE into AFTER? Each button at most once; order doesn't matter.</p><div class="card" style="padding:8px">${IMC2.btnQSVG(p)}</div>
+    <div class="bbtns">${IMC2.BLAB.map((l,i) => `<button data-b="${i}" class="${st.presses.includes(i) ? 'on' : ''} ${done ? (p.press.includes(i) ? 'right' : st.presses.includes(i) ? 'wrong' : '') : ''}" style="--bc:${IMC2.BCOL[i]}">${l}</button>`).join('')}</div>
+    ${done ? `<div class="small mut" style="margin-top:8px">The buttons again:</div>${IMC2.btnDemoHTML(p)}` : ''}`;
+}
+function imc2Bind(p, st, re, done){
+  if (done) return;
+  if (p.mode === 'node') app.querySelectorAll('.nodesvg [data-n]').forEach(g => g.onclick = () => { const j = +g.dataset.n, n = p.nodes[j]; if (n.role === 'chain') return;
+    if (st.pick[st.pick.length-1] === j) st.pick.pop(); else if (!st.pick.includes(j) && st.pick.length < p.r) st.pick.push(j); re(); });
+  if (p.mode === 'shape'){
+    app.querySelectorAll('[data-z]').forEach(z => z.onclick = () => { const k = +z.dataset.z; st.zones[k] = (st.zones[k] + 1) % 4; re(); });
+    app.querySelectorAll('.imo-shape [data-o]').forEach(b => b.onclick = () => { st.sel = +b.dataset.o; re(); });
+    const c = $('#i2clr'); if (c) c.onclick = () => { st.zones.fill(0); re(); };
+  }
+  if (p.mode === 'btn'){
+    const l = $('#i2learned'); if (l) l.onclick = () => { st.phase = 'ask'; re(); };
+    app.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { const i = +b.dataset.b; st.presses = st.presses.includes(i) ? st.presses.filter(x => x !== i) : [...st.presses, i]; re(); });
+  }
+}
+/* ---- practice ---- */
+function imc2New(mode, lv){ const L = lv || (imcS && imcS.lv) || 2; const p = IMC2.GEN[mode](L); imcS = {view:'prac2', mode, lv: L, p, st: imc2State(p), done: false, t0: Date.now(), streak: (imcS && imcS.streak) || 0}; renderIMC(); }
+function imcPrac2(){
+  const S = imcS, p = S.p, ok = S.done && IMC2.CHECK[p.mode](p, imc2Resp(p, S.st));
+  const y = window.scrollY;
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow" style="font-size:20px">${IMC2_MODES[p.mode].t}</h1><span class="pill" id="imct">0:00</span><button class="chip" id="imhome">Back</button></div>
+    <div class="chips" style="margin-bottom:6px">${[1,2,3].map(l => `<button class="chip ${S.lv === l ? 'on' : ''}" data-lv="${l}">Level ${l}</button>`).join('')}</div>
+    <div id="i2body">${imc2Body(p, S.st, S.done)}</div>
+    ${S.done ? S.revealed ? '<div class="fb">Revealed: not scored.</div>' : `<div class="fb ${ok ? 'ok' : 'no'}">${ok ? `✓ Correct in ${S.secs}s${S.secs > 72 ? ' (test pace is about 72 s)' : ''}` : '✗ Not quite: see the logic below.'}${S.streak > 1 ? ` · streak ${S.streak}` : ''}</div>` : ''}
+    ${p.mode === 'btn' && S.st.phase === 'learn' && !S.done ? '' : `<div class="row" style="gap:8px;margin-top:12px">${S.done ? `<button class="big" id="imnew" style="margin:0">↻ New puzzle</button>` : `<button class="big ghost" id="imrev" style="margin:0">Reveal logic</button><button class="big" id="i2sub" style="margin:0" ${imc2Ready(p, S.st) ? '' : 'disabled style="margin:0;opacity:.45"'}>Submit</button>`}</div>`}
+    ${S.done ? '' : '<button class="chip" id="imskip" style="margin-top:8px">↻ Skip: new puzzle</button>'}
+    <div id="imst">${S.done ? `<div class="card small imsteps"><b>Step-by-step logic</b>${IMC2.STEPS[p.mode](p).map(s => `<div class="st">${s}</div>`).join('')}</div>` : ''}</div>`;
+  window.scrollTo(0, y);
+  const re = () => imcPrac2();
+  imc2Bind(p, S.st, re, S.done);
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { imcS.lv = +b.dataset.lv; imc2New(p.mode, +b.dataset.lv); });
+  const nw = $('#imnew'); if (nw) nw.onclick = () => imc2New(p.mode);
+  const sk = $('#imskip'); if (sk) sk.onclick = () => imc2New(p.mode);
+  const rv = $('#imrev'); if (rv) rv.onclick = () => { S.done = true; S.revealed = true; S.secs = Math.round((Date.now() - S.t0)/1000); if (p.mode === 'btn') S.st.phase = 'ask'; imcPrac2(); };
+  const sb = $('#i2sub'); if (sb && imc2Ready(p, S.st)) sb.onclick = () => {
+    S.done = true; S.secs = Math.round((Date.now() - S.t0)/1000); const good = IMC2.CHECK[p.mode](p, imc2Resp(p, S.st));
+    S.streak = good ? S.streak + 1 : 0; imcBump(p.mode, good, S.secs); if (!good) imcLogMiss(p, JSON.parse(JSON.stringify(S.st)));
+    imcPrac2(); const st = $('#imst'); if (st && !good) st.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  if (!S.done){ const tick = () => { const el = $('#imct'); if (!el || cur !== 'train' || imcS !== S) return clearInterval(window._imct); const s = (Date.now() - S.t0)/1000; el.textContent = imcFmt(s); el.style.color = s > 72 ? 'var(--warn)' : ''; }; clearInterval(window._imct); tick(); window._imct = setInterval(tick, 500); }
+  else $('#imct').textContent = imcFmt(S.secs || 0);
+}
+/* ---- realistic mock: 15 adaptive items, 18 minutes, no going back ---- */
+function imc2StartMock(){
+  imcS = {view:'mock2', i: 0, lv: 2, items: [], start: Date.now(), end: Date.now() + 18*60e3};
+  imc2MockNext(); renderIMC();
+}
+function imc2MockNext(){
+  const S = imcS, prevTypes = S.items.slice(-2).map(x => x.p.mode);
+  let m; do m = pick(['node','node','shape','shape','shape','btn']); while (prevTypes.length === 2 && prevTypes.every(x => x === m));
+  const p = IMC2.GEN[m](S.lv); S.cur = {p, st: imc2State(p), t0: Date.now(), lv: S.lv};
+}
+function imcMock2(){
+  const S = imcS, c = S.cur, p = c.p, y = window.scrollY;
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow" style="font-size:20px">Question ${S.i+1} / 15</h1><span class="pill" id="imct"></span><button class="chip" id="imquit">Quit</button></div>
+    <div class="bar" style="margin-bottom:8px"><i style="width:${100*S.i/15}%"></i></div>
+    <div id="i2body">${imc2Body(p, c.st, false)}</div>
+    ${p.mode === 'btn' && c.st.phase === 'learn' ? '' : `<button class="big" id="i2sub" ${imc2Ready(p, c.st) ? '' : 'disabled style="opacity:.45"'}>${S.i === 14 ? 'Submit and finish' : 'Submit →'}</button>`}
+    <p class="small mut" style="margin-top:8px">Like the real test you can't go back, and difficulty adapts to your answers.</p>`;
+  window.scrollTo(0, y);
+  imc2Bind(p, c.st, imcMock2, false);
+  $('#imquit').onclick = () => { if (confirm('Quit this mock? It won\'t be saved.')){ imcS = {view:'home'}; renderIMC(); } };
+  const sb = $('#i2sub'); if (sb && imc2Ready(p, c.st)) sb.onclick = () => {
+    const good = IMC2.CHECK[p.mode](p, imc2Resp(p, c.st));
+    S.items.push({p, st: JSON.parse(JSON.stringify(c.st)), ok: good, secs: Math.round((Date.now() - c.t0)/1000), lv: c.lv});
+    S.lv = Math.max(1, Math.min(3, S.lv + (good ? 1 : -1))); S.i++;
+    if (S.i >= 15) return imc2FinishMock();
+    imc2MockNext(); window.scrollTo(0,0); imcMock2();
+  };
+  const tick = () => { if (cur !== 'train' || imcS !== S) return clearInterval(window._imct); const left = Math.max(0, (S.end - Date.now())/1000), el = $('#imct'); if (el){ el.textContent = imcFmt(left); el.style.color = left < 120 ? 'var(--bad)' : ''; } if (left <= 0){ clearInterval(window._imct); toast('Time up'); imc2FinishMock(); } };
+  clearInterval(window._imct); tick(); window._imct = setInterval(tick, 500);
+}
+function imc2FinishMock(){
+  const S = imcS; clearInterval(window._imct);
+  const score = S.items.filter(x => x.ok).length, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
+  const hard = S.items.filter(x => x.ok && x.lv === 3).length;
+  const d = imcStore(); d.mocks2 = d.mocks2 || []; d.mocks2.push({d: today(), score, n: S.items.length, secs, hard}); d.mocks2 = d.mocks2.slice(-100);
+  S.items.forEach(x => { const m = d.m[x.p.mode] = d.m[x.p.mode] || {n:0, ok:0, t:0}; m.n++; if (x.ok) m.ok++; m.t += x.secs; if (!x.ok) imcLogMiss(x.p, x.st); });
+  imcSave(d); markActive();
+  imcS = {view:'mock2End', items: S.items, score, secs, hard, open: {}}; renderIMC();
+}
+function imcMock2End(){
+  const S = imcS, n = S.items.length, by = {};
+  S.items.forEach(x => { const b = by[x.p.mode] = by[x.p.mode] || {n:0, ok:0}; b.n++; if (x.ok) b.ok++; });
+  app.innerHTML = AZHTML + `<div class="row"><h1 class="grow">Mock result</h1><button class="chip" id="imhome">IMC home</button></div>
+    <div class="stat"><div><b>${S.score}/${n}</b><span>correct${n < 15 ? ` (${15-n} not reached)` : ''}</span></div><div><b>${S.hard}</b><span>right at level 3</span></div><div><b>${imcFmt(S.secs)}</b><span>time used</span></div></div>
+    <p class="sub" style="margin-top:8px">SHL scores adaptive tests by the difficulty you reach, not only the raw count, so right answers at level 3 matter most. Not reaching all 15 costs more than a wrong guess.</p>
+    <div class="list">${Object.entries(by).map(([k,b]) => `<div class="li"><span>${IMC2_MODES[k].t}</span><span class="mut">${b.ok}/${b.n}</span></div>`).join('')}</div>
+    <h2>Review</h2>${S.items.map((x,i) => `<div class="card small"><button data-rq="${i}" style="width:100%;display:flex;justify-content:space-between;background:none;padding:0;color:inherit"><b>${i+1}. ${IMC2_MODES[x.p.mode].t} · L${x.lv}</b><span style="color:${x.ok ? 'var(--good)' : 'var(--bad)'}">${x.ok ? '✓' : '✗'} · ${x.secs}s ▾</span></button>${S.open[i] ? `<div style="margin-top:10px">${imc2Static(x.p, x.st)}</div>` : ''}</div>`).join('')}
+    <button class="big" id="imagain">New mock</button>`;
+  $('#imhome').onclick = () => { imcS = {view:'home'}; renderIMC(); };
+  $('#imagain').onclick = imc2StartMock;
+  app.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => { const i = +b.dataset.rq; S.open[i] = !S.open[i]; const y = window.scrollY; imcMock2End(); window.scrollTo(0, y); });
+}
+function imc2Static(p, st){ const s = {...st}; if (p.mode === 'btn') s.phase = 'ask'; return imc2Body(p, s, true).replace(/<p class="sub"[^>]*>[\s\S]*?<\/p>/, '') + `<div class="card small imsteps"><b>Step-by-step logic</b>${IMC2.STEPS[p.mode](p).map(t => `<div class="st">${t}</div>`).join('')}</div>`; }
+
 /* ================= REVIEW (mistakes + guides) ================= */
 let rvw = {view:'session', cat:'all', drill:null};
 function renderReview(){
@@ -7122,7 +7970,7 @@ function renderMore(host){
     <p class="sub" style="margin-top:14px">${CARDS.length} cards · ${MCB.length} multiple-choice · ${GENS.length} problem generators.</p>`;
   $('#addc').onclick = () => { const q=$('#cq').value.trim(), a=$('#ca').value.trim(); if (!q||!a) return toast('Fill in both sides'); const custom=store.get('custom',[]); const c={id:hash('mine'+q+Date.now()), q, a}; custom.push(c); store.set('custom',custom); if (!DECKS.find(d=>d.id==='mine')) DECKS.push({id:'mine',title:'My cards',cat:'mine'}); CARDS.push({...c,deck:'mine',cat:'mine'}); rv.queue=null; $('#cq').value=''; $('#ca').value=''; toast('Card added'); };
   $('#saves').onclick = () => { settings.newPerDay=Math.max(0,+$('#snew').value||0); settings.sprintSecs=+$('#ssec').value; settings.autoNext=$('#sauto').checked; store.set('settings',settings); rv.queue=null; toast('Saved'); };
-  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','mm_rounds','mmset','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
+  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','mm_rounds','mmset','imc','imc_miss','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
   $('#doimp').onclick = () => { try{ const o=JSON.parse($('#imp').value); if (!o.edge) throw 0; Object.entries(o.data).forEach(([k,v])=>{ if (v!==null) store.set(k,v); }); toast('Restored, reloading'); setTimeout(()=>location.reload(),600); }catch(e){ toast("That doesn't look like a backup"); } };
 }
 
@@ -7514,7 +8362,7 @@ function tab(t){
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; if (b.dataset.tab==='learn' && cur==='learn') ln.lesson=null; tab(b.dataset.tab); });
 if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost') && !location.hostname.endsWith('claude.ai') && window.top===window){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS, COURSES, practicePool, SIMS, allLessons};
-window.__mmS = () => mmS;
+window.__mmS = () => mmS; window.__imcS = () => imcS;
 tab('learn');
 })();
 
