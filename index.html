@@ -209,6 +209,20 @@ pre.hlb .tk,pre.hlb .tq,pre.hlb .tt{font-weight:600}
 .bbtns button.on{background:var(--bc);color:#0b1020}
 .bbtns button.right{box-shadow:0 0 0 3px var(--good)} .bbtns button.wrong{box-shadow:0 0 0 3px var(--bad)}
 .paint path{transition:fill .1s}
+
+/* ---- firm OAs ---- */
+.fmo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fmo button{min-height:68px;border-radius:14px;background:var(--panel2);border:2px solid var(--line);font:700 22px var(--mono);padding:8px 4px;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.fmo button:active{background:var(--line)}
+.fmo button.on{border-color:var(--acc);background:rgba(122,162,255,.14)}
+.fmo button.ok{border-color:var(--good);background:rgba(78,201,160,.16)}
+.fmo button.bad{border-color:var(--bad);background:rgba(255,107,107,.13)}
+.seqt{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0 16px}
+.seqt span{font:700 22px var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:44px;text-align:center}
+.seqt .qm{border-color:var(--acc);color:var(--acc)}
+.seqt.sm{justify-content:flex-start;margin:8px 0;gap:5px} .seqt.sm span{font-size:15px;padding:4px 7px;min-width:0}
+.imdots button.flg{box-shadow:inset 0 -3px 0 var(--warn)}
+#calcin{width:100%;margin-top:8px}
 </style>
 </head>
 <body>
@@ -6751,6 +6765,249 @@ const IMC2 = (function(){
 })();
 if (typeof module !== 'undefined') module.exports = IMC2;
 
+/* ================= Firm OA generators: Flow Traders (mental maths, sequences) and SIG (problem solving). Pure, offline. ================= */
+const OA = (function(){
+  const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const shuffle = a => { for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  const gcd = (a,b) => { a = Math.abs(a); b = Math.abs(b); while (b){ [a,b] = [b, a%b]; } return a || 1; };
+  const F = (n, d=1) => { if (d < 0){ n = -n; d = -d; } const g = gcd(n,d); return {n: n/g, d: d/g}; };
+  const add = (a,b) => F(a.n*b.d + b.n*a.d, a.d*b.d), sub = (a,b) => F(a.n*b.d - b.n*a.d, a.d*b.d), mul = (a,b) => F(a.n*b.n, a.d*b.d), div = (a,b) => F(a.n*b.d, a.d*b.n);
+  const val = f => f.n/f.d, fs = f => f.d === 1 ? String(f.n) : `${f.n}/${f.d}`;
+  const C = (n,k) => { if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r*(n-k+i)/i; return Math.round(r); };
+  const fact = n => n <= 1 ? 1 : n*fact(n-1);
+  function dec(f){ let k = 0, p = 1; while (p % f.d !== 0){ p *= 10; k++; if (k > 9) return null; } const m = Math.round(Math.abs(f.n)*p/f.d); let s = String(m).padStart(k+1, '0'); if (k) s = s.slice(0,-k) + '.' + s.slice(-k); return (f.n < 0 ? '−' : '') + s; }
+  const D = (n, s) => F(n, 10**s);
+  const show = f => { const d = dec(f); return d != null && d.length <= 9 ? d : fs(f); };
+
+  /* =================== FLOW TRADERS: MENTAL MATHS (multiple choice) =================== */
+  const FM_TYPES = {int:'Integers', dec:'Decimals', frac:'Fractions', pct:'Percentages', dec2:'2-digit decimal ×', chain:'Chained ×'};
+  const TIP = {
+    int:'Round one number, compute, then correct. Check the last digit first: it often kills two options.',
+    dec:'Ignore the points, multiply the integers, then place the decimal by counting digits after the points.',
+    frac:'Cross-multiply for + and −: a/b ± c/d = (ad ± bc)/bd. For ÷ flip the second fraction. Then reduce.',
+    pct:'Build from 10% and 1% (or 25% = ÷4, 12.5% = ÷8).',
+    dec2:'Estimate the size first (e.g. 2.4 × 3.5 ≈ 8), then use the last digit to choose between close options.',
+    chain:'Reorder to make a round number first (4 × 25, 2 × 15, 5 × 12), then multiply by what is left.'};
+  function fmRaw(type){
+    const o = rnd(0,3);
+    if (type === 'int'){
+      if (o === 0){ const a = rnd(23,989), b = rnd(17,989); return {t:`${a} + ${b}`, v: F(a+b)}; }
+      if (o === 1){ const a = rnd(120,999), b = rnd(13, a-7); return {t:`${a} − ${b}`, v: F(a-b)}; }
+      if (o === 2){ const [a,b] = Math.random() < .55 ? [rnd(12,99), rnd(3,12)] : [rnd(11,35), rnd(11,25)]; return {t:`${a} × ${b}`, v: F(a*b)}; }
+      const b = rnd(3,25), q = rnd(12,99); return {t:`${b*q} ÷ ${b}`, v: F(q)};
+    }
+    if (type === 'dec'){
+      if (o === 0){ const a = D(rnd(11,999),1), b = D(rnd(101,2999),2); return {t:`${dec(a)} + ${dec(b)}`, v: add(a,b)}; }
+      if (o === 1){ const a = D(rnd(200,999),1), b = D(rnd(101,1999),2); return {t:`${dec(a)} − ${dec(b)}`, v: sub(a,b)}; }
+      if (o === 2){ if (Math.random() < .5){ const a = D(rnd(2,9),1), b = D(pick([2,3,4,5,6,7,8,9,11,12]),2); return {t:`${dec(a)} × ${dec(b)}`, v: mul(a,b)}; } const a = D(rnd(105,995),2), b = rnd(3,12); return {t:`${dec(a)} × ${b}`, v: mul(a,F(b))}; }
+      const q = D(rnd(2,99),1), dv = Math.random() < .5 ? D(rnd(2,12),1) : D(pick([2,4,5,8,12,15,25]),2); if (dv.d === 1) return fmRaw(type); return {t:`${dec(mul(q,dv))} ÷ ${dec(dv)}`, v: q};
+    }
+    if (type === 'frac'){
+      const dn = [2,3,4,5,6,8,9,10,12], mk = () => { const d = pick(dn); let n; do n = rnd(1, d-1); while (gcd(n,d) !== 1); return F(n,d); };
+      let a = mk(), b = mk(); const str = f => `${f.n}/${f.d}`;
+      if (o === 0) return {t:`${str(a)} + ${str(b)}`, v: add(a,b), naive: F(a.n+b.n, a.d+b.d)};
+      if (o === 1){ if (val(a) === val(b)) return fmRaw(type); if (val(a) < val(b)) [a,b] = [b,a]; return {t:`${str(a)} − ${str(b)}`, v: sub(a,b), naive: F(Math.abs(a.n-b.n)||1, Math.abs(a.d-b.d)||1)}; }
+      if (o === 2) return {t:`${str(a)} × ${str(b)}`, v: mul(a,b), naive: add(a,b)};
+      return {t:`${str(a)} ÷ ${str(b)}`, v: div(a,b), naive: mul(a,b)};
+    }
+    if (type === 'pct'){
+      const p = pick([5,10,15,20,25,30,35,40,45,60,75,80,125,150,12.5,2.5]), n = rnd(2,60)*pick([4,8,10,20]);
+      if (o === 3 && p <= 40 && Number.isInteger(p)) return {t:`${n} increased by ${p}%`, v: F(n*(100+p),100)};
+      return {t:`${p}% of ${n}`, v: F(Math.round(p*10)*n, 1000)};
+    }
+    if (type === 'dec2'){
+      let a, b; do { a = rnd(11,99); b = rnd(11,99); } while (a % 10 === 0 || b % 10 === 0);
+      const sa = pick([1,1,2]), sb = pick([1,1,2]); return {t:`${dec(D(a,sa))} × ${dec(D(b,sb))}`, v: mul(D(a,sa), D(b,sb))};
+    }
+    const c = pick([5,15,25,11,12,20,50]), a = rnd(2,9), b = rnd(2,12);
+    if (o === 0) return {t:`0.5 × ${a*2+1} × ${b*2}`, v: F((a*2+1)*b)};
+    const xs = shuffle([a,b,c]); return {t: xs.join(' × '), v: F(a*b*c)};
+  }
+  function fmQ(type){
+    type = type && FM_TYPES[type] ? type : pick(['int','int','dec','dec','frac','frac','pct','dec2','chain']);
+    for (let tries = 0; tries < 50; tries++){
+      const r = fmRaw(type), v = r.v; if (val(v) <= 0) continue;
+      const isFrac = type === 'frac', str = f => isFrac ? fs(f) : dec(f); if (str(v) == null) continue;
+      let c = [];
+      if (isFrac){ c = [F(v.n+1,v.d), F(v.n-1,v.d), F(v.n,v.d+1), v.d > 1 ? F(v.n,v.d-1) : F(v.n+2,v.d), F(v.d,v.n), r.naive, F(v.n+v.d, v.d), F(v.n*2, v.d*2+1)]; }
+      else { const ds = dec(v), u = F(1, 10**(ds.includes('.') ? ds.split('.')[1].length : 0)), t = k => add(v, mul(u, F(k)));
+        c = [t(1), t(-1), t(10), t(-10), t(2), t(-2)]; if (val(v) > 300*val(u)) c.push(t(100), t(-100));
+        if (type !== 'int' && type !== 'chain') c.push(mul(v,F(10)), div(v,F(10)), mul(v,F(10)), div(v,F(10)));
+        const s = String(Math.round(val(v)/val(u))); if (s.length >= 2 && s[s.length-1] !== s[s.length-2]){ const sw = s.slice(0,-2) + s[s.length-1] + s[s.length-2]; c.push(mul(F(+sw), u)); } }
+      const seen = new Set([str(v)]), opts = [str(v)];
+      for (const x of shuffle(c.filter(Boolean))){ if (val(x) <= 0) continue; const s = str(x); if (s == null || seen.has(s)) continue; seen.add(s); opts.push(s); if (opts.length === 4) break; }
+      if (opts.length < 4) continue;
+      const order = shuffle([0,1,2,3]);
+      return {kind:'fm', type, t: r.t, a: str(v), opts: order.map(i => opts[i]), ans: order.indexOf(0), tip: TIP[type]};
+    }
+    return fmQ('int');
+  }
+
+  /* =================== FLOW TRADERS: SEQUENCES (multiple choice) =================== */
+  const sg = d => (d >= 0 ? '+' : '−') + Math.abs(d);
+  const PR = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71];
+  const diffs = t => t.slice(1).map((x,i) => x - t[i]);
+  const dsum = x => String(Math.abs(x)).split('').reduce((a,c) => a + +c, 0);
+  const LT = i => String.fromCharCode(65 + ((i % 26) + 26) % 26);
+  const SF = {
+    arith(){ const d = pick([-12,-9,-7,-6,-4,-3,3,4,6,7,8,9,11,13,15]), a = rnd(-20,60), t = [...Array(7)].map((_,i) => a + d*i); return {t, why:`Constant difference ${sg(d)}.`}; },
+    geom(){ const r = rnd(2,4); if (Math.random() < .35){ const a = rnd(1,5)*r**5, t = [...Array(6)].map((_,i) => a / r**i); return {t, why:`Each term is the previous ÷ ${r}.`}; } const a = rnd(1,7), t = [...Array(6)].map((_,i) => a * r**i); return {t, why:`Each term is the previous × ${r}.`}; },
+    altAdd(){ let a = rnd(2,9), b = pick([-5,-4,-3,-2,-1,1,2,3,10,11]); if (a === b) b++; let x = rnd(1,30); const t = [x]; for (let i = 0; i < 7; i++){ x += i % 2 ? b : a; t.push(x); } return {t, why:`Steps alternate ${sg(a)}, ${sg(b)}.`}; },
+    fib(){ const t = [rnd(1,6), rnd(2,9)]; while (t.length < 7) t.push(t[t.length-1] + t[t.length-2]); return {t, why:'Each term is the sum of the previous two.'}; },
+    sqc(){ const n0 = rnd(1,6), c = rnd(-5,10); if (Math.random() < .3){ const t = [...Array(6)].map((_,i) => (n0+i)**3 + c); return {t, why:`Cubes ${c ? sg(c) : ''}: ${n0}³, ${n0+1}³, …`}; } const t = [...Array(7)].map((_,i) => (n0+i)**2 + c); return {t, why:`Squares ${c ? sg(c) : ''}: ${n0}², ${n0+1}², … (differences go up by 2).`}; },
+    quad(){ const dd = pick([-4,-3,-2,2,3,4,5,6]), d0 = rnd(-3,8), a = rnd(0,25); const t = [a]; let d = d0; for (let i = 0; i < 6; i++){ t.push(t[i] + d); d += dd; } return {t, why:`Differences ${diffs(t).join(', ')} change by ${sg(dd)} each time, so the next difference is ${d}.`}; },
+    diffGeom(){ const r = pick([2,2,3]), d0 = rnd(1,4), a = rnd(0,15); const t = [a]; let d = d0; for (let i = 0; i < 6; i++){ t.push(t[i] + d); d *= r; } return {t, why:`Differences ${diffs(t).join(', ')} are multiplied by ${r} each time; next difference ${d}.`}; },
+    interleave(){ const a = rnd(1,20), b = rnd(21,60), d1 = pick([2,3,4,5,7]), d2 = pick([-6,-5,-4,-3,-2,6,8]); const t = []; for (let i = 0; i < 5; i++) t.push(a + d1*i, b + d2*i); t.pop(); return {t, why:`Two sequences interleaved. Odd positions: ${a}, ${a+d1}, … (${sg(d1)}). Even positions: ${b}, ${b+d2}, … (${sg(d2)}). The next term is an odd-position term.`}; },
+    mulAdd(){ const a = pick([2,2,3]), b = pick([-3,-2,-1,1,2,3,5]); let x = rnd(1,5); if (a*x + b <= x) x += 3; const t = [x]; for (let i = 0; i < 6; i++) t.push(a*t[i] + b); return {t, why:`Each term is ${a} × previous ${sg(b)}.`}; },
+    primeDiff(){ if (Math.random() < .5){ const i0 = rnd(0,8), c = pick([0,0,1,-1,2]), k = c ? 1 : pick([1,2,3]); const t = PR.slice(i0, i0+7).map(p => k*p + c); return {t, why:`Consecutive primes${k > 1 ? ` × ${k}` : ''}${c ? ` ${sg(c)}` : ''}: ${PR.slice(i0,i0+7).join(', ')}.`}; } const a = rnd(1,20), t = [a]; for (let i = 0; i < 6; i++) t.push(t[i] + PR[i]); return {t, why:`Differences are the primes ${PR.slice(0,5).join(', ')}, …; next difference ${PR[5]}.`}; },
+    tri(){ const c = rnd(-2,6), n0 = rnd(1,4); if (Math.random() < .5){ const t = [...Array(7)].map((_,i) => (n0+i)*(n0+i+1)/2 + c); return {t, why:`Triangular numbers${c ? ' ' + sg(c) : ''}: differences go up by 1 each time (${diffs(t).join(', ')}).`}; } const t = [...Array(7)].map((_,i) => (n0+i)*(n0+i+1) + c); return {t, why:`n(n+1)${c ? ' ' + sg(c) : ''}: differences go up by 2 each time (${diffs(t).join(', ')}).`}; },
+    altMulAdd(){ const a = pick([2,2,3]), b = pick([-4,-3,-2,-1,1,2,3,4,5]); let x = rnd(2,6); const t = [x]; for (let i = 0; i < 6; i++){ x = i % 2 ? x + b : x*a; t.push(x); } return {t, why:`Operations alternate: × ${a}, then ${sg(b)}. The next step is × ${a}.`}; },
+    trib(){ const t = [rnd(1,3), rnd(1,4), rnd(2,6)]; while (t.length < 7) t.push(t[t.length-1] + t[t.length-2] + t[t.length-3]); return {t, why:'Each term is the sum of the previous three.'}; },
+    mulInc(){ const a = pick([2,3]), s = pick([-1,1]); let x = rnd(2,5); const t = [x]; for (let i = 1; i <= 6; i++) t.push(a*t[i-1] + s*i); return {t, why:`× ${a} then ${s > 0 ? 'add' : 'subtract'} 1, 2, 3, …: the last step is × ${a} ${s > 0 ? '+' : '−'} 6.`}; },
+    factorial(){ const a = rnd(1,4), k0 = rnd(1,2); const t = [a]; for (let i = 0; i < 5; i++) t.push(t[i]*(k0+i)); return {t, why:`Multiply by ${[0,1,2,3].map(i => k0+i).join(', ')} in turn, so the next step is × ${k0+4}.`}; },
+    interGA(){ const a = rnd(1,4), r = pick([2,3]), b = rnd(5,30), d = pick([-3,-2,2,3,5]); const t = []; for (let i = 0; i < 5; i++) t.push(a * r**i, b + d*i); t.pop(); return {t, why:`Interleaved: odd positions multiply by ${r} (${a}, ${a*r}, ${a*r*r}, …), even positions go ${sg(d)}. The next term is an odd-position term.`}; },
+    altSign(){ if (Math.random() < .5){ const n0 = rnd(1,4), t = [...Array(7)].map((_,i) => (i % 2 ? -1 : 1)*(n0+i)**2); return {t, why:`Squares with alternating sign: ${n0}², −${n0+1}², …`}; } const r = pick([-2,-3]), a = rnd(1,4), t = [...Array(6)].map((_,i) => a * r**i); return {t, why:`Each term is the previous × ${r}.`}; },
+    pow2n(){ const s = pick([-1,1]), b = pick([2,2,3]), t = [...Array(6)].map((_,i) => b**(i+1) + s*(i+1)); return {t, why:`${b}ⁿ ${s > 0 ? '+' : '−'} n for n = 1, 2, 3, …`}; },
+    digitSum(){ let x = rnd(11,60); const t = [x]; for (let i = 0; i < 6; i++) t.push(t[i] + dsum(t[i])); return {t, why:`Add the digit sum of the previous term: ${t[5]} + ${dsum(t[5])} = ${t[6]}.`}; },
+    sqDiff(){ const a = rnd(1,15), n0 = rnd(1,2), t = [a]; for (let i = 0; i < 6; i++) t.push(t[i] + (n0+i)**2); return {t, why:`Differences are squares: ${diffs(t).join(', ')}.`}; },
+    fracSeq(){ const n0 = rnd(1,5), dn = rnd(1,4), d0 = rnd(2,9), dd = rnd(1,5); if (n0*dd === d0*dn) return null; const f = i => `${n0 + dn*i}/${d0 + dd*i}`, t = [...Array(6)].map((_,i) => f(i)); const N = n0 + dn*5, Dn = d0 + dd*5;
+      return {t, str: true, why:`Numerators go ${sg(dn)}, denominators go ${sg(dd)}.`, alt: [`${N+1}/${Dn}`, `${N}/${Dn+1}`, `${N-dn+dd}/${Dn}`, `${N}/${Dn-dd+dn+ (dn === dd ? 1 : 0)}`, `${N+dn}/${Dn+dd}`, `${N-1}/${Dn-1}`]}; },
+    letters(){ const a = rnd(0,25); let idx; let why;
+      if (Math.random() < .5){ const d = pick([2,3,4,5,-2,-3]); idx = [...Array(6)].map((_,i) => a + d*i); why = `Letters move ${sg(d)} positions each step (A=1 … Z=26, wrapping).`; }
+      else { idx = [a]; for (let i = 1; i < 6; i++) idx.push(idx[i-1] + i); why = 'Jumps grow by one each step: +1, +2, +3, +4, then +5.'; }
+      const t = idx.map(LT), x = idx[5]; return {t, str: true, why: why + ` ${t.slice(0,5).map((c,i) => `${c}=${((idx[i]%26)+26)%26+1}`).join(', ')} → ${t[5]}.`, alt: [LT(x+1), LT(x-1), LT(x+2), LT(x-2), LT(x+3)]}; },
+  };
+  const SLV = {1:['arith','geom','altAdd','fib','sqc','arith','geom'], 2:['quad','diffGeom','interleave','mulAdd','primeDiff','tri','altMulAdd','altSign','fracSeq','letters','sqc'], 3:['trib','mulInc','factorial','interGA','pow2n','digitSum','sqDiff','quad','interleave','altMulAdd','primeDiff']};
+  function seqQ(lv){
+    lv = lv || rnd(1,3);
+    for (let tries = 0; tries < 200; tries++){
+      const fam = pick(SLV[lv]), r = SF[fam](); if (!r) continue;
+      const full = r.t, a = full[full.length-1], t = full.slice(0,-1);
+      let cands;
+      if (r.str) cands = r.alt;
+      else {
+        if (full.some(x => !Number.isInteger(x) || Math.abs(x) > 2e6)) continue;
+        if (new Set(t).size < t.length - 1) continue;
+        { const d = diffs(t), dd = diffs(d);   // if the shown terms fit a simpler rule, the answer must agree with it
+          if (d.every(x => x === d[0])){ if (a !== t[t.length-1] + d[0]) continue; }
+          else if (dd.every(x => x === dd[0]) && a !== t[t.length-1] + d[d.length-1] + dd[0]) continue;
+          if (t.every(x => x !== 0)){ const q = t.slice(1).map((x,k) => x / t[k]); if (q.every(x => x === q[0]) && a !== t[t.length-1]*q[0]) continue; } }
+        const last = t[t.length-1], prev = t[t.length-2], ld = last - prev, m = Math.abs(a) > 400 ? 10 : 1;
+        cands = [last + ld, a + m, a - m, a + 2*m, a - 2*m, a + ld, a - ld, 2*last - prev + (ld > 0 ? 1 : -1), a + 3*m, -a, last*2, a + 5*m];
+      }
+      const A = String(a), seen = new Set([A]), opts = [A];
+      const pref = r.str ? shuffle(cands.slice()) : [cands[0], ...shuffle(cands.slice(1))];
+      for (const c of pref){ const s = String(c); if (seen.has(s) || s === 'NaN' || (!r.str && c === 0 && a !== 0 && Math.random() < .8)) continue; seen.add(s); opts.push(s); if (opts.length === 4) break; }
+      if (opts.length < 4) continue;
+      const fmtN = s => r.str ? s : String(s).replace('-', '−');
+      const order = shuffle([0,1,2,3]);
+      return {kind:'fs', lv, fam, t: t.map(fmtN), a: fmtN(A), opts: order.map(i => fmtN(opts[i])), ans: order.indexOf(0), why: r.why, raw: r.str ? null : full};
+    }
+    throw new Error('seq gen failed');
+  }
+
+  /* =================== SIG: PROBLEM SOLVING (typed answers) =================== */
+  // Each generator returns {q, f (exact fraction), why, topic, unit?, chk?: {mc: () => number|null} | {exact: () => number}}
+  const die = n => rnd(1,n), coin = () => Math.random() < .5;
+  const H = n => { let h = F(0); for (let k = 1; k <= n; k++) h = add(h, F(1,k)); return h; };
+  const DER = n => n === 0 ? 1 : n === 1 ? 0 : (n-1)*(DER(n-1) + DER(n-2));
+  const SIG_FAST = {
+    bayesCoin(){ const m = pick([1,2,3,4,9]), k = rnd(1,4); return {topic:'Bayes', q:`A bag holds ${m} fair coin${m > 1 ? 's' : ''} and 1 double-headed coin. You pick a coin at random and flip it ${k} time${k > 1 ? 's' : ''}: ${k > 1 ? 'all heads' : 'heads'}. What is the probability you picked the double-headed coin?`, f: F(2**k, 2**k + m),
+      why:`Weights: double-headed 1 × 1; each fair coin (1/2)^${k}. P = 1 / (1 + ${m}/${2**k}) = ${2**k}/${2**k + m}.`, chk:{mc: () => { const dh = rnd(0,m) === 0; for (let i = 0; i < k; i++) if (!dh && !coin()) return null; return dh ? 1 : 0; }}}; },
+    bayesFactory(){ const a = pick([25,30,40,60,70,75]); let da = pick([1,2,3,4,5,10]), db; do db = pick([1,2,3,4,5,10]); while (db === da); return {topic:'Bayes', q:`Machine A makes ${a}% of a factory's items and machine B the rest. ${da}% of A's items are defective and ${db}% of B's. A random item is defective. What is the probability it came from A?`, f: F(a*da, a*da + (100-a)*db),
+      why:`P(A and defective) = ${a}% × ${da}% ; P(B and defective) = ${100-a}% × ${db}%. Ratio ${a*da} : ${(100-a)*db}, so ${a*da}/${a*da + (100-a)*db}.`, chk:{mc: () => { const A = Math.random()*100 < a; if (Math.random()*100 >= (A ? da : db)) return null; return A ? 1 : 0; }}}; },
+    diceGame(){ const n = pick([4,6,6,8]), v = pick(['min','max','diff','max3','prod']); let s = 0; const tot = v === 'max3' ? n**3 : n*n;
+      for (let x = 1; x <= n; x++) for (let y = 1; y <= n; y++){ if (v === 'max3'){ for (let z = 1; z <= n; z++) s += Math.max(x,y,z); } else s += v === 'min' ? Math.min(x,y) : v === 'max' ? Math.max(x,y) : v === 'diff' ? Math.abs(x-y) : x*y; }
+      const name = {min:'the lower of the two rolls', max:'the higher of the two rolls', diff:'the absolute difference of the two rolls', max3:'the highest roll', prod:'the product of the two rolls'}[v];
+      return {topic:'Expected value', unit:'£', q:`You roll ${v === 'max3' ? 'three' : 'two'} fair ${n}-sided dice and are paid £ equal to ${name}. What is the fair price of this game?`, f: F(s, tot),
+        why: v === 'prod' ? `Independent: E[XY] = E[X]E[Y] = (${(n+1)}/2)² = ${fs(F(s,tot))}.` : v === 'min' ? `P(min ≥ k) = ((${n}−k+1)/${n})². E[min] = Σ P(min ≥ k) = ${fs(F(s,tot))}.` : v === 'diff' ? `Count pairs: difference d occurs 2(${n}−d) times out of ${n*n}. Sum gives ${fs(F(s,tot))}. (Also E[max] − E[min].)` : `P(max ≤ k) = (k/${n})^${v === 'max3' ? 3 : 2}. E[max] = Σ k·[P(max ≤ k) − P(max ≤ k−1)] = ${fs(F(s,tot))}.`,
+        chk:{mc: () => { const x = die(n), y = die(n); return v === 'max3' ? Math.max(x,y,die(n)) : v === 'min' ? Math.min(x,y) : v === 'max' ? Math.max(x,y) : v === 'diff' ? Math.abs(x-y) : x*y; }}}; },
+    binomTail(){ const [pn,pd] = pick([[1,2],[2,3],[3,4],[4,5],[9,10]]), n = rnd(3,6), k = n - rnd(1,2); let s = 0; for (let j = k; j <= n; j++) s += C(n,j) * pn**j * (pd-pn)**(n-j);
+      return {topic:'Binomial', q:`A bakery fills each order correctly with probability ${pn}/${pd}, independently. It receives ${n} orders. What is the probability that at least ${k} are filled correctly?`, f: F(s, pd**n),
+        why:`Sum the binomial terms for ${[...Array(n-k+1)].map((_,i) => k+i).join(', ')} correct: Σ C(${n},j)(${pn}/${pd})^j(${pd-pn}/${pd})^(${n}−j) = ${fs(F(s, pd**n))}.`, chk:{mc: () => { let c = 0; for (let i = 0; i < n; i++) if (Math.random()*pd < pn) c++; return c >= k ? 1 : 0; }}}; },
+    linearity(){ if (Math.random() < .5){ const n = rnd(3,8); return {topic:'Linearity of expectation', q:`${n} married couples (${2*n} people) are split at random into ${n} pairs. What is the expected number of pairs that are a married couple?`, f: F(n, 2*n-1),
+        why:`Each person's partner is equally likely to be any of the other ${2*n-1} people, so a given couple is paired with probability 1/${2*n-1}. ${n} couples: ${n}/${2*n-1}.`, chk:{mc: () => { const p = shuffle([...Array(2*n).keys()]); let c = 0; for (let i = 0; i < 2*n; i += 2) if ((p[i] >> 1) === (p[i+1] >> 1)) c++; return c; }}}; }
+      const [nm, per] = pick([['rank', 3], ['suit', 12], ['colour', 25]]); return {topic:'Linearity of expectation', q:`A standard 52-card deck is shuffled. What is the expected number of adjacent pairs of cards (positions 1–2, 2–3, …, 51–52) that share the same ${nm}?`, f: F(per),
+        why:`51 adjacent pairs. For each, the second card matches the first with probability ${per}/51. 51 × ${per}/51 = ${per}.`, chk:{mc: () => { const d = shuffle([...Array(52).keys()]); const key = c => nm === 'rank' ? c % 13 : nm === 'suit' ? Math.floor(c/13) : Math.floor(c/26); let c = 0; for (let i = 0; i < 51; i++) if (key(d[i]) === key(d[i+1])) c++; return c; }}}; },
+    roundTable(){ const n = rnd(5,8), v = rnd(0,2);
+      if (v === 0) return {topic:'Counting', q:`${n} people, including Ann and Bob, sit at random around a round table. What is the probability that Ann and Bob sit next to each other?`, f: F(2, n-1), why:`Fix Ann. Bob has ${n-1} equally likely seats, 2 of them next to Ann: 2/${n-1}.`, chk:{mc: () => { const p = shuffle([...Array(n).keys()]), a = p.indexOf(0), b = p.indexOf(1), d = Math.abs(a-b); return d === 1 || d === n-1 ? 1 : 0; }}};
+      if (v === 1) return {topic:'Counting', q:`In how many distinct ways can ${n} people sit around a round table if Ann and Bob must NOT sit next to each other? (Rotations of a seating count as the same.)`, f: F(fact(n-1) - 2*fact(n-2)), why:`All circular seatings: (${n}−1)! = ${fact(n-1)}. Ann and Bob together: treat as a block, (${n}−2)! × 2 = ${2*fact(n-2)}. Difference: ${fact(n-1) - 2*fact(n-2)}.`};
+      return {topic:'Counting', q:`In how many distinct ways can ${n} people sit around a round table if three particular friends must all sit together? (Rotations count as the same.)`, f: F(6*fact(n-3)), why:`Glue the three into one block: ${n-2} units around a circle = (${n}−3)! = ${fact(n-3)} ways, times 3! = 6 orders inside the block: ${6*fact(n-3)}.`}; },
+    canoe(){ const c = rnd(1,4), v = c + rnd(2,8), d = (v-c)*(v+c)/gcd(v-c, v+c) * rnd(1,2);
+      if (Math.random() < .5) return {topic:'Rates', unit:'hours', q:`A canoe travels at ${v} km/h in still water. The river flows at ${c} km/h. The canoe goes ${d} km upstream and then returns. How many hours does the round trip take?`, f: add(F(d, v-c), F(d, v+c)), why:`Upstream speed ${v-c}, downstream ${v+c}. Time = ${d}/${v-c} + ${d}/${v+c} = ${fs(add(F(d, v-c), F(d, v+c)))} hours.`};
+      return {topic:'Rates', unit:'km/h', q:`A canoe takes ${fs(F(d, v-c))} hours to paddle ${d} km upstream and ${fs(F(d, v+c))} hours to come back downstream. What is the speed of the current in km/h?`, f: F(c), why:`Upstream speed ${d} ÷ ${fs(F(d, v-c))} = ${v-c}; downstream ${v+c}. Current = (${v+c} − ${v-c})/2 = ${c}.`}; },
+    condDice(){ const s = rnd(7,10), v = rnd(0,1); let tot = 0, hit = 0; for (let x = 1; x <= 6; x++) for (let y = 1; y <= 6; y++) if (x + y >= s){ tot++; if (v ? (x === 6 || y === 6) : x === y) hit++; }
+      return {topic:'Conditional probability', q:`Two fair dice are rolled. Given that the sum is at least ${s}, what is the probability that ${v ? 'at least one die shows a 6' : 'both dice show the same number'}?`, f: F(hit, tot), why:`${tot} of the 36 outcomes have sum ≥ ${s}; ${hit} of those ${v ? 'contain a 6' : 'are doubles'}. ${hit}/${tot}.`, chk:{mc: () => { const x = die(6), y = die(6); if (x + y < s) return null; return (v ? (x === 6 || y === 6) : x === y) ? 1 : 0; }}}; },
+    firstSpecial(){ const [nm, m] = pick([['ace',4],['heart',13],['face card (J, Q or K)',12],['red card',26],['king or queen',8]]); return {topic:'Expected value', q:`Cards are dealt one at a time from a shuffled 52-card deck until the first ${nm} appears. What is the expected number of cards dealt, including that card?`, f: F(53, m+1),
+      why:`The ${m} special cards split the other ${52-m} cards into ${m+1} gaps of equal expected size ${52-m}/${m+1}. Expected position = ${52-m}/${m+1} + 1 = 53/${m+1}.`, chk:{mc: () => { const d = shuffle([...Array(52).keys()]); return d.findIndex(c => c < m) + 1; }}}; },
+    collide(){ const n = pick([6,10,12,20]), k = rnd(2,4); let p = 1; for (let i = 0; i < k; i++) p *= (n - i); return {topic:'Probability', q:`${k} people each independently pick a whole number from 1 to ${n} uniformly at random. What is the probability that at least two of them pick the same number?`, f: F(n**k - p, n**k),
+      why:`P(all different) = ${[...Array(k)].map((_,i) => `${n-i}/${n}`).join(' × ')}. Answer = 1 − that = ${fs(F(n**k - p, n**k))}.`, chk:{mc: () => { const s = new Set(); for (let i = 0; i < k; i++) s.add(die(n)); return s.size < k ? 1 : 0; }}}; },
+    threeDice(){ const s = rnd(5,16); let c = 0; for (let x = 1; x <= 6; x++) for (let y = 1; y <= 6; y++){ const z = s - x - y; if (z >= 1 && z <= 6) c++; } return {topic:'Probability', q:`Three fair dice are rolled. What is the probability that the sum is exactly ${s}?`, f: F(c, 216), why:`Count ordered triples summing to ${s}: ${c} of 216.`, chk:{mc: () => die(6) + die(6) + die(6) === s ? 1 : 0}}; },
+    derange(){ const n = rnd(3,6), one = Math.random() < .4; return {topic:'Counting', q:`${n} letters are placed at random into ${n} addressed envelopes, one per envelope. What is the probability that ${one ? 'exactly one letter is' : 'no letter is'} in its correct envelope?`, f: F(one ? n*DER(n-1) : DER(n), fact(n)),
+      why:`Derangements: D(2)=1, D(3)=2, D(4)=9, D(5)=44, D(6)=265. ${one ? `Choose the correct letter (${n} ways) and derange the rest: ${n} × D(${n-1}) = ${n*DER(n-1)}` : `D(${n}) = ${DER(n)}`} out of ${n}! = ${fact(n)}.`, chk:{mc: () => { const p = shuffle([...Array(n).keys()]); const fx = p.filter((x,i) => x === i).length; return fx === (one ? 1 : 0) ? 1 : 0; }}}; },
+    inclExcl(){ const N = pick([100,200,300,500,1000]), [a,b] = pick([[2,3],[3,5],[4,6],[6,10],[2,7],[3,7],[6,9],[4,10]]), l = a*b/gcd(a,b), neither = Math.random() < .4, cnt = Math.floor(N/a) + Math.floor(N/b) - Math.floor(N/l);
+      return {topic:'Counting', q:`How many whole numbers from 1 to ${N} are divisible by ${neither ? `neither ${a} nor ${b}` : `${a} or ${b} (or both)`}?`, f: F(neither ? N - cnt : cnt), why:`⌊${N}/${a}⌋ + ⌊${N}/${b}⌋ − ⌊${N}/${l}⌋ = ${Math.floor(N/a)} + ${Math.floor(N/b)} − ${Math.floor(N/l)} = ${cnt}${neither ? `; neither: ${N} − ${cnt} = ${N-cnt}` : ''}.`, chk:{exact: () => { let c = 0; for (let i = 1; i <= N; i++) if ((i % a === 0 || i % b === 0) !== neither) c++; return c; }}}; },
+    coupon(){ const n = rnd(3,6), h = mul(F(n), H(n)); return {topic:'Expected value', q:`You roll a fair ${n}-sided die repeatedly. What is the expected number of rolls until every face has appeared at least once?`, f: h, why:`Waiting times add: ${[...Array(n)].map((_,i) => `${n}/${n-i}`).join(' + ')} = ${fs(h)}.`, chk:{mc: () => { const s = new Set(); let c = 0; while (s.size < n){ s.add(die(n)); c++; } return c; }}}; },
+    atLeastOne(){ const [nm, m] = pick([['an ace','4'],['a heart','13'],['a face card','12']]), M = +m, f = F(C(M,2), C(52,2) - C(52-M,2)); return {topic:'Conditional probability', q:`You draw 2 cards from a standard deck. Given that at least one of them is ${nm}, what is the probability that both are?`, f,
+      why:`P(both) ∝ C(${M},2) = ${C(M,2)}. P(at least one) ∝ C(52,2) − C(${52-M},2) = ${C(52,2) - C(52-M,2)}. Ratio ${fs(f)}.`, chk:{mc: () => { const a = rnd(0,51); let b; do b = rnd(0,51); while (b === a); const x = a < M, y = b < M; if (!x && !y) return null; return x && y ? 1 : 0; }}}; },
+    capped(){ const m = rnd(3,8); return {topic:'Expected value', unit:'£', q:`A fair coin is flipped until the first head. If the first head is on flip n you win £2ⁿ, but winnings are capped at £${2**m}. What is the fair value of the game?`, f: F(m+1),
+      why:`Each of n = 1 … ${m} contributes (1/2ⁿ) × 2ⁿ = £1. With probability 1/${2**m} no head in ${m} flips, paying the cap £${2**m}: another £1. Total £${m+1}.`, chk:{mc: () => { let n = 1; while (!coin()) n++; return Math.min(2**n, 2**m); }}}; },
+  };
+  const SIG_DEEP = {
+    reroll(){ const n = pick([6,6,8,10,20]), r = rnd(1,2); let v = F(n+1, 2); const th = []; for (let j = 0; j < r; j++){ let s = F(0); const t = val(v); th.push(Math.floor(t) + 1); for (let k = 1; k <= n; k++) s = add(s, k > t ? F(k) : v); v = div(s, F(n)); }
+      return {topic:'Optimal stopping', unit:'£', q:`You roll a fair ${n}-sided die and may either keep the result (in £) or re-roll, up to ${r} re-roll${r > 1 ? 's' : ''} in total. Playing optimally, what is the expected payoff?`, f: v,
+        why:`Work backwards. One roll is worth ${fs(F(n+1,2))}. With one re-roll left, keep only rolls above that (${th[0]}+): value ${r === 1 ? fs(v) : 'V₁'}.${r === 2 ? ` With two re-rolls left, keep ${th[1]}+ and otherwise continue: ${fs(v)}.` : ''}`,
+        chk:{mc: () => { let x = die(n); for (let j = r-1; j >= 0; j--){ if (x >= th[j]) break; x = die(n); } return x; }}}; },
+    gambler(){ if (Math.random() < .45){ const N = rnd(5,20), k = rnd(1,N-1), dur = Math.random() < .5; return {topic:'Gambler\'s ruin', q:`You have £${k} and bet £1 on a fair coin each round until you reach £${N} or go broke. ${dur ? 'What is the expected number of rounds played?' : `What is the probability you reach £${N}?`}`, f: dur ? F(k*(N-k)) : F(k,N),
+        why: dur ? `For a fair game the expected duration is k(N − k) = ${k} × ${N-k} = ${k*(N-k)}.` : `A fair game is a martingale: ${k} = P × ${N} + (1 − P) × 0, so P = ${k}/${N}.`, chk:{mc: () => { let x = k, c = 0; while (x > 0 && x < N){ x += coin() ? 1 : -1; c++; } return dur ? c : (x === N ? 1 : 0); }}}; }
+      const [pn,pd] = pick([[2,3],[3,5],[1,3],[3,4],[2,5]]), N = rnd(3,6), k = rnd(1,N-1), r = F(pd-pn, pn), pw = (f,e) => F(f.n**e, f.d**e), f = div(sub(F(1), pw(r,k)), sub(F(1), pw(r,N)));
+      return {topic:'Gambler\'s ruin', q:`Each round you win £1 with probability ${pn}/${pd} and lose £1 otherwise. You start with £${k} and stop at £${N} or £0. What is the probability you reach £${N}?`, f,
+        why:`With r = q/p = ${fs(r)}: P = (1 − r^${k}) / (1 − r^${N}) = ${fs(f)}.`, chk:{mc: () => { let x = k; while (x > 0 && x < N) x += Math.random()*pd < pn ? 1 : -1; return x === N ? 1 : 0; }}}; },
+    lattice(){ const a = rnd(3,5), b = rnd(3,5);
+      if (Math.random() < .5){ const x = rnd(1,a-1), y = rnd(1,b-1), thru = C(x+y,x)*C(a-x+b-y,a-x), all = C(a+b,a), avoid = Math.random() < .6; return {topic:'Path counting', q:`On a grid you move from (0,0) to (${a},${b}) using only steps right or up. How many paths ${avoid ? 'avoid' : 'pass through'} the point (${x},${y})?`, f: F(avoid ? all - thru : thru),
+        why:`All paths: C(${a+b},${a}) = ${all}. Through (${x},${y}): C(${x+y},${x}) × C(${a-x+b-y},${a-x}) = ${thru}.${avoid ? ` Avoiding: ${all} − ${thru} = ${all-thru}.` : ''}`, chk:{exact: () => { let c = 0; (function go(i,j,hit){ if (i === x && j === y) hit = true; if (i === a && j === b){ if (hit !== avoid) c++; return; } if (i < a) go(i+1,j,hit); if (j < b) go(i,j+1,hit); })(0,0,false); return c; }}}; }
+      const memo = {}; const go = (i,j,last,run) => { if (i === a && j === b) return 1; const k = [i,j,last,run].join(); if (k in memo) return memo[k]; let s = 0; if (i < a && !(last === 0 && run === 2)) s += go(i+1,j,0, last === 0 ? run+1 : 1); if (j < b && !(last === 1 && run === 2)) s += go(i,j+1,1, last === 1 ? run+1 : 1); return memo[k] = s; };
+      const ans = go(0,0,-1,0); return {topic:'Path counting', q:`You move from (0,0) to (${a},${b}) with steps right (R) or up (U). How many paths never make three steps in a row in the same direction?`, f: F(ans),
+        why:`Count with a small table: track position, last direction and run length (1 or 2), and add up the ways. Equivalent: arrange ${a} R's and ${b} U's with no RRR or UUU. Total ${ans}.`, chk:{exact: () => { let c = 0; (function rec(s, i, j){ if (i === a && j === b){ if (!/RRR|UUU/.test(s)) c++; return; } if (i < a) rec(s+'R', i+1, j); if (j < b) rec(s+'U', i, j+1); })('',0,0); return c; }}}; },
+    pattern(){ if (Math.random() < .7){ const pat = pick(['HH','HT','HHH','HTH','HHT','HTT','THH','HTHT','HHTH','HHHH']); let e = 0; for (let k = 1; k <= pat.length; k++) if (pat.slice(0,k) === pat.slice(-k)) e += 2**k;
+        return {topic:'Markov chains', q:`A fair coin is flipped repeatedly. What is the expected number of flips until the pattern ${pat} first appears?`, f: F(e), why:`Add 2^k for every k where the first k symbols equal the last k symbols of the pattern (always k = ${pat.length}; overlaps add more). For ${pat}: ${e}. (Or set up states by how much of the pattern is matched and solve.)`, chk:{mc: () => { let s = '', c = 0; while (!s.endsWith(pat)){ s = (s + (coin() ? 'H' : 'T')).slice(-pat.length); c++; } return c; }}}; }
+      const same = Math.random() < .5; return {topic:'Markov chains', q:`A fair six-sided die is rolled repeatedly. What is the expected number of rolls until ${same ? 'two 6s in a row appear' : 'a 6 is immediately followed by a 5'}?`, f: F(same ? 42 : 36),
+        why: same ? 'Let E be the answer and E₆ the expected rolls after a 6. E = 1 + (1/6)E₆ + (5/6)E; E₆ = 1 + (5/6)E. Solve: E = 42 (= 6 + 6²).' : 'The pattern 6,5 has no self-overlap, so the expected wait is 6² = 36.', chk:{mc: () => { let p = 0, c = 0; for(;;){ const x = die(6); c++; if (p === 6 && x === (same ? 6 : 5)) return c; p = x; } }}}; },
+    uniform(){ const v = rnd(0,2);
+      if (v === 0){ const w = pick([10,12,15,20,30]), f = sub(F(1), F((60-w)**2, 3600)); return {topic:'Continuous probability', q:`Two friends each arrive at a café at an independent, uniformly random time within the same hour. Each waits ${w} minutes for the other and then leaves. What is the probability that they meet?`, f, why:`In the 60 × 60 square of arrival times they meet when |x − y| ≤ ${w}. The two corner triangles where they miss have total area (60 − ${w})². P = 1 − ${(60-w)**2}/3600 = ${fs(f)}.`, chk:{mc: () => Math.abs(Math.random() - Math.random())*60 <= w ? 1 : 0}}; }
+      if (v === 1){ const [an,ad] = pick([[1,2],[2,3],[3,2],[4,3],[3,4],[5,4]]), a = F(an,ad), f = an <= ad ? div(mul(a,a), F(2)) : sub(F(1), div(mul(sub(F(2),a), sub(F(2),a)), F(2))); return {topic:'Continuous probability', q:`X and Y are independent and uniform on [0, 1]. What is P(X + Y < ${fs(a)})?`, f, why: an <= ad ? `The region is a triangle with legs ${fs(a)}: area ${fs(a)}²/2 = ${fs(f)}.` : `Complement is a corner triangle with legs 2 − ${fs(a)}: 1 − (${fs(sub(F(2),a))})²/2 = ${fs(f)}.`, chk:{mc: () => Math.random() + Math.random() < an/ad ? 1 : 0}}; }
+      const L = pick([1,6,10,12,30]), n = rnd(2,4), mx = Math.random() < .5; return {topic:'Continuous probability', q:`${n} numbers are drawn independently and uniformly from [0, ${L}]. What is the expected value of the ${mx ? 'largest' : 'smallest'}?`, f: F(L*(mx ? n : 1), n+1), why:`${n} uniform points split the interval into ${n+1} pieces of equal expected length ${L}/${n+1}. The ${mx ? 'largest sits at ' + n : 'smallest at 1'} × that = ${fs(F(L*(mx ? n : 1), n+1))}.`, chk:{mc: () => { let m = mx ? 0 : L; for (let i = 0; i < n; i++){ const u = Math.random()*L; m = mx ? Math.max(m,u) : Math.min(m,u); } return m; }}}; },
+    calculus(){ const v = rnd(0,3);
+      if (v === 0){ const b = rnd(2,5), a = 2*b*rnd(3,12); return {topic:'Calculus', unit:'£', q:`At price £p a shop sells ${a} − ${b}p units. What price maximises revenue?`, f: F(a, 2*b), why:`Revenue R = p(${a} − ${b}p). R′ = ${a} − ${2*b}p = 0 gives p = ${a/(2*b)}.`}; }
+      if (v === 1){ const a = 3*rnd(1,5); return {topic:'Calculus', q:`What is the maximum value of x²(${a} − x) for 0 ≤ x ≤ ${a}?`, f: F(4*a**3, 27), why:`Derivative ${2*a}x − 3x² = 0 at x = ${2*a/3}. Value: ${(2*a/3)**2} × ${a/3} = ${4*a**3/27}.`}; }
+      if (v === 2){ const P = 4*rnd(3,15); return {topic:'Calculus', q:`A rectangle has perimeter ${P}. What is its largest possible area?`, f: F(P*P, 16), why:`For a fixed perimeter the square is best: side ${P/4}, area ${P*P/16}.`}; }
+      const s = rnd(2,9); return {topic:'Calculus', q:`What is the minimum value of x + ${s*s}/x for x > 0?`, f: F(2*s), why:`Derivative 1 − ${s*s}/x² = 0 at x = ${s}. Minimum = ${s} + ${s} = ${2*s}. (AM–GM gives the same.)`}; },
+    liars(){ if (Math.random() < .5){ const n = 2*rnd(2,6); return {topic:'Logic', q:`${n} people stand in a row. Each is either a knight (always tells the truth) or a liar (always lies). For each i from 1 to ${n}, person i says: "At least i of us are liars." How many liars are there?`, f: F(n/2),
+        why:`If there are L liars, statements 1 … L are true and the rest false, so exactly L people tell the truth: L = ${n} − L, giving L = ${n/2}.`, chk:{exact: () => { const sols = []; for (let m = 0; m < 2**n; m++){ const L = n - [...Array(n)].filter((_,i) => m >> i & 1).length; let ok = true; for (let i = 1; i <= n; i++){ const truth = L >= i, knight = !!(m >> (i-1) & 1); if (truth !== knight){ ok = false; break; } } if (ok) sols.push(L); } return sols.length === 1 ? sols[0] : -1; }}}; }
+      const n = rnd(4,10); return {topic:'Logic', q:`${n} people stand in a row. Each is a knight (always truthful) or a liar (always lies). For each i from 1 to ${n}, person i says: "Exactly i of us are liars." Which person (give their number) is telling the truth?`, f: F(n-1),
+        why:`The statements contradict each other, so at most one is true. They can't all be false (then there would be exactly ${n} liars, making person ${n} truthful). So exactly one knight and ${n-1} liars: person ${n-1}.`, chk:{exact: () => { const sols = []; for (let m = 0; m < 2**n; m++){ const kn = [...Array(n)].map((_,i) => m >> i & 1), L = n - kn.filter(Boolean).length; if (kn.every((k,i) => (L === i+1) === !!k) && L < n) sols.push(kn.indexOf(1) + 1); } return sols.length === 1 ? sols[0] : -1; }}}; },
+    weighings(){ const N = pick([8,9,12,20,27,28,50,81,100,243]); let k = 0, p = 1; while (p < N){ p *= 3; k++; } return {topic:'Logic', q:`You have ${N} coins that look identical. One is slightly heavier than the rest. Using a two-pan balance, what is the minimum number of weighings that guarantees finding it?`, f: F(k),
+      why:`Each weighing has 3 outcomes (left heavy, right heavy, balanced), so it can split the candidates into 3 groups. You need the smallest k with 3^k ≥ ${N}: k = ${k}.`}; },
+    stairs(){ const n = rnd(6,12), three = Math.random() < .4; const w = [1,1, three ? 2 : 2]; for (let i = 3; i <= n; i++) w[i] = w[i-1] + w[i-2] + (three ? w[i-3] : 0); return {topic:'Counting', q:`In how many different ways can you climb ${n} stairs if each step takes you up 1${three ? ', 2 or 3' : ' or 2'} stairs?`, f: F(w[n]),
+      why:`Let W(n) be the count. The last step is 1${three ? ', 2 or 3' : ' or 2'}: W(n) = W(n−1) + W(n−2)${three ? ' + W(n−3)' : ''}. Sequence: ${w.slice(1, n+1).join(', ')}.`, chk:{exact: () => { let c = 0; (function go(r){ if (r === 0){ c++; return; } for (let s = 1; s <= (three ? 3 : 2); s++) if (s <= r) go(r - s); })(n); return c; }}}; },
+    knockout(){ const k = rnd(2,5), n = 2**k; return {topic:'Probability', q:`${n} players enter a knockout tournament with a random draw. The better player always wins a match. What is the probability that the second-best player reaches the final?`, f: F(n/2, n-1),
+      why:`The second-best reaches the final only if the best player is in the other half of the draw. Of the other ${n-1} slots, ${n/2} are in the other half: ${n/2}/${n-1}.`, chk:{mc: () => { const p = shuffle([...Array(n).keys()]); return (p.indexOf(0) < n/2) !== (p.indexOf(1) < n/2) ? 1 : 0; }}}; },
+    cycle(){ const n = rnd(4,9), d = rnd(1, Math.floor(n/2)); return {topic:'Markov chains', q:`A frog sits on one vertex of a regular ${n}-gon. Each second it hops to one of the two neighbouring vertices with equal probability. What is the expected number of hops until it first reaches the vertex ${d} step${d > 1 ? 's' : ''} away around the polygon?`, f: F(d*(n-d)),
+      why:`Unroll the polygon: the target sits ${d} steps one way and ${n-d} the other. This is a fair gambler's ruin with expected duration ${d} × ${n-d} = ${d*(n-d)}.`, chk:{mc: () => { let x = 0, c = 0; while (x !== d){ x = (x + (coin() ? 1 : n-1)) % n; c++; } return c; }}}; },
+    twoHeads(){ const n = rnd(3,6), k = 2; let c = 0; for (let m = 0; m < 2**n; m++){ if (!/11/.test(m.toString(2))) c++; } return {topic:'Probability', q:`A fair coin is flipped ${n} times. What is the probability that there are no two heads in a row?`, f: F(c, 2**n),
+      why:`Count strings of length n with no HH: a(n) = a(n−1) + a(n−2), giving 2, 3, 5, 8, 13, 21 for n = 1 … 6. So ${c}/${2**n}.`, chk:{mc: () => { let p = false; for (let i = 0; i < n; i++){ const h = coin(); if (h && p) return 0; p = h; } return 1; }}}; },
+  };
+  function sigQ(tier, name){ const pool = tier === 'deep' ? SIG_DEEP : SIG_FAST; const k = name || pick(Object.keys(pool)); const r = pool[k](); return {kind:'sig', tier: tier === 'deep' ? 'deep' : 'fast', gen: k, ...r}; }
+  function sigMock(){ const a = shuffle(Object.keys(SIG_FAST)).slice(0,9), b = shuffle(Object.keys(SIG_DEEP)).slice(0,8); return [...a.map(k => sigQ('fast', k)), ...b.map(k => sigQ('deep', k))].map(q => { const {chk, ...rest} = q; return rest; }); }
+  function parse(s){ s = String(s).trim().replace(/\s+/g,'').replace(/,/g,'').replace(/−/g,'-').replace(/^[£$]/,''); if (!s) return NaN; let pct = false; if (s.endsWith('%')){ pct = true; s = s.slice(0,-1); } const m = s.match(/^(-?[\d.]+)\/(-?[\d.]+)$/); const v = m ? parseFloat(m[1])/parseFloat(m[2]) : (/^-?(\d+\.?\d*|\.\d+)$/.test(s) ? parseFloat(s) : NaN); return pct ? v/100 : v; }
+  function sigCheck(q, input){ const v = parse(input), t = val(q.f); if (!isFinite(v)) return false; return Math.abs(v - t) <= Math.max(1e-9, Math.abs(t)*0.005) || (Math.abs(t) < 1 && Math.abs(v - t) < 0.0006); }
+  const ansText = q => { const t = val(q.f); return q.f.d === 1 ? String(q.f.n) : `${fs(q.f)} ≈ ${+t.toFixed(4)}`; };
+
+  return {fmQ, seqQ, sigQ, sigMock, sigCheck, ansText, FM_TYPES, SIG_FAST, SIG_DEEP, SF, SLV, parse, val, fs};
+})();
+if (typeof module !== 'undefined') module.exports = OA;
+
 </script>
 <script>
 (() => {
@@ -7359,10 +7616,11 @@ function nextMixed(groups){
 /* ================= TRAIN (endless mixed feed) ================= */
 let tr = {item:null, n:0, ok:0, streak:0, best:0, wrong:0};
 function renderTrain(){
+  if (oaS) return renderOA();
   if (mmS) return renderMMX();
   if (imcS) return renderIMC();
   const gs = settings.groups;
-  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="goimc">🧩 IMC SHL</button><button class="chip" id="gomm">📈 Market maker</button><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
+  app.innerHTML = `<div class="row"><h1 class="grow">Practice</h1><button class="chip" id="gooa">🏢 Firm OAs</button><button class="chip" id="gomm">📈 Market maker</button><button class="chip" id="gocards">Flashcards</button><span class="pill" style="margin-left:6px">${tr.ok}/${tr.n}</span></div>
     <p class="sub">Endless shuffled questions to keep what you've learned sharp.${tr.wrong?` <a href="#" id="gorev">${tr.wrong} to review this session →</a>`:''}</p>
     <div class="chips">${Object.entries(GROUPS).map(([k,t])=>`<button class="chip ${gs.includes(k)?'on':''}" data-grp="${k}">${t}</button>`).join('')}<button class="chip ${settings.focus?'on':''}" id="focus">🎯 Weak spots</button></div>
     <div id="itm"></div>`;
@@ -7372,7 +7630,7 @@ function renderTrain(){
   });
   $('#gocards').onclick = () => { rv.queue=null; tab('cards'); };
   $('#gomm').onclick = () => mmOpen();
-  $('#goimc').onclick = () => imcOpen();
+  $('#gooa').onclick = () => oaOpen();
   $('#focus').onclick = () => { settings.focus=!settings.focus; store.set('settings',settings); toast(settings.focus?'Weak spots: your worst topics and past mistakes come up more':'Weak spots off: even mix'); tr.item=null; renderTrain(); };
   const gr=$('#gorev'); if (gr) gr.onclick = e => { e.preventDefault(); rvw.view='session'; tab('review'); };
   if (!tr.item) tr.item = nextMixed(settings.groups);
@@ -7408,10 +7666,13 @@ function renderTests(){
     ${row('seq','1,2','#7aa2ff','Sequences',PRESETS.seq.sub, best('seq')!=null?`Best ${best('seq')}/15`:'')}
     ${row('prob','P','#7aa2ff','Probability & EV',PRESETS.prob.sub, best('prob')!=null?`Best ${best('prob')}/12`:'')}
     ${row('fpga','RTL','#4ec9a0','FPGA technical',PRESETS.fpga.sub, best('fpga')!=null?`Best ${best('fpga')}/25`:'')}
+    ${row('oa:fm60','60','#f2b84b','Flow Traders maths: 60 in 6','Multiple choice, one at a time, +1 / −1. Integers, decimals, fractions, percentages.', (()=>{const a=oaStore().fm.filter(x=>x.n===60); return a.length?`Best ${Math.max(...a.map(x=>x.score))}`:'';})())}
+    ${row('oa:fstest','26','#7aa2ff','Flow Traders sequences: 26 in 25','Next-term multiple choice with free navigation, +1 / −1 / 0.', (()=>{const a=oaStore().fs; return a.length?`Best ${Math.max(...a.map(x=>x.score))}/26`:'';})())}
+    ${row('oa:sigmock','17','#b48cff','SIG problem solving: 17 in 60','Typed answers, calculator allowed, skip and return. Probability, expected value, counting, logic.', (()=>{const a=oaStore().sig; return a.length?`Best ${Math.max(...a.map(x=>x.score))}/17`:'';})())}
     ${row('imc','15','#f2b84b','IMC SHL inductive mock','15 adaptive items in 18 min: node sequences, shape sequences, button rules. No going back.', (()=>{const d=imcStore(), M=d.mocks2||[]; return M.length?`Best ${Math.max(...M.map(x=>x.score))}/15 · ${M.length} mocks`:'';})())}
     ${row('mm','$','#b48cff','Market maker vs engine','10-trade rounds on a hidden dice or card sum with informed flow. An engine grades every quote.', mm.length?`Rounds ${mm.length} · last-10 edge ${fmt(mm.slice(-10).reduce((a,r)=>a+r.edge,0)/Math.min(10,mm.length),1)} · accuracy ${fmt(mm.slice(-10).reduce((a,r)=>a+r.accuracy,0)/Math.min(10,mm.length),0)}%`:'')}
     <p class="sub" style="margin-top:14px">Formats follow candidate reports (e.g. Optiver's widely reported 80-in-8). Firms change their tests, so treat these as practice, not a replica.</p>`;
-  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') mmOpen(); else if (t==='imc'){ tab('train'); mmS=null; imc2StartMock(); } else startTest(t); });
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t=b.dataset.t; if (t==='sprint') startSprint(); else if (t==='mm') mmOpen(); else if (t==='imc'){ oaS=null; tab('train'); mmS=null; imc2StartMock(); } else if (t.startsWith('oa:')){ if (cur!=='train'){ mmS=null; imcS=null; oaS={view:'hub'}; tab('train'); } oaStart(t.slice(3)); } else startTest(t); });
 }
 function startTest(k){ const p=PRESETS[k]; ts={kind:'test', key:k, p, i:0, score:0, right:0, wrong:0, skip:0, end:Date.now()+p.secs*1000, log:[], over:false}; ts.item=p.make(0); renderTestQ(); startTimer(); }
 function startTimer(){ clearInterval(window._tt); window._tt = setInterval(() => { if (!ts || ts.kind!=='test' || ts.over) return clearInterval(window._tt); const left=Math.max(0,Math.ceil((ts.end-Date.now())/1000)); const el=$('#tm'); if (el) el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`; if (left<=0) endTest(); }, 250); }
@@ -7467,7 +7728,7 @@ const mmSet = () => store.get('mmset', {timer:0});
 const mmRounds = () => store.get('mm_rounds', []);
 const mmF = (x, d=2) => (x > 0 ? '+' : '') + fmt(x, d);
 const mmComp = (cfg, v) => cfg.prod === 'dice' ? String(v) : MM.cardName(v);
-function mmOpen(){ imcS = null; mmS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function mmOpen(){ imcS = null; oaS = null; mmS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
 function mmStart(lvl, seed){
   const cfg = MM.LEVELS[lvl]; seed = seed != null ? seed : (Math.floor(Math.random()*2**32) >>> 0);
   mmS = {view:'play', lvl, cfg, g: MM.newRound(cfg, seed), q:{b:'', a:''}, msg:'', log:[]}; renderMMX();
@@ -7599,7 +7860,7 @@ const IMC_PROMPT = {web: p => `Each line style applies one fixed rule to both th
 const imcStore = () => store.get('imc', {m:{}, mocks:[], opq:[]});
 const imcSave = d => store.set('imc', d);
 const AZHTML = `<div class="azs">${[0,1].map(r => `<div>${[...Array(13)].map((_,i) => { const n = r*13 + i + 1; return `<span><b>${String.fromCharCode(64+n)}</b>${n}</span>`; }).join('')}</div>`).join('')}</div>`;
-function imcOpen(){ mmS = null; imcS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function imcOpen(){ mmS = null; oaS = null; imcS = {view:'home'}; if (cur !== 'train') tab('train'); else renderTrain(); }
 function renderIMC(){ clearInterval(window._imct); kp = null; if (!imcS) return renderTrain(); ({home:imcHome, prac:imcPrac, mock:imcMock, mockEnd:imcMockEnd, opq:imcOPQ, opqEnd:imcOPQEnd, miss:imcMiss, prac2:imcPrac2, mock2:imcMock2, mock2End:imcMock2End})[imcS.view](); }
 function imcBump(mode, ok, secs){ const d = imcStore(), m = d.m[mode] = d.m[mode] || {n:0, ok:0, t:0}; m.n++; if (ok) m.ok++; m.t += secs; imcSave(d); markActive(); }
 function imcLogMiss(p, given){ const L = store.get('imc_miss', []); L.push({p, given, t: Date.now()}); store.set('imc_miss', L.slice(-80)); }
@@ -7853,6 +8114,223 @@ function imcMock2End(){
 }
 function imc2Static(p, st){ const s = {...st}; if (p.mode === 'btn') s.phase = 'ask'; return imc2Body(p, s, true).replace(/<p class="sub"[^>]*>[\s\S]*?<\/p>/, '') + `<div class="card small imsteps"><b>Step-by-step logic</b>${IMC2.STEPS[p.mode](p).map(t => `<div class="st">${t}</div>`).join('')}</div>`; }
 
+/* ================= FIRM OAs hub: Flow Traders (maths, sequences), SIG (problem solving), link to IMC ================= */
+let oaS = null;
+const oaStore = () => Object.assign({fm:[], fs:[], sig:[], t:{}}, store.get('oa', {}));
+const oaSave = d => store.set('oa', d);
+function oaBump(key, ok, secs){ const d = oaStore(), m = d.t[key] = d.t[key] || {n:0, ok:0, s:0}; m.n++; if (ok) m.ok++; m.s += secs || 0; oaSave(d); markActive(); }
+function oaMiss(q, given){ const {chk, ...plain} = q; const L = store.get('oa_miss', []); L.push({q: plain, given, t: Date.now()}); store.set('oa_miss', L.slice(-80)); }
+function oaOpen(view){ mmS = null; imcS = null; oaS = {view: view || 'hub'}; if (cur !== 'train') tab('train'); else renderTrain(); }
+function oaGo(s){ mmS = null; imcS = null; oaS = s; clearInterval(window._oat); if (cur !== 'train') tab('train'); else renderOA(); window.scrollTo(0,0); }
+function renderOA(){ clearInterval(window._oat); kp = null; if (!oaS) return renderTrain(); ({hub:oaHub, fmTest:oaFmTest, fmEnd:oaFmEnd, fmPrac:oaFmPrac, fsTest:oaFsTest, fsEnd:oaFsEnd, fsPrac:oaFsPrac, sigMock:oaSigMock, sigEnd:oaSigEnd, sigPrac:oaSigPrac, miss:oaMissView})[oaS.view](); }
+const oaHead = (title, right) => `<div class="row"><h1 class="grow" style="font-size:21px">${title}</h1>${right || ''}<button class="chip" id="oahub">Back</button></div>`;
+const oaBindHub = (confirmMsg) => { const b = $('#oahub'); if (b) b.onclick = () => { if (confirmMsg && !confirm(confirmMsg)) return; oaGo({view:'hub'}); }; };
+function oaTimer(S, endFn, warn){ const tick = () => { if (cur !== 'train' || oaS !== S) return clearInterval(window._oat); const left = Math.max(0, (S.end - Date.now())/1000), el = $('#oatm'); if (el){ el.textContent = imcFmt(left); el.style.color = left < (warn || 30) ? 'var(--bad)' : ''; } if (left <= 0){ clearInterval(window._oat); toast('Time up'); endFn(); } }; clearInterval(window._oat); tick(); window._oat = setInterval(tick, 250); }
+const pctOf = m => m && m.n ? `${Math.round(100*m.ok/m.n)}% of ${m.n}` : '';
+
+function oaHub(){
+  const d = oaStore(), miss = store.get('oa_miss', []), run = store.get('oa_sig_run', null), live = run && run.end > Date.now();
+  const row = (id, ico, col, t, sub, extra) => `<button class="drill" data-oa="${id}"><span class="ico" style="background:${col}">${ico}</span><span class="grow"><b>${t}</b><span class="mut small">${sub}${extra ? '<br>' + extra : ''}</span></span></button>`;
+  const best = (a, f) => a.length ? Math.max(...a.map(f)) : null;
+  const b60 = best(d.fm.filter(x => x.n === 60), x => x.score), b80 = best(d.fm.filter(x => x.n === 80), x => x.score), bs = best(d.fs, x => x.score), bg = best(d.sig, x => x.score);
+  app.innerHTML = `<div class="row"><h1 class="grow">Firm OAs</h1><button class="chip" id="oaback">← Practice</button></div>
+    <p class="sub">Timed replicas of the formats candidates report, plus untimed practice with worked answers. Everything is generated fresh each time and works offline.</p>
+    <h2>Flow Traders</h2><p class="sub">Two tests: a mental-maths sprint (multiple choice, one at a time, no going back, +1 right, −1 wrong) and number sequences (26 in 25 minutes, free navigation, +1 / −1 / 0 for blank).</p>
+    ${row('fm60','60','#f2b84b','Maths test: 60 in 6 min','Amsterdam format. Integers, decimals, fractions, percentages.', b60 != null ? `Best ${b60} · ${d.fm.filter(x => x.n === 60).length} runs` : '')}
+    ${row('fm80','80','#f2b84b','Maths test: 80 in 8 min','Format reported for the Hong Kong and New York offices.', b80 != null ? `Best ${b80}` : '')}
+    ${row('fmprac','±','#3a3f4b','Maths practice by type','Untimed, with the shortcut for each question type.', pctOf(d.t.fm))}
+    ${row('fstest','26','#7aa2ff','Sequences test: 26 in 25 min','Find the next term. Difficulty rises. Skip what you can\'t see.', bs != null ? `Best ${bs}/26 · ${d.fs.length} runs` : '')}
+    ${row('fsprac','1,2','#3a3f4b','Sequences practice','Three levels, with the rule explained after every answer.', pctOf(d.t.fs))}
+    <h2>SIG (Susquehanna)</h2><p class="sub">Problem Solving Assessment: 17 typed-answer questions in 60 minutes. The first nine or so are quick probability and expected-value questions; the rest are longer. A calculator is allowed and you can skip and come back.</p>
+    ${live ? row('sigresume','▶','#4ec9a0','Resume mock in progress', `${imcFmt((run.end - Date.now())/1000)} left · ${run.ans.filter(Boolean).length}/17 answered`, '') : ''}
+    ${row('sigmock','17','#b48cff','Full mock: 17 in 60 min','9 fast questions then 8 deeper ones. Saved as you go, so you can leave and come back.', bg != null ? `Best ${bg}/17 · ${d.sig.length} mocks` : '')}
+    ${row('sigfast','P','#3a3f4b','Practice: fast tier','Bayes, dice games, binomial, counting, conditional probability. Aim for 1–2 minutes each.', pctOf(d.t.sigfast))}
+    ${row('sigdeep','∑','#3a3f4b','Practice: deep tier','Gambler\'s ruin, Markov chains, optimal stopping, paths, continuous probability, logic.', pctOf(d.t.sigdeep))}
+    <h2>IMC</h2>${row('imc','🧩','#f2b84b','IMC SHL inductive reasoning','Node sequences, shape sequences, button rules, 15-item adaptive mock.', '')}
+    ${miss.length ? `<h2>Review</h2>${row('miss','↺','#ff6b6b',`Misses (${miss.length})`,'Sequence and SIG questions you got wrong, with solutions.','')}` : ''}
+    <details class="lib" style="margin-top:12px"><summary>How to approach each test</summary><div class="small mut" style="line-height:1.55">
+      <p><b>Flow maths:</b> 6 seconds a question. Don't compute fully: estimate the size, check the last digit, and pick. A wrong answer costs a point, so never tap blind; but on a question you can narrow to two options, guessing is still worth it.</p>
+      <p><b>Flow sequences:</b> take differences first. If they're not constant, take differences again or ratios. Then try: two interleaved sequences, alternating operations, "× then +", sums of previous terms. Leave it blank if you can't find a rule in about a minute.</p>
+      <p><b>SIG:</b> bank time on the first nine (about 1–2 minutes each) for the long ones. Give exact fractions where you can. Flag and move on if stuck for 4 minutes.</p></div></details>`;
+  $('#oaback').onclick = () => { oaS = null; renderTrain(); };
+  app.querySelectorAll('[data-oa]').forEach(b => b.onclick = () => oaStart(b.dataset.oa));
+}
+function oaStart(k){
+  if (k === 'fm60' || k === 'fm80'){ const n = k === 'fm60' ? 60 : 80; return oaGo({view:'fmTest', n, i: 0, log: [], q: OA.fmQ(), start: Date.now(), end: Date.now() + n*6000, t0: Date.now()}); }
+  if (k === 'fmprac') return oaGo({view:'fmPrac', type:'all', q: OA.fmQ(), n: 0, ok: 0, t0: Date.now()});
+  if (k === 'fstest'){ const lv = [...Array(8).fill(1), ...Array(10).fill(2), ...Array(8).fill(3)]; return oaGo({view:'fsTest', qs: lv.map(l => OA.seqQ(l)), sel: Array(26).fill(null), i: 0, start: Date.now(), end: Date.now() + 25*60e3}); }
+  if (k === 'fsprac') return oaGo({view:'fsPrac', lv: 0, q: OA.seqQ(), sel: null, n: 0, ok: 0, t0: Date.now()});
+  if (k === 'sigmock'){ const run = store.get('oa_sig_run', null); if (run && run.end > Date.now() && !confirm('Start a new mock? The one in progress will be discarded.')) return; const S = {view:'sigMock', qs: OA.sigMock(), ans: Array(17).fill(''), flag: Array(17).fill(false), i: 0, start: Date.now(), end: Date.now() + 60*60e3}; oaSigPersist(S); return oaGo(S); }
+  if (k === 'sigresume'){ const run = store.get('oa_sig_run', null); if (run) return oaGo({view:'sigMock', ...run}); }
+  if (k === 'sigfast' || k === 'sigdeep') return oaGo({view:'sigPrac', tier: k === 'sigfast' ? 'fast' : 'deep', q: OA.sigQ(k === 'sigfast' ? 'fast' : 'deep'), val:'', done: false, t0: Date.now(), n: 0, ok: 0});
+  if (k === 'imc'){ oaS = null; return imcOpen(); }
+  if (k === 'miss') return oaGo({view:'miss'});
+}
+
+/* ---------- Flow Traders: maths ---------- */
+const fmOptsHTML = (q, mark) => `<div class="fmo">${q.opts.map((o,i) => `<button data-o="${i}" class="${mark != null ? (i === q.ans ? 'ok' : i === mark ? 'bad' : '') : ''}">${o}</button>`).join('')}</div>`;
+function oaFmTest(){
+  const S = oaS; if (Date.now() >= S.end) return oaFmFinish();
+  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">Q ${S.i+1} / ${S.n}</h1><span class="pill" id="oatm"></span><button class="chip" id="oaend">End</button></div>
+    <div class="bar"><i style="width:${100*S.i/S.n}%"></i></div>
+    <div class="card" style="padding:18px 12px"><div class="sprint-q" style="margin:10px 0 18px">${S.q.t}</div>${fmOptsHTML(S.q)}</div>
+    <p class="small mut" style="text-align:center">+1 right · −1 wrong · no going back</p>`;
+  $('#oaend').onclick = () => { if (confirm('End the test now?')) oaFmFinish(); };
+  app.querySelectorAll('.fmo [data-o]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); if (oaS !== S) return;
+    const pickd = +b.dataset.o; S.log.push({q: S.q, pick: pickd, ok: pickd === S.q.ans, ms: Date.now() - S.t0}); S.i++; S.t0 = Date.now();
+    if (S.i >= S.n) return oaFmFinish(); S.q = OA.fmQ(); oaFmTest(); }));
+  oaTimer(S, oaFmFinish, 30);
+}
+function oaFmFinish(){
+  const S = oaS; if (S.view !== 'fmTest') return; clearInterval(window._oat);
+  const right = S.log.filter(x => x.ok).length, wrong = S.log.length - right, score = right - wrong, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
+  const d = oaStore(); d.fm.push({d: today(), n: S.n, score, right, wrong, secs}); d.fm = d.fm.slice(-200);
+  S.log.forEach(x => { for (const k of ['fm', 'fm_' + x.q.type]){ const m = d.t[k] = d.t[k] || {n:0, ok:0, s:0}; m.n++; if (x.ok) m.ok++; m.s += x.ms/1000; } });
+  oaSave(d); markActive(); oaS = {view:'fmEnd', n: S.n, log: S.log, score, right, wrong, secs}; renderOA();
+}
+function oaFmEnd(){
+  const S = oaS, by = {}; S.log.forEach(x => { const b = by[x.q.type] = by[x.q.type] || {n:0, ok:0, ms:0}; b.n++; if (x.ok) b.ok++; b.ms += x.ms; });
+  const miss = S.log.filter(x => !x.ok), done = S.log.length;
+  app.innerHTML = oaHead('Flow maths: result') + `
+    <div class="stat"><div><b>${S.score}</b><span>score (of ${S.n})</span></div><div><b>${S.right}</b><span>right</span></div><div><b>${S.wrong}</b><span>wrong</span></div></div>
+    <div class="stat" style="margin-top:8px"><div><b>${S.n - done}</b><span>not reached</span></div><div><b>${done ? (S.log.reduce((a,x) => a + x.ms, 0)/done/1000).toFixed(1) : '—'}s</b><span>per question</span></div><div><b>${done ? Math.round(100*S.right/done) : 0}%</b><span>accuracy</span></div></div>
+    <p class="sub" style="margin-top:8px">No official pass mark is published. As a working target, aim to reach every question with 90%+ accuracy; a wrong answer costs twice what a slow one does.</p>
+    <h2>By type</h2><div class="list">${Object.entries(by).map(([k,b]) => `<div class="li"><span>${OA.FM_TYPES[k]}</span><span class="mut">${b.ok}/${b.n} · ${(b.ms/b.n/1000).toFixed(1)}s</span></div>`).join('')}</div>
+    ${miss.length ? `<h2>Wrong answers</h2>${miss.map(x => `<div class="card small"><b style="font-family:var(--mono);font-size:17px">${x.q.t} = ${x.q.a}</b><div class="mut">You chose ${x.q.opts[x.pick]} · ${(x.ms/1000).toFixed(1)}s</div><div class="why">${x.q.tip}</div></div>`).join('')}` : ''}
+    <button class="big" id="oaagain">Go again</button>`;
+  oaBindHub(); $('#oaagain').onclick = () => oaStart(S.n === 60 ? 'fm60' : 'fm80');
+}
+function oaFmPrac(){
+  const S = oaS, q = S.q, done = S.pick != null;
+  app.innerHTML = oaHead('Flow maths practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
+    <div class="chips" style="margin-bottom:6px"><button class="chip ${S.type === 'all' ? 'on' : ''}" data-ty="all">All</button>${Object.entries(OA.FM_TYPES).map(([k,t]) => `<button class="chip ${S.type === k ? 'on' : ''}" data-ty="${k}">${t}</button>`).join('')}</div>
+    <div class="card" style="padding:18px 12px"><span class="tag">${OA.FM_TYPES[q.type]}</span><div class="sprint-q" style="margin:10px 0 18px">${q.t}</div>${fmOptsHTML(q, done ? S.pick : null)}
+    ${done ? `<div class="fb ${S.pick === q.ans ? 'ok' : 'no'}"><b>${S.pick === q.ans ? 'Correct' : 'Answer: ' + q.a}</b> · ${S.secs.toFixed(1)}s${S.secs > 6 ? ' (test pace is 6s)' : ''}<div class="why">${q.tip}</div></div><button class="big" id="oanext">Next</button>` : ''}</div>`;
+  oaBindHub();
+  const next = () => { S.q = OA.fmQ(S.type === 'all' ? undefined : S.type); S.pick = null; S.t0 = Date.now(); if (oaS === S) oaFmPrac(); };
+  app.querySelectorAll('[data-ty]').forEach(b => b.onclick = () => { S.type = b.dataset.ty; next(); });
+  if (done) $('#oanext').onclick = next;
+  else app.querySelectorAll('.fmo [data-o]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); if (S.pick != null) return; S.pick = +b.dataset.o; S.secs = (Date.now() - S.t0)/1000; const ok = S.pick === q.ans; S.n++; if (ok) S.ok++;
+    oaBump('fm', ok, S.secs); oaBump('fm_' + q.type, ok, S.secs); oaFmPrac(); if (ok) setTimeout(() => { if (oaS === S && S.q === q) next(); }, 450); }));
+}
+
+/* ---------- Flow Traders: sequences ---------- */
+const seqHTML = q => `<div class="seqt">${q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">?</span></div>`;
+const seqOpts = (q, sel, show) => `<div class="fmo">${q.opts.map((o,i) => `<button data-o="${i}" class="${show ? (i === q.ans ? 'ok' : i === sel ? 'bad' : '') : (i === sel ? 'on' : '')}">${o}</button>`).join('')}</div>`;
+function oaFsTest(){
+  const S = oaS; if (Date.now() >= S.end) return oaFsFinish(); const q = S.qs[S.i];
+  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">Sequence ${S.i+1} / 26</h1><span class="pill" id="oatm"></span><button class="chip" id="oaend">Finish</button></div>
+    <div class="imdots">${S.qs.map((_,i) => `<button data-q="${i}" class="${i === S.i ? 'cur' : ''} ${S.sel[i] != null ? 'ans' : ''}">${i+1}</button>`).join('')}</div>
+    <div class="card" style="padding:16px 12px;margin-top:10px">${seqHTML(q)}${seqOpts(q, S.sel[S.i], false)}
+      <div class="row" style="gap:8px;margin-top:10px"><button class="chip" id="oaclr">Clear answer</button><span class="grow small mut" style="text-align:right">+1 right · −1 wrong · 0 blank</span></div></div>
+    <div class="row" style="gap:8px"><button class="big ghost" id="oaprev" style="margin-top:10px" ${S.i ? '' : 'disabled'}>← Prev</button><button class="big" id="oanext" style="margin-top:10px" ${S.i < 25 ? '' : 'disabled'}>Next →</button></div>`;
+  const go = i => { S.i = i; oaFsTest(); };
+  app.querySelectorAll('.fmo [data-o]').forEach(b => b.onclick = () => { S.sel[S.i] = +b.dataset.o; oaFsTest(); });
+  app.querySelectorAll('[data-q]').forEach(b => b.onclick = () => go(+b.dataset.q));
+  $('#oaclr').onclick = () => { S.sel[S.i] = null; oaFsTest(); };
+  if (S.i) $('#oaprev').onclick = () => go(S.i - 1); if (S.i < 25) $('#oanext').onclick = () => go(S.i + 1);
+  $('#oaend').onclick = () => { const un = S.sel.filter(x => x == null).length; if (confirm(un ? `${un} left blank (blanks score 0). Finish?` : 'Finish the test?')) oaFsFinish(); };
+  oaTimer(S, oaFsFinish, 120);
+}
+function oaFsFinish(){
+  const S = oaS; if (S.view !== 'fsTest') return; clearInterval(window._oat);
+  const right = S.qs.filter((q,i) => S.sel[i] === q.ans).length, blank = S.sel.filter(x => x == null).length, wrong = 26 - right - blank, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
+  const d = oaStore(); d.fs.push({d: today(), score: right - wrong, right, wrong, blank, secs}); d.fs = d.fs.slice(-100);
+  S.qs.forEach((q,i) => { if (S.sel[i] == null) return; const m = d.t.fs = d.t.fs || {n:0, ok:0, s:0}; m.n++; if (S.sel[i] === q.ans) m.ok++; else oaMiss(q, q.opts[S.sel[i]]); });
+  oaSave(d); markActive(); oaS = {view:'fsEnd', qs: S.qs, sel: S.sel, right, wrong, blank, secs}; renderOA();
+}
+function oaFsEnd(){
+  const S = oaS;
+  app.innerHTML = oaHead('Flow sequences: result') + `
+    <div class="stat"><div><b>${S.right - S.wrong}</b><span>score (of 26)</span></div><div><b>${S.right}</b><span>right</span></div><div><b>${S.wrong}</b><span>wrong · ${S.blank} blank</span></div></div>
+    <p class="sub" style="margin-top:8px">Time used ${imcFmt(S.secs)}. A wrong answer cancels a right one, so a blank beats a guess between four options.</p>
+    <h2>Review</h2>${S.qs.map((q,i) => { const ok = S.sel[i] === q.ans, bl = S.sel[i] == null; return `<div class="card small"><div class="row"><b class="grow">${i+1}. L${q.lv}</b><span style="color:${ok ? 'var(--good)' : bl ? 'var(--mut)' : 'var(--bad)'}">${ok ? '✓' : bl ? 'blank' : '✗ you: ' + q.opts[S.sel[i]]}</span></div><div class="seqt sm">${q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">${q.a}</span></div><div class="why">${q.why}</div></div>`; }).join('')}
+    <button class="big" id="oaagain">Go again</button>`;
+  oaBindHub(); $('#oaagain').onclick = () => oaStart('fstest');
+}
+function oaFsPrac(){
+  const S = oaS, q = S.q, done = S.sel != null;
+  app.innerHTML = oaHead('Sequences practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
+    <div class="chips" style="margin-bottom:6px">${[[0,'Mixed'],[1,'Level 1'],[2,'Level 2'],[3,'Level 3']].map(([l,t]) => `<button class="chip ${S.lv === l ? 'on' : ''}" data-lv="${l}">${t}</button>`).join('')}</div>
+    <div class="card" style="padding:16px 12px">${seqHTML(q)}${seqOpts(q, S.sel, done)}
+    ${done ? `<div class="fb ${S.sel === q.ans ? 'ok' : 'no'}"><b>${S.sel === q.ans ? 'Correct' : 'Answer: ' + q.a}</b> · ${Math.round(S.secs)}s${S.secs > 58 ? ' (test pace is about 58s)' : ''}<div class="why">${q.why}</div></div>` : ''}
+    <div class="row" style="gap:8px;margin-top:10px">${done ? '<button class="big" id="oanext" style="margin:0">Next</button>' : '<button class="big ghost" id="oashow" style="margin:0">Show rule</button>'}</div></div>`;
+  oaBindHub();
+  const next = () => { S.q = OA.seqQ(S.lv || undefined); S.sel = null; S.t0 = Date.now(); oaFsPrac(); };
+  app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { S.lv = +b.dataset.lv; next(); });
+  if (done) $('#oanext').onclick = next;
+  else { $('#oashow').onclick = () => { S.sel = -1; S.secs = (Date.now() - S.t0)/1000; oaFsPrac(); };
+    app.querySelectorAll('.fmo [data-o]').forEach(b => b.onclick = () => { S.sel = +b.dataset.o; S.secs = (Date.now() - S.t0)/1000; const ok = S.sel === q.ans; S.n++; if (ok) S.ok++; else oaMiss(q, q.opts[S.sel]); oaBump('fs', ok, S.secs); oaFsPrac(); }); }
+}
+
+/* ---------- SIG ---------- */
+function oaSigPersist(S){ store.set('oa_sig_run', {qs: S.qs, ans: S.ans, flag: S.flag, i: S.i, start: S.start, end: S.end}); }
+const CALC_ = () => `<details class="lib" id="calcd" ${window._calcOpen ? "open" : ""} style="margin-top:10px"><summary>Calculator (allowed in the real test)</summary><input id="calcin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 1-(5/6)^4   C(52,2)   sqrt(2)" style="font-family:var(--mono)"><div id="calcout" class="disp" style="min-height:40px;font-size:18px;margin-top:6px"></div></details>`;
+function calcEval(x){ const e = x.replace(/\^/g, '**').replace(/×/g,'*').replace(/÷/g,'/'); if (!/^[\d\s+\-*/().,]*$/.test(e.replace(/sqrt|fact|exp|ln|C/g, ''))) return null;
+  try { const C2 = (n,k) => { let r = 1; for (let i = 1; i <= k; i++) r = r*(n-k+i)/i; return Math.round(r); }, f = n => n <= 1 ? 1 : n*f(n-1); const v = new Function('sqrt','C','fact','exp','ln', `"use strict"; return (${e});`)(Math.sqrt, C2, f, Math.exp, Math.log); return typeof v === 'number' && isFinite(v) ? v : null; } catch (err){ return null; } }
+function calcBind(){ const i = $('#calcin'); if (!i) return; const dt = $('#calcd'); dt.ontoggle = () => { window._calcOpen = dt.open; }; i.oninput = () => { const v = i.value.trim() ? calcEval(i.value) : ''; $('#calcout').textContent = v === null ? '…' : v === '' ? '' : String(+v.toPrecision(10)); }; }
+const sigUnit = q => q.unit ? ` <span class="mut small">(${q.unit})</span>` : '';
+function oaSigMock(){
+  const S = oaS; if (Date.now() >= S.end) return oaSigFinish(); const q = S.qs[S.i];
+  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">Question ${S.i+1} / 17</h1><span class="pill" id="oatm"></span><button class="chip" id="oaend">Finish</button></div>
+    <div class="imdots">${S.qs.map((_,i) => `<button data-q="${i}" class="${i === S.i ? 'cur' : ''} ${S.ans[i] ? 'ans' : ''} ${S.flag[i] ? 'flg' : ''}">${i+1}</button>`).join('')}</div>
+    <div class="card" style="margin-top:10px"><div class="q" style="font-size:16px;line-height:1.5">${esc(q.q)}</div>
+      <div class="disp" id="disp"></div><div class="small mut" style="margin-top:4px">Type a whole number, decimal or fraction (e.g. 17/36).${sigUnit(q)}</div>${keypadHTML('num')}
+      <div class="row" style="gap:8px;margin-top:10px"><button class="chip ${S.flag[S.i] ? 'on' : ''}" id="oaflag">⚑ Revisit later</button><span class="grow"></span><button class="chip" id="oaprev" ${S.i ? '' : 'disabled'}>← Prev</button><button class="chip on" id="oanext">${S.i < 16 ? 'Next →' : 'First →'}</button></div></div>
+    ${CALC_()}<p class="small mut" style="margin-top:8px">Attempted ${S.ans.filter(Boolean).length}/17 · saved automatically, so you can close the app and resume.</p>`;
+  const disp = $('#disp'), setv = v => { S.ans[S.i] = v; disp.innerHTML = v ? esc(v.replace(/-/g,'−')) : '<span class="ph">answer</span>'; const dot = app.querySelector(`[data-q="${S.i}"]`); if (dot) dot.classList.toggle('ans', !!v); oaSigPersist(S); };
+  setv(S.ans[S.i]);
+  const go = i => { S.i = (i + 17) % 17; oaSigPersist(S); oaSigMock(); window.scrollTo(0,0); };
+  bindKeypad(app, {get: () => S.ans[S.i], set: setv, submit: () => go(S.i + 1)});
+  app.querySelectorAll('[data-q]').forEach(b => b.onclick = () => go(+b.dataset.q));
+  $('#oaflag').onclick = () => { S.flag[S.i] = !S.flag[S.i]; oaSigPersist(S); oaSigMock(); };
+  if (S.i) $('#oaprev').onclick = () => go(S.i - 1); $('#oanext').onclick = () => go(S.i + 1);
+  $('#oaend').onclick = () => { const un = S.ans.filter(x => !x).length; if (confirm(un ? `${un} unanswered. Finish and mark?` : 'Finish and mark?')) oaSigFinish(); };
+  calcBind(); oaTimer(S, oaSigFinish, 300);
+}
+function oaSigFinish(){
+  const S = oaS; if (S.view !== 'sigMock') return; clearInterval(window._oat); kp = null;
+  const res = S.qs.map((q,i) => ({q, given: S.ans[i], ok: !!S.ans[i] && OA.sigCheck(q, S.ans[i])})), score = res.filter(x => x.ok).length, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
+  const d = oaStore(); d.sig.push({d: today(), score, secs, fast: res.slice(0,9).filter(x => x.ok).length, deep: res.slice(9).filter(x => x.ok).length}); d.sig = d.sig.slice(-100);
+  res.forEach(x => { const k = 'sig' + x.q.tier, m = d.t[k] = d.t[k] || {n:0, ok:0, s:0}; m.n++; if (x.ok) m.ok++; if (!x.ok) oaMiss(x.q, x.given || '(blank)'); });
+  oaSave(d); store.set('oa_sig_run', null); markActive(); oaS = {view:'sigEnd', res, score, secs, open: {}}; renderOA();
+}
+const sigSolHTML = (q, given, ok) => `<div class="q" style="font-size:15px;line-height:1.5">${esc(q.q)}</div><div class="fb ${ok ? 'ok' : 'no'}"><b>Answer: ${OA.ansText(q)}</b>${q.unit ? ' ' + q.unit : ''}${given != null && !ok ? ` · you: ${esc(String(given || '(blank)'))}` : ''}<div class="why">${esc(q.why)}</div></div>`;
+function oaSigEnd(){
+  const S = oaS, f = S.res.slice(0,9).filter(x => x.ok).length, dp = S.res.slice(9).filter(x => x.ok).length;
+  app.innerHTML = oaHead('SIG mock: result') + `
+    <div class="stat"><div><b>${S.score}/17</b><span>correct</span></div><div><b>${f}/9 · ${dp}/8</b><span>fast · deep</span></div><div><b>${imcFmt(S.secs)}</b><span>time used</span></div></div>
+    <p class="sub" style="margin-top:8px">No cutoff is published. Candidates who get through report missing only a couple, so treat 14+ as the target and make the first nine automatic.</p>
+    <h2>Review</h2>${S.res.map((x,i) => `<div class="card small"><button data-rq="${i}" style="width:100%;display:flex;justify-content:space-between;background:none;padding:0;color:inherit;text-align:left"><b>${i+1}. ${x.q.topic}</b><span style="color:${x.ok ? 'var(--good)' : 'var(--bad)'}">${x.ok ? '✓' : x.given ? '✗' : 'blank'} ▾</span></button>${S.open[i] || !x.ok ? `<div style="margin-top:8px">${sigSolHTML(x.q, x.given, x.ok)}</div>` : ''}</div>`).join('')}
+    <button class="big" id="oaagain">New mock</button>`;
+  oaBindHub(); $('#oaagain').onclick = () => oaStart('sigmock');
+  app.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => { const i = +b.dataset.rq; S.open[i] = !S.open[i]; const y = window.scrollY; oaSigEnd(); window.scrollTo(0, y); });
+}
+function oaSigPrac(){
+  const S = oaS, q = S.q;
+  app.innerHTML = oaHead('SIG practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
+    <div class="chips" style="margin-bottom:6px">${[['fast','Fast tier'],['deep','Deep tier']].map(([k,t]) => `<button class="chip ${S.tier === k ? 'on' : ''}" data-tier="${k}">${t}</button>`).join('')}<span class="pill" id="oatm2" style="margin-left:auto">0:00</span></div>
+    <div class="card"><span class="tag">${q.topic}</span>${S.done ? sigSolHTML(q, S.shown ? null : S.val, S.okd) + '<button class="big" id="oanext">Next question</button>'
+      : `<div class="q" style="font-size:16px;line-height:1.5">${esc(q.q)}</div><div class="disp" id="disp"></div><div class="small mut" style="margin-top:4px">Whole number, decimal or fraction (e.g. 17/36).${sigUnit(q)}</div>${keypadHTML('num')}<div class="row" style="margin-top:8px"><button class="chip grow" id="oashow">Show solution</button></div>`}</div>${S.done ? '' : CALC_()}`;
+  oaBindHub();
+  const next = tier => { oaGo({view:'sigPrac', tier: tier || S.tier, q: OA.sigQ(tier || S.tier), val:'', done: false, t0: Date.now(), n: S.n, ok: S.ok}); };
+  app.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => next(b.dataset.tier));
+  if (S.done){ $('#oanext').onclick = () => next(); return; }
+  const disp = $('#disp'), setv = v => { S.val = v; disp.innerHTML = v ? esc(v.replace(/-/g,'−')) : '<span class="ph">answer</span>'; }; setv(S.val);
+  const finish = shown => { S.done = true; S.shown = shown; S.okd = !shown && OA.sigCheck(q, S.val); if (!shown){ S.n++; if (S.okd) S.ok++; else oaMiss(q, S.val); oaBump('sig' + q.tier, S.okd, (Date.now() - S.t0)/1000); } kp = null; clearInterval(window._oat); oaSigPrac(); };
+  bindKeypad(app, {get: () => S.val, set: setv, submit: () => { if (S.val) finish(false); }});
+  $('#oashow').onclick = () => finish(true); calcBind();
+  const tick = () => { const el = $('#oatm2'); if (!el || cur !== 'train' || oaS !== S) return clearInterval(window._oat); el.textContent = imcFmt((Date.now() - S.t0)/1000); }; clearInterval(window._oat); tick(); window._oat = setInterval(tick, 500);
+}
+function oaMissView(){
+  const L = store.get('oa_miss', []).slice().reverse();
+  app.innerHTML = oaHead('Misses') + `<p class="sub">Newest first.</p>${L.map(m => m.q.kind === 'sig' ? `<div class="card small"><span class="tag">SIG · ${m.q.topic}</span>${sigSolHTML(m.q, m.given, false)}<button class="chip" data-sim="sig${m.q.tier}" style="margin-top:8px">Similar</button></div>`
+    : `<div class="card small"><span class="tag">Flow sequences · L${m.q.lv}</span><div class="seqt sm">${m.q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">${m.q.a}</span></div><div class="mut">You chose ${esc(String(m.given))}</div><div class="why">${m.q.why}</div><button class="chip" data-sim="fsprac" style="margin-top:8px">Practise more</button></div>`).join('')}
+    ${L.length ? '<button class="big ghost" id="oaclr">Clear misses</button>' : '<div class="card empty">No misses.</div>'}`;
+  oaBindHub(); app.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => oaStart(b.dataset.sim));
+  const c = $('#oaclr'); if (c) c.onclick = () => { if (confirm('Clear all misses?')){ store.set('oa_miss', []); oaMissView(); } };
+}
+
 /* ================= REVIEW (mistakes + guides) ================= */
 let rvw = {view:'session', cat:'all', drill:null};
 function renderReview(){
@@ -7970,7 +8448,7 @@ function renderMore(host){
     <p class="sub" style="margin-top:14px">${CARDS.length} cards · ${MCB.length} multiple-choice · ${GENS.length} problem generators.</p>`;
   $('#addc').onclick = () => { const q=$('#cq').value.trim(), a=$('#ca').value.trim(); if (!q||!a) return toast('Fill in both sides'); const custom=store.get('custom',[]); const c={id:hash('mine'+q+Date.now()), q, a}; custom.push(c); store.set('custom',custom); if (!DECKS.find(d=>d.id==='mine')) DECKS.push({id:'mine',title:'My cards',cat:'mine'}); CARDS.push({...c,deck:'mine',cat:'mine'}); rv.queue=null; $('#cq').value=''; $('#ca').value=''; toast('Card added'); };
   $('#saves').onclick = () => { settings.newPerDay=Math.max(0,+$('#snew').value||0); settings.sprintSecs=+$('#ssec').value; settings.autoNext=$('#sauto').checked; store.set('settings',settings); rv.queue=null; toast('Saved'); };
-  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','mm_rounds','mmset','imc','imc_miss','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
+  $('#exp').onclick = async () => { const keys=['srs','custom','sprints','tests','mm','mm_rounds','mmset','imc','imc_miss','oa','oa_miss','oa_sig_run','cstat','gstat','mistakes','revlog','days','settings','newday','lprog','lcode','lastCourse','simp']; const data={}; keys.forEach(k=>data[k]=store.get(k,null)); const txt=JSON.stringify({edge:2,data}); try{ await navigator.clipboard.writeText(txt); toast('Backup copied'); }catch(e){ $('#imp').value=txt; $('#imp').select(); toast('Copy blocked: backup shown below'); } };
   $('#doimp').onclick = () => { try{ const o=JSON.parse($('#imp').value); if (!o.edge) throw 0; Object.entries(o.data).forEach(([k,v])=>{ if (v!==null) store.set(k,v); }); toast('Restored, reloading'); setTimeout(()=>location.reload(),600); }catch(e){ toast("That doesn't look like a backup"); } };
 }
 
@@ -8362,7 +8840,7 @@ function tab(t){
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => { if (b.dataset.tab==='cards') rv.queue=null; if (b.dataset.tab==='review') rvw.drill=null; if (b.dataset.tab==='learn' && cur==='learn') ln.lesson=null; tab(b.dataset.tab); });
 if ('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost') && !location.hostname.endsWith('claude.ai') && window.top===window){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 window.__edge = {GENS, MCB, CARDS, check, makeGen, oaQ, fval, fstr, conceptOf, PRIMERS, CATS, COURSES, practicePool, SIMS, allLessons};
-window.__mmS = () => mmS; window.__imcS = () => imcS;
+window.__mmS = () => mmS; window.__imcS = () => imcS; window.__oaS = () => oaS;
 tab('learn');
 })();
 
