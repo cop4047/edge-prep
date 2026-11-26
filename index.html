@@ -234,6 +234,9 @@ pre.hlb .tk,pre.hlb .tq,pre.hlb .tt{font-weight:600}
 .tql{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tqs{font-variant-numeric:tabular-nums;font-weight:600}
 .tqmono{font-family:var(--mono)}
+
+.why{white-space:pre-line}
+.chips{flex-wrap:wrap;overflow:visible}
 </style>
 </head>
 <body>
@@ -6888,8 +6891,39 @@ const OA = (function(){
       if (Math.random() < .5){ const d = pick([2,3,4,5,-2,-3]); idx = [...Array(6)].map((_,i) => a + d*i); why = `Letters move ${sg(d)} positions each step (A=1 … Z=26, wrapping).`; }
       else { idx = [a]; for (let i = 1; i < 6; i++) idx.push(idx[i-1] + i); why = 'Jumps grow by one each step: +1, +2, +3, +4, then +5.'; }
       const t = idx.map(LT), x = idx[5]; return {t, str: true, why: why + ` ${t.slice(0,5).map((c,i) => `${c}=${((idx[i]%26)+26)%26+1}`).join(', ')} → ${t[5]}.`, alt: [LT(x+1), LT(x-1), LT(x+2), LT(x-2), LT(x+3)]}; },
+    /* ---- impossible tier ---- */
+    hidFrac(){ const d = pick([2,3,4,5]), n0 = rnd(1, 3*d), k = pick([1,2,3]) * (Math.random() < .3 ? -1 : 1), xs = [...Array(6)].map((_,i) => F(n0 + k*i, d)); if (xs.some(x => x.n <= 0) || k % d === 0) return null;
+      const s = xs.map(fs); return {t: s, str: true, why:`Whole numbers and fractions mixed are often one fraction sequence in disguise. Write everything over ${d}: ${xs.map(x => `${x.n*(d/x.d)}/${d}`).join(', ')}. The top goes ${sg(k)} each time.`,
+        alt: [fs(F(n0 + 6*k, d)), fs(F(n0 + 5*k + 1, d)), fs(F(n0 + 5*k - 1, d)), fs(F(n0 + 5*k, d + 1)), fs(F(n0 + 4*k, d))].filter(x => x !== s[5])}; },
+    fracSplit(){ const NR = pick([['squares', i => (i+1)**2], ['+3', i => 2 + 3*i], ['primes', i => PR[i]], ['×2', i => 2**i], ['odd numbers', i => 2*i + 1]]), DR = pick([['+1', i => 2 + i], ['primes', i => PR[i+1]], ['squares', i => (i+2)**2], ['+4', i => 3 + 4*i], ['×3', i => 3**i]]);
+      if (NR[0] === DR[0]) return null; const t = [...Array(6)].map((_,i) => `${NR[1](i)}/${DR[1](i)}`);
+      return {t, str: true, why:`Treat top and bottom as two separate sequences. Numerators: ${[...Array(5)].map((_,i) => NR[1](i)).join(', ')} (${NR[0]}). Denominators: ${[...Array(5)].map((_,i) => DR[1](i)).join(', ')} (${DR[0]}). Don't simplify: the pattern lives in the unsimplified form.`,
+        alt: [`${NR[1](5)+1}/${DR[1](5)}`, `${NR[1](5)}/${DR[1](5)+1}`, `${NR[1](4)}/${DR[1](5)}`, `${NR[1](5)}/${DR[1](4)}`, `${NR[1](6)}/${DR[1](6)}`]}; },
+    geomFrac(){ const [rn, rd] = pick([[3,2],[2,3],[-1,2],[5,2],[-2,3],[4,3]]), a = F(rd**5 * pick([1,1,2,3]) * (Math.random() < .5 ? 1 : -1)), r = F(rn, rd); const xs = [a]; for (let i = 0; i < 5; i++) xs.push(mul(xs[i], r));
+      return {t: xs.map(x => fs(x).replace('-', '−')), str: true, why:`Each term is the previous × ${fs(r)}. Check by dividing two neighbours: ${fs(xs[1])} ÷ ${fs(xs[0])} = ${fs(r)}.`,
+        alt: [fs(mul(xs[5], r)), fs(add(xs[4], sub(xs[4], xs[3]))), fs(mul(xs[4], F(rd, rn))), fs(F(-xs[5].n, xs[5].d)), fs(add(xs[5], F(1)))].map(x => x.replace('-', '−'))}; },
+    altFracNeg(){ const a = rnd(1,3), b = rnd(1,3), k = rnd(0,2); const term = i => { const f = F((i+a) * (i % 2 ? -1 : 1), i + a + b); return fs(f).replace('-', '−'); };
+      const t = [...Array(6)].map((_,i) => term(i + k)); if (new Set(t).size < 6) return null; const i5 = 5 + k;
+      return {t, str: true, why:`Signs alternate. Ignoring the sign, the n-th term is (n + ${a}) / (n + ${a + b}): top and bottom both go up by 1 (check whether any were simplified).`,
+        alt: [fs(F((i5+a), i5+a+b)), fs(F(-(i5+a+1), i5+a+b)), fs(F(-(i5+a), i5+a+b+1)), fs(F((i5+a-1)*(i5 % 2 ? -1 : 1), i5+a+b-1))].map(x => x.replace('-', '−')).filter(x => x !== t[5])}; },
+    decGeom(){ const r = pick([F(3,2), F(5,4), F(6,5), F(1,2)]), a = D(pick([8, 16, 32, 64, 125, 25]), pick([1,2])), xs = [a]; for (let i = 0; i < 5; i++) xs.push(mul(xs[i], r)); const s = xs.map(dec); if (s.some(x => x == null || x.length > 8)) return null;
+      return {t: s, str: true, why:`Each term is × ${dec(r)} (i.e. × ${fs(r)}). Decimal sequences that grow by more each time are usually geometric: divide neighbours.`,
+        alt: [dec(add(xs[4], sub(xs[4], xs[3]))), dec(add(xs[5], D(1,1))), dec(mul(xs[4], add(r, D(1,1)))), dec(sub(xs[5], D(1,1)))].filter(x => x && x !== s[5])}; },
+    opCycle(){ const a = rnd(2,7), b = pick([2,3]), c = rnd(1,6); let x = rnd(1,6); const t = [x], ops = [v => v + a, v => v*b, v => v - c], nm = [`+${a}`, `×${b}`, `−${c}`]; for (let i = 0; i < 7; i++){ x = ops[i % 3](x); t.push(x); }
+      return {t, why:`A cycle of three operations: ${nm.join(', ')}, then repeat. The last step is ${nm[6 % 3]}.`}; },
+    incOps(){ let x = rnd(1,4); const t = [x]; for (let i = 1; i <= 6; i++){ x = i % 2 ? x + i : x * i; t.push(x); } return {t, why:'Operations alternate and the number grows each time: +1, ×2, +3, ×4, +5, ×6.'}; },
+    inter3(){ const a = rnd(1,9), b = rnd(10,30), c = rnd(31,60), da = pick([2,3,5]), db = pick([-2,-3,4]), dc = pick([-5,1,6,7]); const t = []; for (let i = 0; i < 3; i++) t.push(a + da*i, b + db*i, c + dc*i); t.push(a + 3*da);
+      return {t, why:`Three sequences interleaved (positions 1, 4, 7 · 2, 5, 8 · 3, 6, 9): ${a}, ${a+da}, ${a+2*da} (${sg(da)}); ${b}, ${b+db}, ${b+2*db} (${sg(db)}); ${c}, ${c+dc}, ${c+2*dc} (${sg(dc)}). The next term belongs to the first one.`}; },
+    digitProd(){ let x = rnd(12, 40); const t = [x]; const dp = v => String(v).split('').filter(c => c !== '0').reduce((a,c) => a * +c, 1); for (let i = 0; i < 6; i++){ x = x + dp(x); t.push(x); }
+      return {t, why:`Add the product of the (non-zero) digits: ${t[5]} + ${String(t[5]).split('').filter(c => c !== '0').join('×')} = ${t[6]}.`}; },
+    happyLoop(){ const sq = v => String(v).split('').reduce((a,c) => a + (+c)**2, 0); let x = pick([4, 16, 37, 58, 89, 145, 42, 20, 23, 31, 7, 19, 85, 61]); const t = [x]; for (let i = 0; i < 6; i++){ x = sq(x); t.push(x); }
+      if (new Set(t.slice(0,6)).size < 6) return null; return {t, why:`Each term is the sum of the squares of the previous term's digits: ${String(t[5]).split('').map(c => c + '²').join(' + ')} = ${t[6]}. (Many starting numbers fall into the loop 4, 16, 37, 58, 89, 145, 42, 20.)`}; },
+    prodPrev(){ const [a,b] = pick([[1,2],[2,1],[1,3],[2,2],[3,1]]); const t = [a, b]; while (t.length < 7) t.push(t[t.length-1] * t[t.length-2]); if (t[6] > 1e6) return null; return {t, why:`Each term is the product of the previous two: ${t[4]} × ${t[5]} = ${t[6]}.`}; },
+    sqPlusPrime(){ const v = rnd(0,2), f = i => v === 0 ? (i+1)**2 + PR[i] : v === 1 ? PR[i]**2 - 1 : (i+2)**3 - (i+2); const t = [...Array(7)].map((_,i) => f(i));
+      return {t, why: v === 0 ? 'Squares plus primes: 1+2, 4+3, 9+5, 16+7, 25+11, 36+13, …' : v === 1 ? 'Each term is a prime squared minus 1: 2²−1, 3²−1, 5²−1, 7²−1, …' : 'n³ − n for n = 2, 3, 4, …: 6, 24, 60, 120, 210, 336.'}; },
+    altDiffMul(){ const a = rnd(1,5); const t = [a]; for (let i = 1; i <= 6; i++) t.push(t[i-1] + (i % 2 ? i*i : -i)); return {t, why:`Steps alternate between adding a square and subtracting: +1², −2, +3², −4, +5², −6.`}; },
   };
-  const SLV = {1:['arith','geom','altAdd','fib','sqc','arith','geom'], 2:['quad','diffGeom','interleave','mulAdd','primeDiff','tri','altMulAdd','altSign','fracSeq','letters','sqc'], 3:['trib','mulInc','factorial','interGA','pow2n','digitSum','sqDiff','quad','interleave','altMulAdd','primeDiff']};
+  const SLV = {4:['hidFrac','fracSplit','geomFrac','altFracNeg','decGeom','opCycle','incOps','inter3','digitProd','happyLoop','prodPrev','sqPlusPrime','altDiffMul','fracSeq','interGA','trib'], 1:['arith','geom','altAdd','fib','sqc','arith','geom'], 2:['quad','diffGeom','interleave','mulAdd','primeDiff','tri','altMulAdd','altSign','fracSeq','letters','sqc'], 3:['trib','mulInc','factorial','interGA','pow2n','digitSum','sqDiff','quad','interleave','altMulAdd','primeDiff']};
   function seqQ(lv){
     lv = lv || rnd(1,3);
     for (let tries = 0; tries < 200; tries++){
@@ -7018,6 +7052,190 @@ const OA = (function(){
   return {fmQ, seqQ, sigQ, sigMock, sigCheck, ansText, FM_TYPES, SIG_FAST, SIG_DEEP, SF, SLV, parse, val, fs};
 })();
 if (typeof module !== 'undefined') module.exports = OA;
+
+/* ================= Markov chains & gambler's ruin ladder: exact solver (BigInt fractions) + generators ================= */
+const MK = (function(){
+  const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const pick = a => a[Math.floor(Math.random()*a.length)];
+  const shuffle = a => { for (let i = a.length-1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  /* ---- exact rationals ---- */
+  const ab = x => x < 0n ? -x : x, g = (a,b) => { a = ab(a); b = ab(b); while (b){ [a,b] = [b, a % b]; } return a || 1n; };
+  const R = (n, d = 1n) => { n = BigInt(n); d = BigInt(d); if (d < 0n){ n = -n; d = -d; } const k = g(n,d); return [n/k, d/k]; };
+  const add = (a,b) => R(a[0]*b[1] + b[0]*a[1], a[1]*b[1]), sub = (a,b) => R(a[0]*b[1] - b[0]*a[1], a[1]*b[1]), mul = (a,b) => R(a[0]*b[0], a[1]*b[1]), div = (a,b) => R(a[0]*b[1], a[1]*b[0]);
+  const Z = R(0), ONE = R(1), isZ = a => a[0] === 0n;
+  const rs = a => a[1] === 1n ? String(a[0]) : `${a[0]}/${a[1]}`;
+  const SUP = {'1/2':'½','1/3':'⅓','2/3':'⅔','1/4':'¼','3/4':'¾','1/5':'⅕','2/5':'⅖','3/5':'⅗','4/5':'⅘','1/6':'⅙','5/6':'⅚','1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞'};
+  const pr = a => SUP[rs(a)] || `(${rs(a)})`;
+  /* ---- linear solve A x = b (square, exact) ---- */
+  function solve(A, b){
+    const n = A.length, M = A.map((r,i) => [...r, b[i]]);
+    for (let c = 0; c < n; c++){
+      let p = c; while (p < n && isZ(M[p][c])) p++; if (p === n) throw new Error('singular');
+      [M[c], M[p]] = [M[p], M[c]];
+      const iv = div(ONE, M[c][c]); for (let j = c; j <= n; j++) M[c][j] = mul(M[c][j], iv);
+      for (let r = 0; r < n; r++) if (r !== c && !isZ(M[r][c])){ const f = M[r][c]; for (let j = c; j <= n; j++) M[r][j] = sub(M[r][j], mul(f, M[c][j])); }
+    }
+    return M.map(r => r[n]);
+  }
+  /* chain: {names:[...], P: {from: [[to, prob]...]}, absorb: Set, start}
+     kind 'time': expected steps to absorption. kind 'prob': P(absorbed in target set). */
+  function absorb(ch, kind, target){
+    const T = ch.names.filter(s => !ch.absorb.has(s)), ix = Object.fromEntries(T.map((s,i) => [s,i]));
+    const A = T.map(() => T.map(() => Z)), b = T.map(() => Z);
+    T.forEach((s,i) => { A[i][i] = add(A[i][i], ONE); if (kind === 'time') b[i] = ONE;
+      for (const [t,p] of ch.P[s]){ if (t in ix) A[i][ix[t]] = sub(A[i][ix[t]], p); else if (kind === 'prob' && target.has(t)) b[i] = add(b[i], p); } });
+    const x = solve(A, b), val = Object.fromEntries(T.map((s,i) => [s, x[i]]));
+    ch.absorb.forEach(s => val[s] = kind === 'time' ? Z : (target.has(s) ? ONE : Z));
+    return val;
+  }
+  function stationary(ch){
+    const S = ch.names, n = S.length, ix = Object.fromEntries(S.map((s,i) => [s,i]));
+    const A = S.map(() => S.map(() => Z)), b = S.map(() => Z);
+    // equations: for j < n-1: sum_i pi_i P(i,j) - pi_j = 0 ; last row: sum pi = 1
+    for (let j = 0; j < n-1; j++){ A[j][j] = sub(A[j][j], ONE); S.forEach((s,i) => { for (const [t,p] of ch.P[s]) if (ix[t] === j) A[j][i] = add(A[j][i], p); }); }
+    A[n-1] = S.map(() => ONE); b[n-1] = ONE;
+    const x = solve(A, b); return Object.fromEntries(S.map((s,i) => [s, x[i]]));
+  }
+  function eqs(ch, kind, target, sym, label){
+    const L = label || (s => s);
+    return ch.names.filter(s => !ch.absorb.has(s)).map(s => {
+      const terms = []; let c = kind === 'time' ? ['1'] : [];
+      for (const [t,p] of ch.P[s]){ if (ch.absorb.has(t)){ if (kind === 'prob' && target.has(t)) terms.push(pr(p)); } else terms.push(`${pr(p)}${sym}(${L(t)})`); }
+      return `${sym}(${L(s)}) = ${[...c, ...terms].join(' + ') || '0'}`;
+    });
+  }
+  const toF = a => { if (ab(a[0]) > 10n**13n || a[1] > 10n**13n) return null; return {n: Number(a[0]), d: Number(a[1])}; };
+  const solTxt = (val, ch, sym, label) => { const L = label || (s => s); return ch.names.filter(s => !ch.absorb.has(s)).slice(0, 8).map(s => `${sym}(${L(s)}) = ${rs(val[s])}`).join(', '); };
+
+  /* ---- pattern automaton (KMP over alphabet) for one or more patterns ---- */
+  function patternChain(pats, alpha){ // alpha: [[symbol, prob]]
+    const pre = new Set(['']); pats.forEach(p => { for (let k = 1; k <= p.length; k++) pre.add(p.slice(0,k)); });
+    const names = [...pre].sort((a,b) => a.length - b.length || (a < b ? -1 : 1)), done = new Set(pats);
+    const step = (s, c) => { let w = s + c; while (w && !pre.has(w)) w = w.slice(1); return w; };
+    const P = {}; names.forEach(s => { if (done.has(s)) { P[s] = []; return; } const m = {}; alpha.forEach(([c,p]) => { const t = step(s, c); m[t] = m[t] ? add(m[t], p) : p; }); P[s] = Object.entries(m); });
+    return {names, P, absorb: done, start: ''};
+  }
+  const lab = s => s === '' ? 'start' : s;
+  const coinA = (p) => [['H', p], ['T', sub(ONE, p)]];
+  const coin = () => Math.random() < .5;
+
+  /* ================= generators ================= */
+  const PB = [[1,3],[2,3],[2,5],[3,5],[1,4],[3,4]];
+  const G = {
+    /* ---- Level 1 ---- */
+    patFair(){ const pat = pick(['HH','HT','HHH','HTH','HHT','TTH','HTT','HHTT']), ch = patternChain([pat], coinA(R(1,2))), v = absorb(ch, 'time');
+      return {lv:1, topic:'Pattern waiting time', q:`A fair coin is flipped until ${pat} first appears. What is the expected number of flips?`, f: v[''], ch, kind:'time', sym:'E', label: lab,
+        how:'States = how much of the pattern you have matched so far. On a miss, fall back to the longest ending of what you have seen that is still a start of the pattern (not always to the start).',
+        chk:{mc: () => { let s = '', c = 0; while (!s.endsWith(pat)){ s = (s + (coin() ? 'H' : 'T')).slice(-pat.length); c++; } return c; }}}; },
+    ruinFair(){ const N = rnd(4,9), k = rnd(1,N-1), dur = Math.random() < .5;
+      const names = [...Array(N+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i === 0 || i === N ? [] : [[String(i+1), R(1,2)], [String(i-1), R(1,2)]]; });
+      const ch = {names, P, absorb: new Set(['0', String(N)]), start: String(k)}, v = absorb(ch, dur ? 'time' : 'prob', new Set([String(N)]));
+      return {lv:1, topic:"Gambler's ruin", q:`You have £${k} and bet £1 on a fair coin flip each round, stopping at £${N} or £0. ${dur ? 'What is the expected number of rounds?' : `What is the probability of reaching £${N}?`}`, f: v[String(k)], ch, kind: dur ? 'time' : 'prob', target: new Set([String(N)]), sym: dur ? 'E' : 'P', label: s => '£' + s,
+        how: dur ? 'Shortcut: for a fair game the expected duration is k(N − k).' : 'Shortcut: a fair game keeps your expected wealth constant, so P = k/N.',
+        chk:{mc: () => { let x = k, c = 0; while (x > 0 && x < N){ x += coin() ? 1 : -1; c++; } return dur ? c : (x === N ? 1 : 0); }}}; },
+    race(){ const [a, b] = [pick([[1,6],[1,4],[1,3],[1,2],[1,5]]), pick([[1,6],[1,3],[1,2],[1,4],[2,3]])].map(x => R(x[0], x[1]));
+      const ch = {names:['A','B','Awin','Bwin'], P:{A:[['Awin', a], ['B', sub(ONE,a)]], B:[['Bwin', b], ['A', sub(ONE,b)]], Awin:[], Bwin:[]}, absorb: new Set(['Awin','Bwin']), start:'A'};
+      const v = absorb(ch, 'prob', new Set(['Awin'])), an = Number(a[0])/Number(a[1]), bn = Number(b[0])/Number(b[1]);
+      return {lv:1, topic:'First to succeed', q:`Alice and Bob take turns, Alice first. On her turn Alice succeeds with probability ${rs(a)}; on his turn Bob succeeds with probability ${rs(b)}. The first to succeed wins. What is the probability that Alice wins?`, f: v.A, ch, kind:'prob', target: new Set(['Awin']), sym:'P', label: s => s === 'A' ? "Alice's turn" : "Bob's turn",
+        how:'Shortcut: P = a / (1 − (1−a)(1−b)): Alice wins this round, or both miss and the game restarts.',
+        chk:{mc: () => { for(;;){ if (Math.random() < an) return 1; if (Math.random() < bn) return 0; } }}}; },
+    /* ---- Level 2 ---- */
+    ruinBiased(){ const [pn,pd] = pick(PB), p = R(pn,pd), N = rnd(3,6), k = rnd(1,N-1), dur = Math.random() < .4;
+      const names = [...Array(N+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i === 0 || i === N ? [] : [[String(i+1), p], [String(i-1), sub(ONE,p)]]; });
+      const ch = {names, P, absorb: new Set(['0', String(N)]), start: String(k)}, v = absorb(ch, dur ? 'time' : 'prob', new Set([String(N)]));
+      return {lv:2, topic:"Gambler's ruin (biased)", q:`Each round you win £1 with probability ${pn}/${pd} and lose £1 otherwise. You start with £${k} and stop at £${N} or £0. ${dur ? 'What is the expected number of rounds?' : `What is the probability you reach £${N}?`}`, f: v[String(k)], ch, kind: dur ? 'time' : 'prob', target: new Set([String(N)]), sym: dur ? 'E' : 'P', label: s => '£' + s,
+        how: dur ? 'Solve the line of equations from one end, or use E(k) = k/(q−p) − (N/(q−p))·(1 − rᵏ)/(1 − rᴺ) with r = q/p.' : 'Formula: with r = q/p, P = (1 − rᵏ)/(1 − rᴺ). Check it against the equations below.',
+        chk:{mc: () => { let x = k, c = 0; while (x > 0 && x < N){ x += Math.random()*pd < pn ? 1 : -1; c++; } return dur ? c : (x === N ? 1 : 0); }}}; },
+    patBiased(){ const [pn,pd] = pick(PB), pat = pick(['HH','HT','TH','HHH','HTH','HHT']), ch = patternChain([pat], coinA(R(pn,pd))), v = absorb(ch, 'time'); if (!toF(v[''])) return null;
+      return {lv:2, topic:'Pattern waiting time (biased)', q:`A coin lands heads with probability ${pn}/${pd}. It is flipped until ${pat} first appears. What is the expected number of flips?`, f: v[''], ch, kind:'time', sym:'E', label: lab,
+        how:'Same states as with a fair coin; only the transition probabilities change.', chk:{mc: () => { let s = '', c = 0; while (!s.endsWith(pat)){ s = (s + (Math.random()*pd < pn ? 'H' : 'T')).slice(-pat.length); c++; } return c; }}}; },
+    reflect(){ const N = rnd(3,8), k = rnd(0,N-1);
+      const names = [...Array(N+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i === N ? [] : i === 0 ? [['1', ONE]] : [[String(i+1), R(1,2)], [String(i-1), R(1,2)]]; });
+      const ch = {names, P, absorb: new Set([String(N)]), start: String(k)}, v = absorb(ch, 'time');
+      return {lv:2, topic:'Random walk with a wall', q:`A token starts on square ${k} of squares 0 to ${N}. Each step it moves one square left or right with equal probability, except that from square 0 it always moves to 1. What is the expected number of steps to reach square ${N}?`, f: v[String(k)], ch, kind:'time', sym:'E', label: s => 'sq ' + s,
+        how:`Shortcut: with a reflecting wall at 0 the answer is N² − k² = ${N*N} − ${k*k}.`, chk:{mc: () => { let x = k, c = 0; while (x < N){ x = x === 0 ? 1 : x + (coin() ? 1 : -1); c++; } return c; }}}; },
+    sumReach(){ const T = rnd(4,9), d = pick([4,6]);
+      const names = [...Array(T+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i >= T ? [] : [...Array(d)].map((_,f) => [String(Math.min(T, i+f+1)), R(1,d)]); });
+      const merged = {}; names.forEach(s => { const m = {}; P[s].forEach(([t,p]) => m[t] = m[t] ? add(m[t], p) : p); merged[s] = Object.entries(m); });
+      const ch = {names, P: merged, absorb: new Set([String(T)]), start:'0'}, v = absorb(ch, 'time');
+      return {lv:2, topic:'Running total', q:`You roll a fair ${d}-sided die repeatedly and keep a running total. What is the expected number of rolls until the total is at least ${T}?`, f: v['0'], ch, kind:'time', sym:'E', label: s => 'total ' + s,
+        how:'States = current total. Work backwards from the totals closest to the target, where one roll is always enough.', chk:{mc: () => { let s = 0, c = 0; while (s < T){ s += rnd(1,d); c++; } return c; }}}; },
+    /* ---- Level 3 ---- */
+    penney(){ const pool = ['HHH','HHT','HTH','HTT','THH','THT','TTH','TTT','HH','HT','TH','TT'], a = pick(pool); let b; do b = pick(pool.filter(x => x.length === a.length)); while (b === a);
+      const ch = patternChain([a, b], coinA(R(1,2))), v = absorb(ch, 'prob', new Set([a]));
+      return {lv:3, topic:'Pattern race (Penney)', q:`A fair coin is flipped repeatedly. What is the probability that ${a} appears before ${b}?`, f: v[''], ch, kind:'prob', target: new Set([a]), sym:'P', label: lab,
+        how:'States = the longest recent run of flips that is still the start of either pattern. Answers are often far from ½: overlaps matter.', chk:{mc: () => { let s = ''; for(;;){ s = (s + (coin() ? 'H' : 'T')).slice(-3); if (s.endsWith(a)) return 1; if (s.endsWith(b)) return 0; } }}}; },
+    graphWalk(){ const v0 = pick(['cube','cycle','K','square']); let names, nb, from, to, desc;
+      if (v0 === 'cube'){ names = [...Array(8).keys()].map(i => i.toString(2).padStart(3,'0')); nb = s => [0,1,2].map(b => names[parseInt(s,2) ^ (1<<b)]); from = '000'; to = pick(['111','011']); desc = `a corner of a cube, moving each second along one of the 3 edges at random. Expected seconds to reach the ${to === '111' ? 'opposite corner' : 'diagonally opposite corner of a face'}?`; }
+      else if (v0 === 'cycle'){ const n = rnd(5,9), d = rnd(2, Math.floor(n/2)); names = [...Array(n).keys()].map(String); nb = s => [String((+s+1)%n), String((+s+n-1)%n)]; from = '0'; to = String(d); desc = `vertex 0 of a regular ${n}-gon, hopping each second to a random neighbour. Expected hops to reach vertex ${d} (${d} steps away round the polygon)?`; }
+      else if (v0 === 'K'){ const n = rnd(4,7); names = [...Array(n).keys()].map(String); nb = s => names.filter(t => t !== s); from = '0'; to = '1'; desc = `one of ${n} points, each joined to every other. Each second it jumps to one of the other ${n-1} points at random. Expected jumps to reach a particular other point?`; }
+      else { names = ['A','B','C','D','X']; const E = {A:['B','D','X'], B:['A','C','X'], C:['B','D','X'], D:['A','C','X'], X:['A','B','C','D']}; nb = s => E[s]; from = 'A'; to = 'C'; desc = 'corner A of a square ABCD whose centre X is joined to all four corners. Each second it moves along a random edge from where it is. Expected moves to reach the opposite corner C?'; }
+      const P = {}; names.forEach(s => { if (s === to){ P[s] = []; return; } const m = {}, ns = nb(s); ns.forEach(t => m[t] = m[t] ? add(m[t], R(1, ns.length)) : R(1, ns.length)); P[s] = Object.entries(m); });
+      const ch = {names, P, absorb: new Set([to]), start: from}, val = absorb(ch, 'time');
+      return {lv:3, topic:'Random walk on a graph', q:`A bug starts at ${desc}`, f: val[from], ch, kind:'time', sym:'E', label: s => s,
+        how:'Group vertices by symmetry (e.g. by distance from the target) to cut the number of equations.', chk:{mc: () => { let x = from, c = 0; while (x !== to){ x = pick(nb(x)); c++; } return c; }}}; },
+    ties(){ const w = pick([[1,3],[1,4],[2,5],[1,2]]), d = pick([[1,3],[1,4],[1,5],[1,6]]); const pw = R(w[0], w[1]), pdw = R(d[0], d[1]), pl = sub(sub(ONE, pw), pdw); if (pl[0] <= 0n) return null;
+      const N = rnd(3,5), k = rnd(1, N-1), dur = Math.random() < .5;
+      const names = [...Array(N+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i === 0 || i === N ? [] : [[String(i+1), pw], [s, pdw], [String(i-1), pl]]; });
+      const ch = {names, P, absorb: new Set(['0', String(N)]), start: String(k)}, v = absorb(ch, dur ? 'time' : 'prob', new Set([String(N)]));
+      const fw = Number(pw[0])/Number(pw[1]), fd = Number(pdw[0])/Number(pdw[1]);
+      return {lv:3, topic:"Gambler's ruin with draws", q:`Each round you win £1 with probability ${rs(pw)}, draw (no change) with probability ${rs(pdw)}, and otherwise lose £1. You start with £${k} and stop at £${N} or £0. ${dur ? 'What is the expected number of rounds?' : `What is the probability you reach £${N}?`}`, f: v[String(k)], ch, kind: dur ? 'time' : 'prob', target: new Set([String(N)]), sym: dur ? 'E' : 'P', label: s => '£' + s,
+        how: dur ? 'Draws stretch time: the duration is the no-draw duration ÷ (1 − P(draw)), using win/lose probabilities rescaled to add to 1.' : 'Draws don\'t change who wins: ignore them and rescale win and lose to p/(p+q), q/(p+q).',
+        chk:{mc: () => { let x = k, c = 0; while (x > 0 && x < N){ const u = Math.random(); x += u < fw ? 1 : u < fw + fd ? 0 : -1; c++; } return dur ? c : (x === N ? 1 : 0); }}}; },
+    stat2(){ const n = pick([2,3]); let names, P, desc, ask;
+      if (n === 2){ const a = R(1, rnd(2,6)), b = R(1, rnd(2,6)); names = ['Sun','Rain']; P = {Sun:[['Rain', a], ['Sun', sub(ONE,a)]], Rain:[['Sun', b], ['Rain', sub(ONE,b)]]}; desc = `If today is sunny, tomorrow is rainy with probability ${rs(a)}; if today is rainy, tomorrow is sunny with probability ${rs(b)}.`; ask = 'Rain'; }
+      else { names = ['A','B','C']; const p = () => R(1, rnd(2,4)); const ab_ = p(), ac = R(1, 4), bc = p(), ca = p(); if (add(ab_, ac)[0] >= add(ab_,ac)[1]) return null;
+        P = {A:[['B', ab_], ['C', ac], ['A', sub(ONE, add(ab_, ac))]], B:[['C', bc], ['B', sub(ONE, bc)]], C:[['A', ca], ['C', sub(ONE, ca)]]}; desc = `A machine is in state A, B or C. Each minute: from A it moves to B with probability ${rs(ab_)} and to C with probability ${rs(ac)} (else stays); from B it moves to C with probability ${rs(bc)} (else stays); from C it moves to A with probability ${rs(ca)} (else stays).`; ask = 'A'; }
+      const ch = {names, P, absorb: new Set(), start: names[0]}, v = stationary(ch), Pm = Object.fromEntries(names.map(s => [s, Object.fromEntries(P[s].map(([t,p]) => [t, Number(p[0])/Number(p[1])]))]));
+      const eq = names.map(s => `π(${s}) = ${names.flatMap(t => P[t].filter(([u]) => u === s).map(([,p]) => `${pr(p)}π(${t})`)).join(' + ')}`).concat([`${names.map(s => `π(${s})`).join(' + ')} = 1`]);
+      return {lv:3, topic:'Long-run fraction', q:`${desc} In the long run, what fraction of ${n === 2 ? 'days are rainy' : 'minutes is the machine in state A'}?`, f: v[ask], eqOverride: eq, solOverride: names.map(s => `π(${s}) = ${rs(v[s])}`).join(', '), how:'Stationary distribution: the long-run share of each state stays the same after one step. Write "flow in = share", plus the shares add to 1.',
+        chk:{mc: () => { let x = names[0], hit = 0; for (let i = 0; i < 400; i++){ const r = Math.random(); let acc = 0, nx = x; for (const [t,p] of Object.entries(Pm[x])){ acc += p; if (r < acc){ nx = t; break; } } x = nx; if (i >= 100 && x === ask) hit++; } return hit/300; }}}; },
+    /* ---- Level 4: impossible ---- */
+    snakes(){ const N = rnd(7,10); const lad = rnd(1, 3), ladTo = lad + rnd(3, 4), sn = rnd(ladTo + 1, N - 1), snTo = rnd(1, sn - 3); if (sn <= ladTo || snTo < 1 || sn >= N || snTo === lad || ladTo >= N) return null;
+      const jump = i => i === lad ? ladTo : i === sn ? snTo : i;
+      const names = [...Array(N+1).keys()].map(String), P = {}; names.forEach(s => { const i = +s; if (i === N || i === lad || i === sn){ P[s] = i === N ? [] : [[String(jump(i)), ONE]]; return; } const m = {}; [1,2].forEach(st => { const t = String(Math.min(N, jump(Math.min(N, i+st)))); m[t] = m[t] ? add(m[t], R(1,2)) : R(1,2); }); P[s] = Object.entries(m); });
+      const live = names.filter(s => !(+s === lad || +s === sn)), P2 = {}; live.forEach(s => P2[s] = P[s]);
+      const ch = {names: live, P: P2, absorb: new Set([String(N)]), start: '0'}, v = absorb(ch, 'time');
+      return {lv:4, topic:'Snakes and ladders', q:`A token starts on square 0 of a board numbered 0 to ${N}. Each turn a fair coin moves it 1 square (heads) or 2 squares (tails), stopping at ${N} if it would overshoot. Landing on ${lad} climbs a ladder to ${ladTo}; landing on ${sn} slides down a snake to ${snTo}. What is the expected number of turns to reach ${N}?`, f: v['0'], ch, kind:'time', sym:'E', label: s => 'sq ' + s,
+        how:'Ladder and snake squares are never "stood on", so leave them out as states. Solve from the top down; the snake creates one loop you have to solve as an equation.',
+        chk:{mc: () => { let x = 0, c = 0; while (x < N){ x = jump(Math.min(N, x + (coin() ? 1 : 2))); c++; } return c; }}}; },
+    jumpRuin(){ const [an,ad] = pick([[1,3],[1,4],[2,5],[1,2]]), up2 = R(an, ad), dn = sub(ONE, up2), N = rnd(4,7), k = rnd(1, N-2), dur = Math.random() < .5;
+      const names = [...Array(N+2).keys()].map(String), P = {}; names.forEach(s => { const i = +s; P[s] = i === 0 || i >= N ? [] : [[String(Math.min(N+1, i+2)), up2], [String(i-1), dn]]; });
+      const tgt = new Set([String(N), String(N+1)]), ch = {names, P, absorb: new Set(['0', String(N), String(N+1)]), start: String(k)}, v = absorb(ch, dur ? 'time' : 'prob', tgt);
+      return {lv:4, topic:'Ruin with uneven steps', q:`You start with £${k}. Each round you win £2 with probability ${an}/${ad}, otherwise you lose £1. You stop when you reach £${N} or more, or hit £0. ${dur ? 'What is the expected number of rounds?' : `What is the probability you reach at least £${N}?`}`, f: v[String(k)], ch, kind: dur ? 'time' : 'prob', target: tgt, sym: dur ? 'E' : 'P', label: s => '£' + s,
+        how:'No neat formula: the standard ruin result needs ±1 steps. Write one equation per amount of money and solve from the bottom up (or top down).',
+        chk:{mc: () => { let x = k, c = 0; while (x > 0 && x < N){ x += Math.random()*ad < an ? 2 : -1; c++; } return dur ? c : (x >= N ? 1 : 0); }}}; },
+    penneyBiased(){ const [pn,pd] = pick(PB), pool = ['HHH','HHT','HTH','HTT','THH','THT','TTH','HH','HT','TH','TT'], a = pick(pool); let b; do b = pick(pool); while (b === a || b.includes(a) || a.includes(b));
+      const ch = patternChain([a, b], coinA(R(pn,pd))), v = absorb(ch, 'prob', new Set([a])); if (!toF(v[''])) return null;
+      return {lv:4, topic:'Pattern race (biased coin)', q:`A coin lands heads with probability ${pn}/${pd}. It is flipped repeatedly. What is the probability that ${a} appears before ${b}?`, f: v[''], ch, kind:'prob', target: new Set([a]), sym:'P', label: lab,
+        how:'Build the combined state diagram for both patterns, then solve. With a biased coin there are no shortcuts.', chk:{mc: () => { let s = ''; for(;;){ s = (s + (Math.random()*pd < pn ? 'H' : 'T')).slice(-3); if (s.endsWith(a)) return 1; if (s.endsWith(b)) return 0; } }}}; },
+    streak(){ const v0 = rnd(0,1);
+      if (v0 === 0){ const k = rnd(2,3), names = ['start', ...[...Array(k-1)].map((_,i) => 'run' + (i+1)), 'done'], P = {}; names.forEach((s,i) => { if (s === 'done'){ P[s] = []; return; } P[s] = i === 0 ? [['run1', ONE]] : [[names[i+1], R(1,6)], ['run1', R(5,6)]]; });
+        const ch = {names, P, absorb: new Set(['done']), start:'start'}, v = absorb(ch, 'time');
+        return {lv:4, topic:'Streaks', q:`A fair die is rolled until the same number comes up ${k} times in a row. What is the expected number of rolls?`, f: v.start, ch, kind:'time', sym:'E', label: s => s,
+          how:'Track only the length of the current run of equal numbers, not which number it is. Each roll extends the run with probability 1/6 or resets it to 1.', chk:{mc: () => { let p = 0, r = 0, c = 0; while (r < k){ const x = rnd(1,6); c++; r = x === p ? r + 1 : 1; p = x; } return c; }}}; }
+      const T = pick([7, 8, 9, 10]); // expected rolls until two consecutive rolls sum to at least T
+      const names = ['start', ...[1,2,3,4,5,6].map(String), 'done'], P = {}; names.forEach(s => { if (s === 'done'){ P[s] = []; return; } const m = {}; for (let f = 1; f <= 6; f++){ const t = s !== 'start' && +s + f >= T ? 'done' : String(f); m[t] = m[t] ? add(m[t], R(1,6)) : R(1,6); } P[s] = Object.entries(m); });
+      const ch = {names, P, absorb: new Set(['done']), start: 'start'}, v = absorb(ch, 'time');
+      return {lv:4, topic:'Streaks', q:`A fair die is rolled repeatedly. What is the expected number of rolls until two consecutive rolls add up to at least ${T}?`, f: v.start, ch, kind:'time', sym:'E', label: s => s === 'start' ? 'start' : 'last=' + s,
+        how:'The state is just the last roll. Many states behave identically (e.g. any last roll too small to ever finish), so merge them.', chk:{mc: () => { let p = 0, c = 0; for(;;){ const x = rnd(1,6); c++; if (p && p + x >= T) return c; p = x; } }}}; },
+  };
+  const LV = {1:['patFair','ruinFair','race'], 2:['ruinBiased','patBiased','reflect','sumReach'], 3:['penney','graphWalk','ties','stat2'], 4:['snakes','jumpRuin','penneyBiased','streak']};
+  function q(lv, name){
+    for (let t = 0; t < 60; t++){
+      const k = name || pick(LV[lv] || LV[1]), r = G[k](); if (!r) continue;
+      const f = toF(r.f); if (!f || f.n < 0) continue;
+      const equations = r.eqOverride || eqs(r.ch, r.kind, r.target, r.sym, r.label);
+      const sol = r.solOverride || (() => { const v = r.kind === 'time' ? absorb(r.ch, 'time') : absorb(r.ch, 'prob', r.target); return solTxt(v, r.ch, r.sym, r.label); })();
+      const val = f.n/f.d;
+      const why = `${r.how}\nState equations:\n${equations.slice(0, 10).join('\n')}${equations.length > 10 ? '\n…' : ''}\nSolving: ${sol}.\nAnswer: ${rs(r.f)}${f.d > 1 ? ` ≈ ${+val.toFixed(4)}` : ''}.`;
+      return {kind:'sig', tier:'mk', gen: k, lv: r.lv, topic: r.topic, q: r.q, f, why, chk: r.chk, eqN: equations.length, hint: r.how, states: (r.ch ? r.ch.names.filter(x => !r.ch.absorb.has(x)) : (r.eqOverride ? [] : [])).length};
+    }
+    throw new Error('mk gen failed');
+  }
+  return {q, LV, G, solve, R, rs, patternChain, absorb};
+})();
+if (typeof module !== 'undefined') module.exports = MK;
 
 </script>
 <script>
@@ -8152,12 +8370,14 @@ function oaHub(){
     ${row('fm80','80','#f2b84b','Maths test: 80 in 8 min','Format reported for the Hong Kong and New York offices.', b80 != null ? `Best ${b80}` : '')}
     ${row('fmprac','±','#3a3f4b','Maths practice by type','Untimed, with the shortcut for each question type.', pctOf(d.t.fm))}
     ${row('fstest','26','#7aa2ff','Sequences test: 26 in 25 min','Find the next term. Difficulty rises. Skip what you can\'t see.', bs != null ? `Best ${bs}/26 · ${d.fs.length} runs` : '')}
-    ${row('fsprac','1,2','#3a3f4b','Sequences practice','Three levels, with the rule explained after every answer.', pctOf(d.t.fs))}
+    ${row('fsprac','1,2','#3a3f4b','Sequences practice','Levels 1–3 plus Impossible: fractions, operation cycles, digit rules, three-way interleaves.', pctOf(d.t.fs))}
+    ${row('fstesthard','☠','#7aa2ff','Sequences test: hard mode','26 in 25 minutes, weighted to level 3 and Impossible.', (()=>{const a=d.fsh||[]; return a.length?`Best ${Math.max(...a.map(x=>x.score))}/26`:'';})())}
     <h2>SIG (Susquehanna)</h2><p class="sub">Problem Solving Assessment: 17 typed-answer questions in 60 minutes. The first nine or so are quick probability and expected-value questions; the rest are longer. A calculator is allowed and you can skip and come back.</p>
     ${live ? row('sigresume','▶','#4ec9a0','Resume mock in progress', `${imcFmt((run.end - Date.now())/1000)} left · ${run.ans.filter(Boolean).length}/17 answered`, '') : ''}
     ${row('sigmock','17','#b48cff','Full mock: 17 in 60 min','9 fast questions then 8 deeper ones. Saved as you go, so you can leave and come back.', bg != null ? `Best ${bg}/17 · ${d.sig.length} mocks` : '')}
     ${row('sigfast','P','#3a3f4b','Practice: fast tier','Bayes, dice games, binomial, counting, conditional probability. Aim for 1–2 minutes each.', pctOf(d.t.sigfast))}
     ${row('sigdeep','∑','#3a3f4b','Practice: deep tier','Gambler\'s ruin, Markov chains, optimal stopping, paths, continuous probability, logic.', pctOf(d.t.sigdeep))}
+    ${row('sigmk','⇄','#ff8f6b','Markov & gambler\'s ruin ladder','Four levels up to Impossible: patterns, ruin, races, Penney\'s game, graphs, snakes and ladders. Every solution shows the state equations.', [1,2,3,4].map(l => d.t['mk'+l] && d.t['mk'+l].n ? `L${l} ${Math.round(100*d.t['mk'+l].ok/d.t['mk'+l].n)}%` : '').filter(Boolean).join(' · '))}
     <h2>IMC</h2>${row('imc','🧩','#f2b84b','IMC SHL inductive reasoning','Node sequences, shape sequences, button rules, 15-item adaptive mock.', '')}
     ${miss.length ? `<h2>Review</h2>${row('miss','↺','#ff6b6b',`Misses (${miss.length})`,'Sequence and SIG questions you got wrong, with solutions.','')}` : ''}
     <details class="lib" style="margin-top:12px"><summary>How to approach each test</summary><div class="small mut" style="line-height:1.55">
@@ -8172,6 +8392,8 @@ function oaStart(k){
   if (k === 'fmprac') return oaGo({view:'fmPrac', type:'all', q: OA.fmQ(), n: 0, ok: 0, t0: Date.now()});
   if (k === 'fstest'){ const lv = [...Array(8).fill(1), ...Array(10).fill(2), ...Array(8).fill(3)]; return oaGo({view:'fsTest', qs: lv.map(l => OA.seqQ(l)), sel: Array(26).fill(null), tq: Array(26).fill(0), i: 0, start: Date.now(), end: Date.now() + 25*60e3}); }
   if (k === 'fsprac') return oaGo({view:'fsPrac', lv: 0, q: OA.seqQ(), sel: null, n: 0, ok: 0, t0: Date.now()});
+  if (k === 'fstesthard'){ const lv = [...Array(6).fill(2), ...Array(10).fill(3), ...Array(10).fill(4)]; return oaGo({view:'fsTest', hard: true, qs: lv.map(l => OA.seqQ(l)), sel: Array(26).fill(null), tq: Array(26).fill(0), i: 0, start: Date.now(), end: Date.now() + 25*60e3}); }
+  if (k === 'sigmk'){ const lv = (oaS && oaS.mklv) || store.get('mklv', 1); return oaGo({view:'sigPrac', tier:'mk', mklv: lv, q: MK.q(lv), val:'', done: false, t0: Date.now(), n: 0, ok: 0}); }
   if (k === 'sigmock'){ const run = store.get('oa_sig_run', null); if (run && run.end > Date.now() && !confirm('Start a new mock? The one in progress will be discarded.')) return; const S = {view:'sigMock', qs: OA.sigMock(), ans: Array(17).fill(''), flag: Array(17).fill(false), tq: Array(17).fill(0), i: 0, start: Date.now(), end: Date.now() + 60*60e3}; oaSigPersist(S); return oaGo(S); }
   if (k === 'sigresume'){ const run = store.get('oa_sig_run', null); if (run) return oaGo({view:'sigMock', tq: Array(17).fill(0), ...run}); }
   if (k === 'sigfast' || k === 'sigdeep') return oaGo({view:'sigPrac', tier: k === 'sigfast' ? 'fast' : 'deep', q: OA.sigQ(k === 'sigfast' ? 'fast' : 'deep'), val:'', done: false, t0: Date.now(), n: 0, ok: 0});
@@ -8245,7 +8467,7 @@ const seqHTML = q => `<div class="seqt">${q.t.map(x => `<span>${x}</span>`).join
 const seqOpts = (q, sel, show) => `<div class="fmo">${q.opts.map((o,i) => `<button data-o="${i}" class="${show ? (i === q.ans ? 'ok' : i === sel ? 'bad' : '') : (i === sel ? 'on' : '')}">${o}</button>`).join('')}</div>`;
 function oaFsTest(){
   const S = oaS; if (Date.now() >= S.end) return oaFsFinish(); oaLap(S); const q = S.qs[S.i];
-  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">Sequence ${S.i+1} / 26</h1><span class="pill" id="oatm"></span><button class="chip" id="oaend">Finish</button></div>
+  app.innerHTML = `<div class="row"><h1 class="grow" style="font-size:20px">${S.hard ? '☠ ' : ''}Sequence ${S.i+1} / 26</h1><span class="pill" id="oatm"></span><button class="chip" id="oaend">Finish</button></div>
     <div class="imdots">${S.qs.map((_,i) => `<button data-q="${i}" class="${i === S.i ? 'cur' : ''} ${S.sel[i] != null ? 'ans' : ''}">${i+1}</button>`).join('')}</div>
     <div class="card" style="padding:16px 12px;margin-top:10px">${seqHTML(q)}${seqOpts(q, S.sel[S.i], false)}
       <div class="row" style="gap:8px;margin-top:10px"><button class="chip" id="oaclr">Clear answer</button><span class="grow small mut" style="text-align:right">+1 right · −1 wrong · 0 blank</span></div></div>
@@ -8261,24 +8483,24 @@ function oaFsTest(){
 function oaFsFinish(){
   const S = oaS; if (S.view !== 'fsTest') return; clearInterval(window._oat); oaLap(S);
   const right = S.qs.filter((q,i) => S.sel[i] === q.ans).length, blank = S.sel.filter(x => x == null).length, wrong = 26 - right - blank, secs = Math.round((Math.min(Date.now(), S.end) - S.start)/1000);
-  const d = oaStore(); d.fs.push({d: today(), score: right - wrong, right, wrong, blank, secs}); d.fs = d.fs.slice(-100);
+  const d = oaStore(); const key = S.hard ? 'fsh' : 'fs'; d[key] = d[key] || []; d[key].push({d: today(), score: right - wrong, right, wrong, blank, secs}); d[key] = d[key].slice(-100);
   S.qs.forEach((q,i) => { if (S.sel[i] == null) return; const m = d.t.fs = d.t.fs || {n:0, ok:0, s:0}; m.n++; if (S.sel[i] === q.ans) m.ok++; else oaMiss(q, q.opts[S.sel[i]]); });
-  oaSave(d); markActive(); oaS = {view:'fsEnd', qs: S.qs, sel: S.sel, tq: S.tq, right, wrong, blank, secs}; renderOA();
+  oaSave(d); markActive(); oaS = {view:'fsEnd', hard: S.hard, qs: S.qs, sel: S.sel, tq: S.tq, right, wrong, blank, secs}; renderOA();
 }
 function oaFsEnd(){
   const S = oaS;
-  app.innerHTML = oaHead('Flow sequences: result') + `
+  app.innerHTML = oaHead(S.hard ? 'Sequences (hard): result' : 'Flow sequences: result') + `
     <div class="stat"><div><b>${S.right - S.wrong}</b><span>score (of 26)</span></div><div><b>${S.right}</b><span>right</span></div><div><b>${S.wrong}</b><span>wrong · ${S.blank} blank</span></div></div>
     <p class="sub" style="margin-top:8px">Time used ${imcFmt(S.secs)}. A wrong answer cancels a right one, so a blank beats a guess between four options.</p>
     ${oaTimesHTML(S.qs.map((q,i) => ({n: i+1, label: `<span class="tqmono">${q.t.slice(-4).join(', ')} → ${q.a}</span> <span class="mut">L${q.lv}</span>`, ms: S.tq[i], ok: S.sel[i] == null ? null : S.sel[i] === q.ans})), 58, 'Time counts every visit to a question, including going back to it.')}
     <h2>Review</h2>${S.qs.map((q,i) => { const ok = S.sel[i] === q.ans, bl = S.sel[i] == null; return `<div class="card small"><div class="row"><b class="grow">${i+1}. L${q.lv} <span class="mut" style="font-weight:400">· ${(S.tq[i]/1000).toFixed(0)}s</span></b><span style="color:${ok ? 'var(--good)' : bl ? 'var(--mut)' : 'var(--bad)'}">${ok ? '✓' : bl ? 'blank' : '✗ you: ' + q.opts[S.sel[i]]}</span></div><div class="seqt sm">${q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">${q.a}</span></div><div class="why">${q.why}</div></div>`; }).join('')}
     <button class="big" id="oaagain">Go again</button>`;
-  oaBindHub(); $('#oaagain').onclick = () => oaStart('fstest');
+  oaBindHub(); $('#oaagain').onclick = () => oaStart(S.hard ? 'fstesthard' : 'fstest');
 }
 function oaFsPrac(){
   const S = oaS, q = S.q, done = S.sel != null;
   app.innerHTML = oaHead('Sequences practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
-    <div class="chips" style="margin-bottom:6px">${[[0,'Mixed'],[1,'Level 1'],[2,'Level 2'],[3,'Level 3']].map(([l,t]) => `<button class="chip ${S.lv === l ? 'on' : ''}" data-lv="${l}">${t}</button>`).join('')}</div>
+    <div class="chips" style="margin-bottom:6px">${[[0,'Mixed'],[1,'Level 1'],[2,'Level 2'],[3,'Level 3'],[4,'☠ Impossible']].map(([l,t]) => `<button class="chip ${S.lv === l ? 'on' : ''}" data-lv="${l}">${t}</button>`).join('')}</div>
     <div class="card" style="padding:16px 12px">${seqHTML(q)}${seqOpts(q, S.sel, done)}
     ${done ? `<div class="fb ${S.sel === q.ans ? 'ok' : 'no'}"><b>${S.sel === q.ans ? 'Correct' : 'Answer: ' + q.a}</b> · ${Math.round(S.secs)}s${S.secs > 58 ? ' (test pace is about 58s)' : ''}<div class="why">${q.why}</div></div>` : ''}
     <div class="row" style="gap:8px;margin-top:10px">${done ? '<button class="big" id="oanext" style="margin:0">Next</button>' : '<button class="big ghost" id="oashow" style="margin:0">Show rule</button>'}</div></div>`;
@@ -8336,24 +8558,27 @@ function oaSigEnd(){
 }
 function oaSigPrac(){
   const S = oaS, q = S.q;
-  app.innerHTML = oaHead('SIG practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
-    <div class="chips" style="margin-bottom:6px">${[['fast','Fast tier'],['deep','Deep tier']].map(([k,t]) => `<button class="chip ${S.tier === k ? 'on' : ''}" data-tier="${k}">${t}</button>`).join('')}<span class="pill" id="oatm2" style="margin-left:auto">0:00</span></div>
+  const isMK = S.tier === 'mk';
+  app.innerHTML = oaHead(isMK ? 'Markov & ruin ladder' : 'SIG practice', `<span class="pill">${S.ok}/${S.n}</span>`) + `
+    <div class="chips" style="margin-bottom:6px">${isMK ? [[1,'L1 basics'],[2,'L2 biased'],[3,'L3 races'],[4,'☠ Impossible']].map(([l,t]) => `<button class="chip ${S.mklv === l ? 'on' : ''}" data-mkl="${l}">${t}</button>`).join('') : [['fast','Fast tier'],['deep','Deep tier']].map(([k,t]) => `<button class="chip ${S.tier === k ? 'on' : ''}" data-tier="${k}">${t}</button>`).join('')}<span class="pill" id="oatm2" style="margin-left:auto">0:00</span></div>
     <div class="card"><span class="tag">${q.topic}</span>${S.done ? sigSolHTML(q, S.shown ? null : S.val, S.okd) + '<button class="big" id="oanext">Next question</button>'
-      : `<div class="q" style="font-size:16px;line-height:1.5">${esc(q.q)}</div><div class="disp" id="disp"></div><div class="small mut" style="margin-top:4px">Whole number, decimal or fraction (e.g. 17/36).${sigUnit(q)}</div>${keypadHTML('num')}<div class="row" style="margin-top:8px"><button class="chip grow" id="oashow">Show solution</button></div>`}</div>${S.done ? '' : CALC_()}`;
+      : `<div class="q" style="font-size:16px;line-height:1.5">${esc(q.q)}</div><div class="disp" id="disp"></div><div class="small mut" style="margin-top:4px">Whole number, decimal or fraction (e.g. 17/36).${sigUnit(q)}</div>${keypadHTML('num')}${isMK ? `<div id="mkhint">${S.hint ? `<div class="why" style="margin-top:8px">💡 ${esc(q.hint)}${q.states ? ` This one needs ${q.states} state${q.states > 1 ? 's' : ''}.` : ''}</div>` : ''}</div>` : ''}<div class="row" style="margin-top:8px;gap:8px">${isMK && !S.hint ? '<button class="chip grow" id="oahint">Hint: how to set it up</button>' : ''}<button class="chip grow" id="oashow">Show solution</button></div>`}</div>${S.done ? '' : CALC_()}`;
   oaBindHub();
-  const next = tier => { oaGo({view:'sigPrac', tier: tier || S.tier, q: OA.sigQ(tier || S.tier), val:'', done: false, t0: Date.now(), n: S.n, ok: S.ok}); };
+  const next = tier => { if (isMK){ store.set('mklv', S.mklv); return oaGo({view:'sigPrac', tier:'mk', mklv: S.mklv, q: MK.q(S.mklv), val:'', done: false, t0: Date.now(), n: S.n, ok: S.ok}); } oaGo({view:'sigPrac', tier: tier || S.tier, q: OA.sigQ(tier || S.tier), val:'', done: false, t0: Date.now(), n: S.n, ok: S.ok}); };
   app.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => next(b.dataset.tier));
+  app.querySelectorAll('[data-mkl]').forEach(b => b.onclick = () => { S.mklv = +b.dataset.mkl; next(); });
+  const hb = $('#oahint'); if (hb) hb.onclick = () => { S.hint = true; const v = S.val; oaSigPrac(); };
   if (S.done){ $('#oanext').onclick = () => next(); return; }
   const disp = $('#disp'), setv = v => { S.val = v; disp.innerHTML = v ? esc(v.replace(/-/g,'−')) : '<span class="ph">answer</span>'; }; setv(S.val);
-  const finish = shown => { S.done = true; S.shown = shown; S.okd = !shown && OA.sigCheck(q, S.val); if (!shown){ S.n++; if (S.okd) S.ok++; else oaMiss(q, S.val); oaBump('sig' + q.tier, S.okd, (Date.now() - S.t0)/1000); } kp = null; clearInterval(window._oat); oaSigPrac(); };
+  const finish = shown => { S.done = true; S.shown = shown; S.okd = !shown && OA.sigCheck(q, S.val); if (!shown){ S.n++; if (S.okd) S.ok++; else oaMiss(q, S.val); oaBump('sig' + q.tier, S.okd, (Date.now() - S.t0)/1000); if (q.tier === 'mk') oaBump('mk' + q.lv, S.okd, 0); } kp = null; clearInterval(window._oat); oaSigPrac(); };
   bindKeypad(app, {get: () => S.val, set: setv, submit: () => { if (S.val) finish(false); }});
   $('#oashow').onclick = () => finish(true); calcBind();
   const tick = () => { const el = $('#oatm2'); if (!el || cur !== 'train' || oaS !== S) return clearInterval(window._oat); el.textContent = imcFmt((Date.now() - S.t0)/1000); }; clearInterval(window._oat); tick(); window._oat = setInterval(tick, 500);
 }
 function oaMissView(){
   const L = store.get('oa_miss', []).slice().reverse();
-  app.innerHTML = oaHead('Misses') + `<p class="sub">Newest first.</p>${L.map(m => m.q.kind === 'sig' ? `<div class="card small"><span class="tag">SIG · ${m.q.topic}</span>${sigSolHTML(m.q, m.given, false)}<button class="chip" data-sim="sig${m.q.tier}" style="margin-top:8px">Similar</button></div>`
-    : `<div class="card small"><span class="tag">Flow sequences · L${m.q.lv}</span><div class="seqt sm">${m.q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">${m.q.a}</span></div><div class="mut">You chose ${esc(String(m.given))}</div><div class="why">${m.q.why}</div><button class="chip" data-sim="fsprac" style="margin-top:8px">Practise more</button></div>`).join('')}
+  app.innerHTML = oaHead('Misses') + `<p class="sub">Newest first.</p>${L.map(m => m.q.kind === 'sig' ? `<div class="card small"><span class="tag">${m.q.tier === 'mk' ? 'Markov ladder L' + m.q.lv : 'SIG'} · ${m.q.topic}</span>${sigSolHTML(m.q, m.given, false)}<button class="chip" data-sim="sig${m.q.tier}" style="margin-top:8px">Similar</button></div>`
+    : `<div class="card small"><span class="tag">Sequences · ${m.q.lv === 4 ? 'Impossible' : 'L' + m.q.lv}</span><div class="seqt sm">${m.q.t.map(x => `<span>${x}</span>`).join('')}<span class="qm">${m.q.a}</span></div><div class="mut">You chose ${esc(String(m.given))}</div><div class="why">${m.q.why}</div><button class="chip" data-sim="fsprac" style="margin-top:8px">Practise more</button></div>`).join('')}
     ${L.length ? '<button class="big ghost" id="oaclr">Clear misses</button>' : '<div class="card empty">No misses.</div>'}`;
   oaBindHub(); app.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => oaStart(b.dataset.sim));
   const c = $('#oaclr'); if (c) c.onclick = () => { if (confirm('Clear all misses?')){ store.set('oa_miss', []); oaMissView(); } };
